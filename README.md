@@ -6,7 +6,9 @@
 >
 > - [ ] Multithreaded command buffer generation
 > - [ ] Shader-reflection automatically generates descriptorset
-> - [ ] Normalmap
+> - [x] Normal Texture
+> - [ ] Metallic Texture
+> - [ ] Roughness Texture
 
 ##
 
