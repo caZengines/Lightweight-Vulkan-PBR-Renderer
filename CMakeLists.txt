@@ -1,21 +1,40 @@
 cmake_minimum_required(VERSION 4.2.0)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-project(vulkan_render) 
+project(vulkan_render)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# ===== Build type configuration =====
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
+endif()
+set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "Configurations" FORCE)
+
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
+    # Debug/Release compiler flags
+    set(CMAKE_CXX_FLAGS_DEBUG   "-g -O0 -D_DEBUG"                 CACHE STRING "Flags for Debug"   FORCE)
+    set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG"                     CACHE STRING "Flags for Release" FORCE)
+    set(CMAKE_C_FLAGS_DEBUG     "-g -O0 -D_DEBUG"                 CACHE STRING "C Flags Debug"     FORCE)
+    set(CMAKE_C_FLAGS_RELEASE   "-O2 -DNDEBUG"                     CACHE STRING "C Flags Release"   FORCE)
 endif()
+
+#Disable the built-in tests and examples of SPIRV-Reflex
+set(SPIRV_REFLECT_BUILD_TESTS OFF CACHE BOOL "")
+set(SPIRV_REFLECT_BUILD_EXAMPLES OFF CACHE BOOL "")
 
 find_package(Vulkan REQUIRED)
 find_package(glfw3 REQUIRED)
+find_package(glm OPTIONAL)
 find_program(SLANGC_COMPILER slangc REQUIRED)
 
-aux_source_directory(${PROJECT_SOURCE_DIR}/src SRC_LIST)
+file(GLOB_RECURSE SRC_LIST 
+    "${PROJECT_SOURCE_DIR}/src/*.cpp"
+    "${PROJECT_SOURCE_DIR}/src/*.cc" 
+)
 
-set(SHADER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/shaders)
+set(SHADER_DIR ${PROJECT_SOURCE_DIR}/shaders)
 set(SHADER_SOURCE ${SHADER_DIR}/shader.slang)
 set(SHADER_OUTPUT ${SHADER_DIR}/slang.spv) 
 
@@ -34,8 +53,6 @@ add_custom_command(
     VERBATIM
 )
 
-add_compile_options(-I ${PROJECT_SOURCE_DIR}/include)
-
 add_custom_target(CompileShaders ALL
     DEPENDS ${SHADER_OUTPUT}
 )
@@ -46,12 +63,11 @@ add_executable(
 )
 add_dependencies(main CompileShaders)
 
-set_target_properties(main PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
+target_compile_definitions(main PUBLIC SPIRV_REFLECT_USE_SYSTEM_SPIRV_H)
 
-target_include_directories(
-    main
-    PRIVATE
-    ${Vulkan_INCLUDE_DIRS}
+set_target_properties(main PROPERTIES 
+    RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin
+    WIN32_EXECUTABLE FALSE
 )
 
 target_link_libraries(
@@ -60,6 +76,16 @@ target_link_libraries(
     Vulkan::Vulkan
     glfw
 )
+
+target_include_directories(
+    main
+    PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+    ${Vulkan_INCLUDE_DIRS}
+    ${GLFW3_INCLUDE_DIRS}
+    ${GLM_INCLUDE_DIRS}
+)
+
 
 
 

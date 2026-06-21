@@ -1,13 +1,28 @@
 {
     "cmake.configureOnOpen": true,
+    "cmake.buildDirectory": "${workspaceFolder}/cmake-build-${buildType}",
+    "cmake.debugConfig": {
+        "type": "cppdbg",
+        "MIMode": "gdb",
+        "miDebuggerPath": "C:/msys64/ucrt64/bin/gdb.exe",
+        "setupCommands": [
+            {
+                "description": "Enable pretty-printing for gdb",
+                "text": "-enable-pretty-printing",
+                "ignoreFailures": true
+            }
+        ],
+        "stopAtEntry": false,
+        "externalConsole": true
+    },
     "C_Cpp.default.includePath": [
         "${workspaceFolder}/**",
         "${env:VULKAN_SDK}/Include"
     ],
     "C_Cpp.intelliSenseEngine": "disabled",
     "clangd.arguments": [
-    "--compile-commands-dir=${workspaceFolder}/cmake-build",
-    "--background-index",
-    "--query-driver=C:/msys64/ucrt64/bin/g++.exe"
-]
+        "--compile-commands-dir=${workspaceFolder}/cmake-build-debug",
+        "--background-index",
+        "--query-driver=C:/msys64/ucrt64/bin/g++.exe"
+    ]
 }

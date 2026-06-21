@@ -38,6 +38,7 @@ VertexOutput vertMain(VertexInput Input) {
     Output.pos = mul(ubo.proj, mul(ubo.view, worldPosition));
     Output.fragTexCoord = Input.inTexCoord;
     Output.worldPos = worldPosition.xyz;
+    //create TBN Matrix
     float3 N = normalize(mul((float3x3)ubo.model, Input.inNormal));
     float3 T = normalize(mul((float3x3)ubo.model, Input.inTangent.xyz));
     T = normalize(T - dot(T, N) * N);
@@ -45,7 +46,7 @@ VertexOutput vertMain(VertexInput Input) {
 
     float3 worldLightDir = ubo.light.position.xyz - worldPosition.xyz;
     float3 worldViewDir = ubo.cameraPos.xyz - worldPosition.xyz;
-
+    //Transfer World Space to Tangent Space
     Output.fragTangentLightDir = float3(
         dot(worldLightDir, T),
         dot(worldLightDir, B),

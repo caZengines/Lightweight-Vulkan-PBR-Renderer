@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(spirv-cross --entry fragMain --stage frag /c/Users/mcbbs/Desktop/Vulkan_Development/shaders/slang.spv)"
+    ]
+  }
+}
