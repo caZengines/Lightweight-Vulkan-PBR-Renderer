@@ -9,10 +9,11 @@
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
 
-Renderer::Renderer(RenderContext& rct, vk::raii::DescriptorSetLayout& dsl, Material& material, obj_Model& model, Camera& camera, CommandPool& commandPool, vk::raii::SurfaceKHR& surface, GLFWwindow* window)
-    : rct_(rct), dsl_(dsl), material_(material), model_(model), camera_(camera), graphicsCommandPool(commandPool), surface_(surface), window_(window)
+Renderer::Renderer(RenderContext& rct, Material& material, obj_Model& model, Camera& camera, CommandPool& commandPool, vk::raii::SurfaceKHR& surface, GLFWwindow* window)
+    : rct_(rct), material_(material), model_(model), camera_(camera), graphicsCommandPool(commandPool), surface_(surface), window_(window)
 {
     swapchainInfo = std::make_unique<Swapchain>(rct_, surface, window_);
+    createDescriptorSetLayout();
     createGraphicsPipeline();
     createUniformBuffers();
     createDescriptorPoolAndSets();
@@ -22,13 +23,18 @@ Renderer::Renderer(RenderContext& rct, vk::raii::DescriptorSetLayout& dsl, Mater
 
 void Renderer::createGraphicsPipeline(){
     vk::Format                     format = swapchainInfo->getSurfaceFormat().format;
-    graphicsPipeline = std::make_unique<Pipeline>(rct_, dsl_, format);
+    graphicsPipeline = std::make_unique<Pipeline>(rct_, descriptorSetLayout->getDescriptorSetLayout(), format);
+}
+
+void Renderer::createDescriptorSetLayout(){
+    auto spvCode = Pipeline::readFile("../shaders/slang.spv");
+    descriptorSetLayout = std::make_unique<DescriptorSetLayout>(rct_, spvCode);
 }
 
 void Renderer::createDescriptorPoolAndSets(){
-    descriptorPool = std::make_unique<DescriptorPool>(rct_, dsl_);
+    descriptorPool = std::make_unique<DescriptorPool>(rct_, descriptorSetLayout->getPoolSize());
     //create DescriptorSets
-    std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, *dsl_);
+    std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, *descriptorSetLayout->getDescriptorSetLayout());
     vk::DescriptorSetAllocateInfo allocInfo;
     allocInfo.setDescriptorPool(descriptorPool->getDescriptorPool()).setDescriptorSetCount(static_cast<uint32_t>(layouts.size()))
              .setSetLayouts(layouts);
@@ -39,9 +45,9 @@ void Renderer::createDescriptorPoolAndSets(){
         bufferInfo.setBuffer(uniformBuffers[i]).setOffset(0).setRange(sizeof(UniformBufferObject));
 
         std::array<vk::WriteDescriptorSet, 3> descriptorWrites{
-            vk::WriteDescriptorSet().setDstSet(descriptorSets[i]).setDstBinding(0).setDstArrayElement(0).setDescriptorType(vk::DescriptorType::eUniformBuffer).setBufferInfo(bufferInfo),
-            vk::WriteDescriptorSet().setDstSet(descriptorSets[i]).setDstBinding(1).setDstArrayElement(0).setDescriptorType(vk::DescriptorType::eCombinedImageSampler).setImageInfo(material_.getImageInfo()),
-            vk::WriteDescriptorSet().setDstSet(descriptorSets[i]).setDstBinding(2).setDstArrayElement(0).setDescriptorType(vk::DescriptorType::eCombinedImageSampler).setImageInfo(material_.getNormalInfo())
+            vk::WriteDescriptorSet().setDstSet(descriptorSets[i]).setDstBinding(Binding::kUbo).setDstArrayElement(0).setDescriptorType(vk::DescriptorType::eUniformBuffer).setBufferInfo(bufferInfo),
+            vk::WriteDescriptorSet().setDstSet(descriptorSets[i]).setDstBinding(Binding::kAlbedoTexture).setDstArrayElement(0).setDescriptorType(vk::DescriptorType::eCombinedImageSampler).setImageInfo(material_.getImageInfo()),
+            vk::WriteDescriptorSet().setDstSet(descriptorSets[i]).setDstBinding(Binding::kNormalTexure).setDstArrayElement(0).setDescriptorType(vk::DescriptorType::eCombinedImageSampler).setImageInfo(material_.getNormalInfo())
         };
 
         rct_.device.updateDescriptorSets(descriptorWrites, {});

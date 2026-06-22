@@ -117,20 +117,20 @@ void Pipeline::createGraphicsPipeline(vk::raii::DescriptorSetLayout& dsl, vk::Fo
                                            pipelineCreateInfoChain.get<vk::GraphicsPipelineCreateInfo>());
 }
 
-std::vector<char> Pipeline::readFile(const std::string& filename) {
+[[nodiscard]] std::vector<uint8_t> Pipeline::readFile(const std::string& filename) {
     std::ifstream file(filename, std::ios::ate | std::ios::binary);
     if (!file.is_open())
         throw std::runtime_error("failed to open file: " + filename);
 
     size_t size = static_cast<size_t>(file.tellg());
-    std::vector<char> buffer(size);
+    std::vector<uint8_t> buffer(size);
     file.seekg(0);
-    file.read(buffer.data(), static_cast<std::streamsize>(size));
+    file.read(reinterpret_cast<char*>(buffer.data()), static_cast<std::streamsize>(size));
     file.close();
     return buffer;
 }
 
-vk::raii::ShaderModule Pipeline::createShaderModule(const std::vector<char>& code) const {
+[[nodiscard]] vk::raii::ShaderModule Pipeline::createShaderModule(const std::vector<uint8_t>& code) const {
     vk::ShaderModuleCreateInfo ci{};
     ci.setCodeSize(code.size())
       .setPCode(reinterpret_cast<const uint32_t*>(code.data()));

@@ -4,6 +4,7 @@
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
 
+inline constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
 struct RenderContext {
     vk::raii::PhysicalDevice& physicalDevice;

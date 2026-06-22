@@ -2,14 +2,12 @@
 #include "vulkan/vulkan.hpp"
 #include "context.hpp"
 #include <iostream>
-#include <memory>
 
 Context::Context(const Config& cfg, vk::raii::PhysicalDevice& physicalDevice_, vk::raii::Device& device_, vk::raii::Instance& instance_, vk::raii::Context&& ct_) 
     : cfg_(cfg), physicalDevice(physicalDevice_), device(device_), instance(instance_), ct(std::move(ct_))
 {
     setupDebugMessenger();
     createSurface();
-    createDescriptorSetLayout();
 }
 
 void Context::setupDebugMessenger(){
@@ -45,9 +43,4 @@ void Context::createSurface(){
         throw std::runtime_error("failed to create window surface!");
     }
     surface = vk::raii::SurfaceKHR(instance, _surface);
-}
-
-void Context::createDescriptorSetLayout(){
-    RenderContext RCT = renderContext();
-    descriptorSetLayout = std::make_unique<DescriptorSetLayout>(RCT);
 }

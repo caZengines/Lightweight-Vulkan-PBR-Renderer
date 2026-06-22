@@ -19,8 +19,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/constants.hpp>
 
-inline constexpr int MAX_FRAMES_IN_FLIGHT = 2;
-
 struct Light {
   alignas(16) glm::vec4 pos;
   alignas(16) glm::vec4 color;
@@ -40,7 +38,7 @@ class Renderer{
     public:
     bool     framebufferResized = false;
 
-    explicit Renderer(RenderContext& rct, vk::raii::DescriptorSetLayout& dsl, Material& material, obj_Model& model, Camera& camera, CommandPool& commandPool, vk::raii::SurfaceKHR& surface, GLFWwindow* window);
+    explicit Renderer(RenderContext& rct, Material& material, obj_Model& model, Camera& camera, CommandPool& commandPool, vk::raii::SurfaceKHR& surface, GLFWwindow* window);
     ~Renderer(){
         if(!cleaned_) cleanup();
     }
@@ -52,7 +50,6 @@ class Renderer{
         GLFWwindow*                              window_              = nullptr;
         vk::raii::SurfaceKHR&                    surface_;
         RenderContext                            rct_;
-        vk::raii::DescriptorSetLayout&           dsl_;
         Material&                                material_;
         obj_Model&                               model_;
         Camera&                                  camera_;
@@ -63,6 +60,7 @@ class Renderer{
         std::vector<vk::raii::Buffer>            uniformBuffers;
         std::vector<void *>                      uniformBuffersMapped;
 
+        std::unique_ptr<DescriptorSetLayout>     descriptorSetLayout  = nullptr;
         std::unique_ptr<DescriptorPool>          descriptorPool       = nullptr;
         std::vector<vk::raii::DescriptorSet>     descriptorSets;
 
@@ -83,6 +81,7 @@ class Renderer{
 
         void createGraphicsPipeline();
         void createUniformBuffers();
+        void createDescriptorSetLayout();
         void createDescriptorPoolAndSets();
         void createCommandBuffers(CommandPool& commandPool);
         void createSyncObjects();

@@ -5,7 +5,7 @@
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
 
-
+//Pipeline provides a public interface for reading files and returning a vector of variable type: uint8_t
 class Pipeline {
 public:
     Pipeline(RenderContext& rct, vk::raii::DescriptorSetLayout& dsl, vk::Format colorFormat);
@@ -14,14 +14,15 @@ public:
     const vk::raii::Pipeline& binding() const { return pipeline; }
     const vk::raii::PipelineLayout& getLayout() const { return pipelineLayout; }
 
+    static std::vector<uint8_t> readFile(const std::string& filename);
+
 private:
     RenderContext&                       rct_;
     vk::raii::PipelineLayout             pipelineLayout   = nullptr;
     vk::raii::Pipeline                   pipeline  = nullptr;
 
     void createGraphicsPipeline(vk::raii::DescriptorSetLayout& dsl, vk::Format colorFormat);
-    static std::vector<char> readFile(const std::string& filename);
-    vk::raii::ShaderModule createShaderModule(const std::vector<char>& code) const;
+    vk::raii::ShaderModule createShaderModule(const std::vector<uint8_t>& code) const;
     vk::Format findDepthFormat() const;
     vk::Format findSupportedFormat(const std::vector<vk::Format>& candidates,
                                    vk::ImageTiling tiling, vk::FormatFeatureFlags features) const;

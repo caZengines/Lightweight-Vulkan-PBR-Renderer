@@ -98,7 +98,6 @@ void CEngine::initRenderer(){
     mainMaterial = std::make_unique<Material>(*albedoTexture, *NormalTexture);
     RenderContext RCT = context->renderContext();
     renderer = std::make_unique<Renderer>(RCT,
-        context->descriptorSetLayout->getDescriptorSetLayout(),
         *mainMaterial,
         *mainModel,
         camera,

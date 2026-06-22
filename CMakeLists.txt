@@ -14,15 +14,11 @@ set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "Configurations" FORC
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
     # Debug/Release compiler flags
-    set(CMAKE_CXX_FLAGS_DEBUG   "-g -O0 -D_DEBUG"                 CACHE STRING "Flags for Debug"   FORCE)
+    set(CMAKE_CXX_FLAGS_DEBUG   "-g -O0 "                 CACHE STRING "Flags for Debug"   FORCE)
     set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG"                     CACHE STRING "Flags for Release" FORCE)
-    set(CMAKE_C_FLAGS_DEBUG     "-g -O0 -D_DEBUG"                 CACHE STRING "C Flags Debug"     FORCE)
+    set(CMAKE_C_FLAGS_DEBUG     "-g -O0 "                 CACHE STRING "C Flags Debug"     FORCE)
     set(CMAKE_C_FLAGS_RELEASE   "-O2 -DNDEBUG"                     CACHE STRING "C Flags Release"   FORCE)
 endif()
-
-#Disable the built-in tests and examples of SPIRV-Reflex
-set(SPIRV_REFLECT_BUILD_TESTS OFF CACHE BOOL "")
-set(SPIRV_REFLECT_BUILD_EXAMPLES OFF CACHE BOOL "")
 
 find_package(Vulkan REQUIRED)
 find_package(glfw3 REQUIRED)
@@ -31,7 +27,8 @@ find_program(SLANGC_COMPILER slangc REQUIRED)
 
 file(GLOB_RECURSE SRC_LIST 
     "${PROJECT_SOURCE_DIR}/src/*.cpp"
-    "${PROJECT_SOURCE_DIR}/src/*.cc" 
+    "${PROJECT_SOURCE_DIR}/src/*.cc"
+    "${PROJECT_SOURCE_DIR}/src/*.c" 
 )
 
 set(SHADER_DIR ${PROJECT_SOURCE_DIR}/shaders)

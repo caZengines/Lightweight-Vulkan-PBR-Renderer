@@ -5,7 +5,7 @@
  such as:
 >
 > - [ ] Multithreaded command buffer generation
-> - [ ] Shader-reflection automatically generates descriptorset
+> - [x] Shader-reflection automatically generates descriptorset
 > - [x] Normal Texture
 > - [ ] Metallic Texture
 > - [ ] Roughness Texture

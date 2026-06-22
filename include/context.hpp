@@ -1,5 +1,4 @@
 #pragma once
-#include <memory>
 #include <vector>
 
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
@@ -10,8 +9,6 @@
 #include <GLFW/glfw3.h>
 
 #include "render_context.hpp"
-#include "descriptor_manager.hpp"
-#include "command_manager.hpp"
 
 inline const std::string MODEL_PATH = "../models/container.obj";
 inline const std::string TEXTURE_PATH = "../textures/container.png";
@@ -22,7 +19,6 @@ class Context {
         vk::raii::DebugUtilsMessengerEXT         debugMessenger       = nullptr;
         vk::raii::SurfaceKHR                     surface              = nullptr;
 
-        std::unique_ptr<DescriptorSetLayout>     descriptorSetLayout  = nullptr;
         struct Config {
             GLFWwindow*               window_                  = nullptr;
             bool                      enableValidationLayers_  = true;
@@ -54,5 +50,4 @@ class Context {
 
         void setupDebugMessenger();
         void createSurface();
-        void createDescriptorSetLayout();
 };

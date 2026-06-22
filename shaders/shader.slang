@@ -19,7 +19,7 @@ struct UniformBuffer {
     float4 cameraPos;
     Light light;
 };
-ConstantBuffer<UniformBuffer> ubo;
+[[vk::binding(0, 0)]]ConstantBuffer<UniformBuffer> ubo;
 
 struct VertexOutput {
     float4 pos : SV_Position;
@@ -61,13 +61,13 @@ VertexOutput vertMain(VertexInput Input) {
     return Output;
 }
 
-Sampler2D texture;
-Sampler2D normalTexture;
+[[vk::binding(1, 0)]]Sampler2D Texture;
+[[vk::binding(2, 0)]]Sampler2D normalTexture;
 
 [shader("fragment")]
 float4 fragMain(VertexOutput inVert) : SV_Target {
     //Sample texture
-    float4 albedo = texture.Sample(inVert.fragTexCoord);
+    float4 albedo = Texture.Sample(inVert.fragTexCoord);
     // Sample normal
     float3 tn = normalTexture.Sample(inVert.fragTexCoord).rgb;
     tn.rg = tn.rg * 2 - 1.0;
