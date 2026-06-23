@@ -1,8 +1,10 @@
 #include "renderer.hpp"
 #include "command_manager.hpp"
 #include "descriptor_manager.hpp"
+#include "render_context.hpp"
 #include "swapchain.hpp"
 #include "resourcefactory.hpp"
+#include "vulkan/vulkan.hpp"
 #include <memory>
 
 #define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
@@ -23,7 +25,7 @@ Renderer::Renderer(RenderContext& rct, Material& material, obj_Model& model, Cam
 
 void Renderer::createGraphicsPipeline(){
     vk::Format                     format = swapchainInfo->getSurfaceFormat().format;
-    graphicsPipeline = std::make_unique<Pipeline>(rct_, descriptorSetLayout->getDescriptorSetLayout(), format);
+    graphicsPipeline = std::make_unique<Pipeline>(rct_, descriptorSetLayout->getLayoutHandles(), format);
 }
 
 void Renderer::createDescriptorSetLayout(){
@@ -32,25 +34,19 @@ void Renderer::createDescriptorSetLayout(){
 }
 
 void Renderer::createDescriptorPoolAndSets(){
-    descriptorPool = std::make_unique<DescriptorPool>(rct_, descriptorSetLayout->getPoolSize());
+    descriptorPool = std::make_unique<DescriptorPool>(rct_,
+                                                      descriptorSetLayout->getPoolMaxSets(), 
+                                                      descriptorSetLayout->getPoolSize()
+    );
     //create DescriptorSets
-    std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, *descriptorSetLayout->getDescriptorSetLayout());
-    vk::DescriptorSetAllocateInfo allocInfo;
-    allocInfo.setDescriptorPool(descriptorPool->getDescriptorPool()).setDescriptorSetCount(static_cast<uint32_t>(layouts.size()))
-             .setSetLayouts(layouts);
+    descriptorSets.reserve(MAX_FRAMES_IN_FLIGHT);
 
-    descriptorSets = vk::raii::DescriptorSets(rct_.device, allocInfo);
     for(size_t i = 0 ; i < MAX_FRAMES_IN_FLIGHT ; ++i){
-        vk::DescriptorBufferInfo bufferInfo;
-        bufferInfo.setBuffer(uniformBuffers[i]).setOffset(0).setRange(sizeof(UniformBufferObject));
-
-        std::array<vk::WriteDescriptorSet, 3> descriptorWrites{
-            vk::WriteDescriptorSet().setDstSet(descriptorSets[i]).setDstBinding(Binding::kUbo).setDstArrayElement(0).setDescriptorType(vk::DescriptorType::eUniformBuffer).setBufferInfo(bufferInfo),
-            vk::WriteDescriptorSet().setDstSet(descriptorSets[i]).setDstBinding(Binding::kAlbedoTexture).setDstArrayElement(0).setDescriptorType(vk::DescriptorType::eCombinedImageSampler).setImageInfo(material_.getImageInfo()),
-            vk::WriteDescriptorSet().setDstSet(descriptorSets[i]).setDstBinding(Binding::kNormalTexure).setDstArrayElement(0).setDescriptorType(vk::DescriptorType::eCombinedImageSampler).setImageInfo(material_.getNormalInfo())
-        };
-
-        rct_.device.updateDescriptorSets(descriptorWrites, {});
+        vk::DescriptorSetAllocateInfo allocInfo;
+        allocInfo.setDescriptorPool(descriptorPool->getDescriptorPool())
+                 .setDescriptorSetCount(descriptorSetLayout->getSetCount())
+                 .setSetLayouts(descriptorSetLayout->getLayoutHandles());
+        descriptorSets.emplace_back(std::make_unique<DescriptorSet>(rct_, allocInfo));
     }
 }
 
@@ -139,6 +135,7 @@ void Renderer::drawFrame(){
     }
 
     updateUniformBuffer(frameIndex);
+    updateDescriptorSet(frameIndex);
 
     //Only reset the fence if we are submitting work
     rct_.device.resetFences(*inFlightFences[frameIndex]);
@@ -260,7 +257,7 @@ void Renderer::recordCommandBuffer(uint32_t ImageIndex){
         graphicsCommandBuffers[frameIndex].setViewport(0, vk::Viewport(0.0f, 0.0f, static_cast<float>(swapchainInfo->getExtent().width),static_cast<float>(swapchainInfo->getExtent().height), 0.0f, 1.0f));
         graphicsCommandBuffers[frameIndex].setScissor(0, vk::Rect2D(vk::Offset2D(0,0), swapchainInfo->getExtent()));
 
-        graphicsCommandBuffers[frameIndex].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *graphicsPipeline->getLayout(), 0, *descriptorSets[frameIndex], nullptr);
+        graphicsCommandBuffers[frameIndex].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *graphicsPipeline->getLayout(), 0, descriptorSets[frameIndex]->getSetsHandles(), nullptr);
         graphicsCommandBuffers[frameIndex].drawIndexed(static_cast<uint32_t>(model_.getIndices().size()), 1, 0, 0, 0);
     //end rendering
     graphicsCommandBuffers[frameIndex].endRendering();
@@ -296,6 +293,32 @@ void Renderer::updateUniformBuffer(uint32_t currentImage){
     ubo.light.intensity = 0.6f;
 
     memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
+}
+
+void Renderer::updateDescriptorSet(uint32_t currentImage){
+    const auto& descriptorSets_ = descriptorSets[currentImage]->getDescriptorSets();
+    //Temporarily hard coded
+    vk::DescriptorBufferInfo bufferInfo;
+    bufferInfo.setBuffer(uniformBuffers[currentImage]).setOffset(0).setRange(sizeof(UniformBufferObject));
+
+    const auto& bindings_ = descriptorSetLayout->getBindings();
+    std::vector<vk::WriteDescriptorSet> writes; writes.reserve(bindings_.size());
+    for(const auto& b : bindings_){
+        vk::WriteDescriptorSet write;
+        write.setDstSet(*descriptorSets_[b.set]).setDstBinding(b.binding)
+             .setDescriptorType(b.descriptorType)
+             .setDescriptorCount(b.count);
+        if(b.descriptorType == vk::DescriptorType::eUniformBuffer){
+            write.setBufferInfo(bufferInfo);
+        }
+        else if(b.binding == Binding::kAlbedoTexture){
+            write.setImageInfo(material_.getImageInfo());
+        }
+        else if(b.binding == Binding::kNormalTexure) write.setImageInfo(material_.getNormalInfo());
+
+        writes.emplace_back(write);
+    }
+    rct_.device.updateDescriptorSets(writes, {});
 }
 
 void Renderer::transition_image_layout(

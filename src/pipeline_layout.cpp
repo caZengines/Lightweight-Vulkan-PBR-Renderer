@@ -5,13 +5,13 @@
 #include <fstream>
 #include <array>
 
-Pipeline::Pipeline(RenderContext& rct, vk::raii::DescriptorSetLayout& dsl, vk::Format colorFormat)
+Pipeline::Pipeline(RenderContext& rct,const std::vector<vk::DescriptorSetLayout>& dsls, vk::Format colorFormat)
     : rct_(rct)
 {
-    createGraphicsPipeline(dsl, colorFormat);
+    createGraphicsPipeline(dsls, colorFormat);
 }
 
-void Pipeline::createGraphicsPipeline(vk::raii::DescriptorSetLayout& dsl, vk::Format colorFormat) {
+void Pipeline::createGraphicsPipeline(const std::vector<vk::DescriptorSetLayout>& dsls, vk::Format colorFormat) {
     // shader modules
     auto code = readFile("../shaders/slang.spv");
     vk::raii::ShaderModule shaderModule = createShaderModule(code);
@@ -31,7 +31,7 @@ void Pipeline::createGraphicsPipeline(vk::raii::DescriptorSetLayout& dsl, vk::Fo
         vk::DynamicState::eViewport, vk::DynamicState::eScissor};
     vk::PipelineDynamicStateCreateInfo dynamicState{};
     dynamicState.setDynamicStates(dynamicStates);
-    vk::PipelineViewportStateCreateInfo viewportState;
+    vk::PipelineViewportStateCreateInfo viewportState{};
     viewportState.setViewportCount(1).setScissorCount(1);
 
     // vertex input
@@ -88,8 +88,8 @@ void Pipeline::createGraphicsPipeline(vk::raii::DescriptorSetLayout& dsl, vk::Fo
                  .setPAttachments(&blendAttachment);
 
     // pipeline layout
-    vk::PipelineLayoutCreateInfo layoutInfo;
-    layoutInfo.setSetLayouts(*dsl).setPushConstantRangeCount(0);
+    vk::PipelineLayoutCreateInfo layoutInfo{};
+    layoutInfo.setSetLayouts(dsls).setPushConstantRangeCount(0);
     pipelineLayout = vk::raii::PipelineLayout(rct_.device, layoutInfo);
 
     // dynamic rendering

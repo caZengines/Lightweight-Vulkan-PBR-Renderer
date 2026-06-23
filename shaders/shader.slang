@@ -61,8 +61,8 @@ VertexOutput vertMain(VertexInput Input) {
     return Output;
 }
 
-[[vk::binding(1, 0)]]Sampler2D Texture;
-[[vk::binding(2, 0)]]Sampler2D normalTexture;
+[[vk::binding(0, 1)]]Sampler2D Texture;
+[[vk::binding(1, 1)]]Sampler2D normalTexture;
 
 [shader("fragment")]
 float4 fragMain(VertexOutput inVert) : SV_Target {

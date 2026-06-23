@@ -9,6 +9,7 @@
 > - [x] Normal Texture
 > - [ ] Metallic Texture
 > - [ ] Roughness Texture
+> - [ ] Final target: Path-Tracing
 
 ##
 

@@ -62,7 +62,8 @@ class Renderer{
 
         std::unique_ptr<DescriptorSetLayout>     descriptorSetLayout  = nullptr;
         std::unique_ptr<DescriptorPool>          descriptorPool       = nullptr;
-        std::vector<vk::raii::DescriptorSet>     descriptorSets;
+
+        std::vector<std::unique_ptr<DescriptorSet>>              descriptorSets;
 
         std::vector<vk::raii::CommandBuffer>     graphicsCommandBuffers;
 
@@ -88,7 +89,8 @@ class Renderer{
         void recreateAfterResize();
         void destroySyncObjects();
 
-        void updateUniformBuffer(uint32_t frameIndex);
+        void updateUniformBuffer(uint32_t);
+        void updateDescriptorSet(uint32_t);
         void recordCommandBuffer(uint32_t ImageIndex);
         void transition_image_layout(
                                  vk::Image               image,

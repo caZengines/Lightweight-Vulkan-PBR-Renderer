@@ -8,8 +8,8 @@
 
 namespace Binding {
     constexpr uint32_t kUbo             = 0;
-    constexpr uint32_t kAlbedoTexture   = 1;
-    constexpr uint32_t kNormalTexure    = 2;
+    constexpr uint32_t kAlbedoTexture   = 0;
+    constexpr uint32_t kNormalTexure    = 1;
  }
 
 struct ReflectBinding {
@@ -36,17 +36,26 @@ class DescriptorSetLayout {
         explicit DescriptorSetLayout(RenderContext& rct, const std::vector<uint8_t>& spvCode);
         ~DescriptorSetLayout() = default;
 
-        vk::raii::DescriptorSetLayout& getDescriptorSetLayout() { return descriptorSetLayout; }
+        //The binding information saved by describorSetLayouts is in units of each Set in the shader
+        const std::vector<vk::raii::DescriptorSetLayout>& getDescriptorSetLayouts() const { return descriptorSetLayouts; }
+        const std::vector<vk::DescriptorSetLayout>& getLayoutHandles() const { return layouthandles; }
 
         const ReflectBinding* getBinding(const std::string& name) const;
         const std::vector<ReflectBinding>& getBindings() const { return bindings_; }
+        const int& getPoolMaxSets() const { return poolMaxSets; }
+        const int& getSetCount() const { return setCount; }
         const std::vector<vk::DescriptorPoolSize>& getPoolSize() const { return poolSizes; }
 
     private:
-        RenderContext                            rct_;
-        vk::raii::DescriptorSetLayout            descriptorSetLayout  = nullptr;
-        std::vector<ReflectBinding>              bindings_;
-        std::vector<vk::DescriptorPoolSize>      poolSizes;
+        RenderContext                                     rct_;
+
+        std::vector<vk::raii::DescriptorSetLayout>        descriptorSetLayouts;
+        std::vector<vk::DescriptorSetLayout>              layouthandles;
+        std::vector<ReflectBinding>                       bindings_;
+        std::vector<vk::DescriptorPoolSize>               poolSizes;
+
+        int                                               setCount = 0;
+        int                                               poolMaxSets = 0;
 
         void createDescriptorSetLayout();
         void autoCreateDSL(const std::vector<uint8_t>& spvCode_);
@@ -58,7 +67,8 @@ class DescriptorPool {
         DescriptorPool(const DescriptorPool&) = delete;
         DescriptorPool& operator=(const DescriptorPool&) = delete;
 
-        explicit DescriptorPool(RenderContext& rct, 
+        explicit DescriptorPool(RenderContext& rct,
+                                int maxSets,
                                 const std::vector<vk::DescriptorPoolSize>& poolSizes
                             );
         ~DescriptorPool() = default;
@@ -68,4 +78,21 @@ class DescriptorPool {
     private:
         RenderContext                            rct_;
         vk::raii::DescriptorPool                 descriptorPool      = nullptr;
+};
+
+class DescriptorSet{
+    public:
+        //Ban copying
+        DescriptorSet(const DescriptorSet&) = delete;
+        DescriptorSet& operator=(const DescriptorSet&) = delete;
+
+        explicit DescriptorSet(RenderContext& rct, vk::DescriptorSetAllocateInfo allocInfo_);
+         ~DescriptorSet() = default;
+
+        const std::vector<vk::raii::DescriptorSet>& getDescriptorSets() const { return descriptorSets; }
+        const std::vector<vk::DescriptorSet>& getSetsHandles() const { return handles; }
+    private:
+        RenderContext                                   rct_;
+        std::vector<vk::raii::DescriptorSet>            descriptorSets;
+        std::vector<vk::DescriptorSet>                  handles;
 };

@@ -260,7 +260,7 @@ void CEngine::createLogicalDevice(){
     std::vector<const char *> requiredDeviceExtension = {vk::KHRSwapchainExtensionName};
     std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
     float queuePriority = 0.5f;
-    vk::DeviceQueueCreateInfo graphicQueueCreateInfo;
+    vk::DeviceQueueCreateInfo graphicQueueCreateInfo{};
     graphicQueueCreateInfo.setQueueFamilyIndex(graphicsQueueIndex)
                          .setQueueCount(1)
                          .setPQueuePriorities(&queuePriority);

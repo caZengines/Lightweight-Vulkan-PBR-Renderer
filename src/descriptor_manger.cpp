@@ -1,6 +1,7 @@
 #include "descriptor_manager.hpp"
 #include "vulkan/vulkan.hpp"
 #include <map>
+#include <utility>
 
 #include "extern/spirv_reflect.h"
 
@@ -15,10 +16,11 @@ void DescriptorSetLayout::autoCreateDSL( const std::vector<uint8_t>& spvCode_){
     spv_reflect:: ShaderModule module(spvCode_);
 
     //Enumerate all of Descriptorsets
-    uint32_t setCount = 0;
-    module.EnumerateDescriptorSets(&setCount, nullptr);
-    std::vector<SpvReflectDescriptorSet*> sets(setCount);
-    module.EnumerateDescriptorSets(&setCount, sets.data());
+    uint32_t sc = 0;
+    module.EnumerateDescriptorSets(&sc, nullptr);
+    setCount = sc;
+    std::vector<SpvReflectDescriptorSet*> sets(sc);
+    module.EnumerateDescriptorSets(&sc, sets.data());
 
     std::map<std::pair<uint32_t, uint32_t>, vk::ShaderStageFlags> stageMap;
     for(uint32_t ep = 0 ; ep < module.GetEntryPointCount() ; ++ep){
@@ -35,10 +37,11 @@ void DescriptorSetLayout::autoCreateDSL( const std::vector<uint8_t>& spvCode_){
             stageMap[key] |= static_cast<vk::ShaderStageFlags>(epStage);
         }
     }
-
-    std::vector<vk::DescriptorSetLayoutBinding> layoutBindings;
     std::map<vk::DescriptorType, int> DescriptorTypes; //used for determining PoolSize
     for(auto* set : sets){
+        std::vector<vk::DescriptorSetLayoutBinding> layoutBindings;
+        vk::DescriptorSetLayoutCreateInfo layoutInfo{};
+
         for(uint32_t bi = 0 ; bi < set->binding_count ; ++bi){
             auto* b = set->bindings[bi];
             auto key = std::make_pair(b->set, b->binding);
@@ -52,6 +55,7 @@ void DescriptorSetLayout::autoCreateDSL( const std::vector<uint8_t>& spvCode_){
             bindings_.emplace_back(
                 ReflectBinding().setBinding(b->binding)
                                 .setDescriptorSet(b->set)
+                                .setDescriptorType(static_cast<vk::DescriptorType>(b->descriptor_type))
                                 .setDescriptorCount(b->count)
                                 .setShaderStage(stageMap[key])
                                 .setEntryPoint(b->name ? b->name : "")
@@ -59,21 +63,33 @@ void DescriptorSetLayout::autoCreateDSL( const std::vector<uint8_t>& spvCode_){
             );
             DescriptorTypes[static_cast<vk::DescriptorType>(b->descriptor_type)] += MAX_FRAMES_IN_FLIGHT;
         }
+        layoutInfo.setBindings(layoutBindings);
+
+        descriptorSetLayouts.emplace_back(std::move(vk::raii::DescriptorSetLayout(rct_.device, layoutInfo)));
+    }
+    for(const auto& dsl : descriptorSetLayouts){
+        layouthandles.emplace_back(*dsl);
     }
     for(const auto& dt : DescriptorTypes){
-        poolSizes.emplace_back(vk::DescriptorPoolSize().setType(dt.first)).setDescriptorCount(dt.second);
+        poolSizes.emplace_back(vk::DescriptorPoolSize().setType(dt.first).setDescriptorCount(dt.second));
+        poolMaxSets += dt.second;
     }
-
-    vk::DescriptorSetLayoutCreateInfo layoutInfo{};
-    layoutInfo.setBindings(layoutBindings);
-
-    descriptorSetLayout = vk::raii::DescriptorSetLayout(rct_.device, layoutInfo);
 }
 
-DescriptorPool::DescriptorPool(RenderContext& rct, const std::vector<vk::DescriptorPoolSize>& poolSizes_) : rct_(rct){
+DescriptorPool::DescriptorPool(RenderContext& rct, int maxSets, const std::vector<vk::DescriptorPoolSize>& poolSizes_) : rct_(rct){
 
     vk::DescriptorPoolCreateInfo poolInfo{};
-    poolInfo.setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet).setMaxSets(MAX_FRAMES_IN_FLIGHT).setPoolSizes(poolSizes_);
+    poolInfo.setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet).setMaxSets(maxSets).setPoolSizes(poolSizes_);
 
     descriptorPool = vk::raii::DescriptorPool(rct_.device, poolInfo);
+}
+
+DescriptorSet::DescriptorSet(RenderContext& rct, vk::DescriptorSetAllocateInfo allocInfo_) : rct_(rct){
+    descriptorSets.clear();
+    descriptorSets = vk::raii::DescriptorSets(rct_.device, allocInfo_);
+
+    handles.clear();
+    for(auto& ds : descriptorSets){
+        handles.emplace_back(*ds);
+    }
 }

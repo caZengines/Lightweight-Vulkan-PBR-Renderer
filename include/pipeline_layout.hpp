@@ -8,7 +8,7 @@
 //Pipeline provides a public interface for reading files and returning a vector of variable type: uint8_t
 class Pipeline {
 public:
-    Pipeline(RenderContext& rct, vk::raii::DescriptorSetLayout& dsl, vk::Format colorFormat);
+    Pipeline(RenderContext& rct, const std::vector<vk::DescriptorSetLayout>& dsls, vk::Format colorFormat);
     ~Pipeline() = default;
 
     const vk::raii::Pipeline& binding() const { return pipeline; }
@@ -21,7 +21,7 @@ private:
     vk::raii::PipelineLayout             pipelineLayout   = nullptr;
     vk::raii::Pipeline                   pipeline  = nullptr;
 
-    void createGraphicsPipeline(vk::raii::DescriptorSetLayout& dsl, vk::Format colorFormat);
+    void createGraphicsPipeline(const std::vector<vk::DescriptorSetLayout>& dsls, vk::Format colorFormat);
     vk::raii::ShaderModule createShaderModule(const std::vector<uint8_t>& code) const;
     vk::Format findDepthFormat() const;
     vk::Format findSupportedFormat(const std::vector<vk::Format>& candidates,

@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(spirv-cross --entry fragMain --stage frag /c/Users/mcbbs/Desktop/Vulkan_Development/shaders/slang.spv)"
+      "Bash(spirv-cross --entry fragMain --stage frag /c/Users/mcbbs/Desktop/Vulkan_Development/shaders/slang.spv)",
+      "Bash(grep -n \"struct.*ImageMemoryBarrier \" \"c:/VulkanSDK/1.4.341.1/Include/vulkan/vulkan_structs.hpp\" | head -5)",
+      "Read(//c/VulkanSDK/1.4.341.1/Include/vulkan/**)",
+      "Bash(grep -n \"struct.*ImageSubresourceRange\\\\b\" \"c:/VulkanSDK/1.4.341.1/Include/vulkan/vulkan_structs.hpp\" | head -5)"
     ]
   }
 }
