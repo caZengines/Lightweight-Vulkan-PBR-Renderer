@@ -21,7 +21,7 @@ constexpr bool enableValidationLayers = false;
 constexpr bool enableValidationLayers = true;
 #endif
 
-class CEngine {
+class CEngine final {
     public:
         explicit CEngine();
         ~CEngine(){

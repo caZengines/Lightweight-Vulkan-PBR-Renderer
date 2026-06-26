@@ -4,6 +4,7 @@
 
  such as:
 >
+> - [ ] Instanced Rendering
 > - [ ] Multithreaded command buffer generation
 > - [x] Shader-reflection automatically generates descriptorset
 > - [x] Normal Texture

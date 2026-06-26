@@ -34,7 +34,7 @@ struct UniformBufferObject {
     alignas(16) Light     light;
 };
 
-class Renderer{
+class Renderer final {
     public:
     bool     framebufferResized = false;
 

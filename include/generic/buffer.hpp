@@ -50,6 +50,6 @@ template<typename T> class Buffer{
         const vk::raii::Buffer& getBuffer() const { return buffer; }
 
     private:
-        vk::raii::Buffer                         buffer = nullptr;
         vk::raii::DeviceMemory                   bufferMemory = nullptr;
+        vk::raii::Buffer                         buffer = nullptr;
 };

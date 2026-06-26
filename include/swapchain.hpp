@@ -9,7 +9,7 @@
 #include <GLFW/glfw3.h>
 
 
-class Swapchain {
+class Swapchain final {
 public:
     explicit Swapchain(RenderContext& rct, vk::raii::SurfaceKHR& surface, GLFWwindow* window);
     void recreateSwapChain(vk::raii::SurfaceKHR& surface, GLFWwindow* window);
