@@ -5,42 +5,54 @@ struct VertexInput {
     float4 inTangent;
 };
 
+struct InstanceData {
+    float4x4 model;
+    uint32_t enableNormal;
+};
+
 struct Light {
     float4 position;
     float4 color;
     float intensity;
-}
+};
 
 struct UniformBuffer {
-    float4x4 model;
     float4x4 view;
     float4x4 proj;
-
     float4 cameraPos;
     Light light;
 };
-[[vk::binding(0, 0)]]ConstantBuffer<UniformBuffer> ubo;
+
+[[vk::binding(0, 0)]] ConstantBuffer<UniformBuffer> ubo;
 
 struct VertexOutput {
     float4 pos : SV_Position;
     float2 fragTexCoord;
+    float3 fragNorCoord;
     float3 fragTangentLightDir;
     float3 fragTangentViewDir;
     float3 worldPos;
+
+    uint32_t isEnableNormalTexture;
 };
 
 [shader("vertex")]
-VertexOutput vertMain(VertexInput Input) {
+VertexOutput vertMain(VertexInput Input, InstanceData instance) {
     VertexOutput Output;
 
-    float4 worldPosition = mul(ubo.model, float4(Input.inPosition, 1.0));
+    float4x4 instanceModel = instance.model;
+
+    float4 worldPosition = mul(instanceModel, float4(Input.inPosition, 1.0));
 
     Output.pos = mul(ubo.proj, mul(ubo.view, worldPosition));
     Output.fragTexCoord = Input.inTexCoord;
+    Output.fragNorCoord = Input.inNormal;
     Output.worldPos = worldPosition.xyz;
+
+    Output.isEnableNormalTexture = instance.enableNormal;
     //create TBN Matrix
-    float3 N = normalize(mul((float3x3)ubo.model, Input.inNormal));
-    float3 T = normalize(mul((float3x3)ubo.model, Input.inTangent.xyz));
+    float3 N = normalize(mul((float3x3)instanceModel, Input.inNormal));
+    float3 T = normalize(mul((float3x3)instanceModel, Input.inTangent.xyz));
     T = normalize(T - dot(T, N) * N);
     float3 B = cross(N, T) * Input.inTangent.w;
 
@@ -69,10 +81,16 @@ float4 fragMain(VertexOutput inVert) : SV_Target {
     //Sample texture
     float4 albedo = Texture.Sample(inVert.fragTexCoord);
     // Sample normal
-    float3 tn = normalTexture.Sample(inVert.fragTexCoord).rgb;
-    tn.rg = tn.rg * 2 - 1.0;
-    tn.g = 1.0 - tn.g;
-    float3 N = normalize(tn);
+    float3 N;
+    if (inVert.isEnableNormalTexture > 0) {
+        float3 tn = normalTexture.Sample(inVert.fragTexCoord).rgb;
+        tn.rg = tn.rg * 2 - 1.0;
+        tn.g = 1.0 - tn.g;
+        N = normalize(tn);
+    }
+    else {
+        N = inVert.fragNorCoord;
+    }
 
     float3 L = normalize(inVert.fragTangentLightDir);
     float3 V = normalize(inVert.fragTangentViewDir);
