@@ -1,4 +1,6 @@
 #include "generic/vertex.hpp"
+#include "vulkan/vulkan.hpp"
+#include <cstddef>
 
 void Vertex::setNormal(const glm::vec3& n){
     normal[0] = static_cast<int8_t>(glm::round(glm::clamp(n.x, -1.0f, 1.0f) * 127.0f));
@@ -30,13 +32,35 @@ vk::VertexInputBindingDescription Vertex::getBindingDescription() {
 
 std::array<vk::VertexInputAttributeDescription, 4> Vertex::getAttributeDescription() {
     vk::VertexInputAttributeDescription posAttribute;
-    posAttribute.setLocation(0).setFormat(vk::Format::eR32G32B32Sfloat).setOffset(offsetof(Vertex, pos));
+    posAttribute.setBinding(0).setLocation(0).setFormat(vk::Format::eR32G32B32Sfloat).setOffset(offsetof(Vertex, pos));
     vk::VertexInputAttributeDescription uvAttribute;
-    uvAttribute.setLocation(1).setFormat(vk::Format::eR32G32Sfloat).setOffset(offsetof(Vertex, texCoord));
+    uvAttribute.setBinding(0).setLocation(1).setFormat(vk::Format::eR32G32Sfloat).setOffset(offsetof(Vertex, texCoord));
     vk::VertexInputAttributeDescription norAttribute;
-    norAttribute.setLocation(2).setFormat(vk::Format::eR8G8B8A8Snorm).setOffset(offsetof(Vertex, normal));
+    norAttribute.setBinding(0).setLocation(2).setFormat(vk::Format::eR8G8B8A8Snorm).setOffset(offsetof(Vertex, normal));
     vk::VertexInputAttributeDescription tanAttribute;
-    tanAttribute.setLocation(3).setFormat(vk::Format::eR8G8B8A8Snorm).setOffset(offsetof(Vertex, tangent));
+    tanAttribute.setBinding(0).setLocation(3).setFormat(vk::Format::eR8G8B8A8Snorm).setOffset(offsetof(Vertex, tangent));
 
     return {posAttribute, uvAttribute, norAttribute, tanAttribute};
+}
+
+//======================================================================
+//===================== Instance implement =============================
+//======================================================================
+
+vk::VertexInputBindingDescription InstanceData::getBindingDescription() {
+    vk::VertexInputBindingDescription description;
+    description.setBinding(1).setStride(sizeof(InstanceData)).setInputRate(vk::VertexInputRate::eInstance);
+
+    return description;
+}
+
+std::array<vk::VertexInputAttributeDescription, 5> InstanceData::getAttributeDescription() {
+    std::array<vk::VertexInputAttributeDescription, 5> attribute;
+    for(size_t i = 0 ; i < 4 ; ++i){
+        attribute[i].setBinding(1).setLocation(4 + i).setFormat(vk::Format::eR32G32B32A32Sfloat)
+                    .setOffset(sizeof(glm::vec4) * i);
+    }
+    attribute[4].setBinding(1).setLocation(8).setFormat(vk::Format::eR32Uint)
+                .setOffset(offsetof(InstanceData, enableNormal));
+    return attribute;
 }

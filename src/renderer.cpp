@@ -1,11 +1,14 @@
 #include "renderer.hpp"
 #include "command_manager.hpp"
 #include "descriptor_manager.hpp"
+#include "generic/vertex.hpp"
 #include "render_context.hpp"
 #include "swapchain.hpp"
 #include "resourcefactory.hpp"
 #include "vulkan/vulkan.hpp"
+#include <cstddef>
 #include <memory>
+#include <random>
 
 #define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
@@ -16,11 +19,44 @@ Renderer::Renderer(RenderContext& rct, Material& material, obj_Model& model, Cam
 {
     swapchainInfo = std::make_unique<Swapchain>(rct_, surface, window_);
     createDescriptorSetLayout();
+    initInstanceDatas();
+    createInstanceBuffer();
     createGraphicsPipeline();
     createUniformBuffers();
     createDescriptorPoolAndSets();
     createCommandBuffers(graphicsCommandPool);
     createSyncObjects();
+}
+
+void Renderer::initInstanceDatas(){
+    InstanceData instanceData{};
+    instanceDatas.reserve(instanceText);
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<float> dist(-2.0, 2.0);
+    glm::mat4 rotation = glm::rotate(
+        glm::mat4(1.0f), 
+        glm::radians(180.0f), 
+        glm::vec3(1.0f, 0.0f, 0.0f)
+    );
+    for(size_t i = 0 ; i < instanceText ; ++i){
+        instanceData.enableNormal = 1;
+        float x = dist(gen);
+        float z = dist(gen);
+        float y = dist(gen);
+        glm::vec3 translation(x, y, z);
+        instanceData.model = glm::translate(glm::mat4(1.0f), translation) * rotation;
+        instanceDatas.emplace_back(instanceData);
+    }
+}
+
+void Renderer::createInstanceBuffer(){
+    Buffer<InstanceData>::CreateInfo instanceInfo;
+    instanceInfo.size = sizeof(InstanceData) * instanceDatas.size();
+    instanceInfo.usage = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer;
+    instanceInfo.memProperties = vk::MemoryPropertyFlagBits::eDeviceLocal;
+
+    instanceBuffer = std::make_unique<Buffer<InstanceData>>(instanceDatas, instanceInfo, graphicsCommandPool);
 }
 
 void Renderer::createGraphicsPipeline(){
@@ -250,15 +286,18 @@ void Renderer::recordCommandBuffer(uint32_t ImageIndex){
     graphicsCommandBuffers[frameIndex].beginRendering(renderingInfo);
         //binding the graphics pipeline
         graphicsCommandBuffers[frameIndex].bindPipeline(vk::PipelineBindPoint::eGraphics, *graphicsPipeline->binding());
-        //binding the vertexbuffer
-        graphicsCommandBuffers[frameIndex].bindVertexBuffers(0, *model_.getVertexBuffer(), {0});
+        //binding the vertexbuffer & instanceBuffer
+        const std::array<vk::Buffer, 2> vertexBuffers {*model_.getVertexBuffer(), instanceBuffer->getBuffer()};
+        constexpr std::array<vk::DeviceSize, 2> offsets {0, 0};
+        graphicsCommandBuffers[frameIndex].bindVertexBuffers(0, vertexBuffers, offsets);
         graphicsCommandBuffers[frameIndex].bindIndexBuffer(*model_.getIndexBuffer(), 0, vk::IndexType::eUint32);
         //command buffer dynamic state
         graphicsCommandBuffers[frameIndex].setViewport(0, vk::Viewport(0.0f, 0.0f, static_cast<float>(swapchainInfo->getExtent().width),static_cast<float>(swapchainInfo->getExtent().height), 0.0f, 1.0f));
         graphicsCommandBuffers[frameIndex].setScissor(0, vk::Rect2D(vk::Offset2D(0,0), swapchainInfo->getExtent()));
-
+        //binding descriptorSets
         graphicsCommandBuffers[frameIndex].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *graphicsPipeline->getLayout(), 0, descriptorSets[frameIndex]->getSetsHandles(), nullptr);
-        graphicsCommandBuffers[frameIndex].drawIndexed(static_cast<uint32_t>(model_.getIndices().size()), 1, 0, 0, 0);
+        //record draw command
+        graphicsCommandBuffers[frameIndex].drawIndexed(static_cast<uint32_t>(model_.getIndices().size()), instanceDatas.size(), 0, 0, 0);
     //end rendering
     graphicsCommandBuffers[frameIndex].endRendering();
     // After rendering, transition the swapchain image to vk::ImageLayout::ePresentSrcKHR
@@ -281,7 +320,6 @@ void Renderer::updateUniformBuffer(uint32_t currentImage){
 
 
     UniformBufferObject ubo{};
-    ubo.model = rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     ubo.view = lookAt(eyePos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     ubo.proj =
                  glm::perspective(glm::radians(45.0f), static_cast<float>(swapchainInfo->getExtent().width) /static_cast<float>(swapchainInfo->getExtent().height) , 0.1f, 100.0f);
