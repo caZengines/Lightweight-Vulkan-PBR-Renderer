@@ -55,6 +55,7 @@ class CEngine final {
 
         std::unique_ptr<obj_Model>               mainModel            = nullptr;
         std::unique_ptr<Material>                mainMaterial         = nullptr;
+        std::vector<InstanceData>                instanceDatas;
 
         std::unique_ptr<Renderer>                renderer             = nullptr;
         

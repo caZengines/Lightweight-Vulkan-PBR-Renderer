@@ -14,7 +14,7 @@ class Camera {
 public:
     Camera(float azimuth  = glm::radians(45.0f),
            float polar    = glm::radians(45.0f),
-           float distance = 2.0f * std::sqrt(3.0f));
+           float distance = 4.0f);
 
     void onMouseButton(int button, int action, double cursorX, double cursorY);
     void onCursorMove(double xPos, double yPos);

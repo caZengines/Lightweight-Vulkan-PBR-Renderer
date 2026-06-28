@@ -1,6 +1,7 @@
 #pragma once
 #include "command_manager.hpp"
 #include "descriptor_manager.hpp"
+#include "generic/vertex.hpp"
 #include "swapchain.hpp"
 #include "render_context.hpp"
 #include "pipeline_layout.hpp"
@@ -19,6 +20,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/constants.hpp>
 
+inline int instanceText = 1;
+
 struct Light {
   alignas(16) glm::vec4 pos;
   alignas(16) glm::vec4 color;
@@ -26,7 +29,6 @@ struct Light {
 };
 
 struct UniformBufferObject {
-    alignas(16) glm::mat4 model;
     alignas(16) glm::mat4 view;
     alignas(16) glm::mat4 proj;
 
@@ -69,6 +71,9 @@ class Renderer final {
 
         CommandPool&                             graphicsCommandPool;
 
+        std::vector<InstanceData>                instanceDatas;
+        std::unique_ptr<Buffer<InstanceData>>    instanceBuffer       = nullptr;
+
         std::vector<vk::raii::Semaphore>         presentCompleteSemaphores;
         std::vector<vk::raii::Semaphore>         presentWaitSemaphores;
         vk::raii::Semaphore                      renderFinishedTimelineSemaphore = nullptr;
@@ -80,6 +85,8 @@ class Renderer final {
 
         bool                                     cleaned_         = false;
 
+        void initInstanceDatas();
+        void createInstanceBuffer();
         void createGraphicsPipeline();
         void createUniformBuffers();
         void createDescriptorSetLayout();

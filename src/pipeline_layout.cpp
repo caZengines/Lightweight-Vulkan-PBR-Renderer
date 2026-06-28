@@ -1,5 +1,6 @@
 #include "pipeline_layout.hpp"
 #include "generic/vertex.hpp"
+#include "vulkan/vulkan.hpp"
 
 #include <stdexcept>
 #include <fstream>
@@ -35,11 +36,19 @@ void Pipeline::createGraphicsPipeline(const std::vector<vk::DescriptorSetLayout>
     viewportState.setViewportCount(1).setScissorCount(1);
 
     // vertex input
-    auto bindingDesc    = Vertex::getBindingDescription();
-    auto attribDescs    = Vertex::getAttributeDescription();
+    const auto vertexBindingDesc   = Vertex::getBindingDescription();
+    const auto vertexAttribDesc    = Vertex::getAttributeDescription();
+    const auto instanceBindingDesc = InstanceData::getBindingDescription();
+    const auto instanceAttribDesc  = InstanceData::getAttributeDescription();
+    std::vector<vk::VertexInputBindingDescription> bindingDescriptions = {
+        vertexBindingDesc,
+        instanceBindingDesc
+    };
+    std::vector<vk::VertexInputAttributeDescription> attributeDescriptions(vertexAttribDesc.begin(), vertexAttribDesc.end());
+    attributeDescriptions.insert(attributeDescriptions.end(), instanceAttribDesc.begin(), instanceAttribDesc.end());
     vk::PipelineVertexInputStateCreateInfo vertexInput{};
-    vertexInput.setVertexBindingDescriptions(bindingDesc)
-               .setVertexAttributeDescriptions(attribDescs);
+    vertexInput.setVertexBindingDescriptions(bindingDescriptions)
+               .setVertexAttributeDescriptions(attributeDescriptions);
 
     // assembly
     vk::PipelineInputAssemblyStateCreateInfo inputAssembly{};
