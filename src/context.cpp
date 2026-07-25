@@ -3,8 +3,8 @@
 #include "context.hpp"
 #include <iostream>
 
-Context::Context(const Config& cfg, vk::raii::PhysicalDevice& physicalDevice_, vk::raii::Device& device_, vk::raii::Instance& instance_, vk::raii::Context&& ct_) 
-    : cfg_(cfg), physicalDevice(physicalDevice_), device(device_), instance(instance_), ct(std::move(ct_))
+Context::Context(const Config& cfg, vk::raii::PhysicalDevice& physicalDevice, vk::raii::Device& device, vk::raii::Instance& instance) 
+    : cfg_(cfg), physicalDevice_(physicalDevice), device_(device), instance_(instance)
 {
     setupDebugMessenger();
     createSurface();
@@ -21,7 +21,7 @@ void Context::setupDebugMessenger(){
                                   vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance)
                 .setPfnUserCallback(&debugCallback);
 
-    debugMessenger = instance.createDebugUtilsMessengerEXT( createInfo );
+    debugMessenger = instance_.createDebugUtilsMessengerEXT( createInfo );
 }
 VKAPI_ATTR vk::Bool32 VKAPI_CALL Context::debugCallback(
     vk::DebugUtilsMessageSeverityFlagBitsEXT Severity,
@@ -37,10 +37,10 @@ VKAPI_ATTR vk::Bool32 VKAPI_CALL Context::debugCallback(
 }
 
 void Context::createSurface(){
-    VkSurfaceKHR _surface;
-    if (glfwCreateWindowSurface(*instance, cfg_.window_, nullptr, &_surface) != 0)
+    VkSurfaceKHR surface_;
+    if (glfwCreateWindowSurface(*instance_, cfg_.window_, nullptr, &surface_) != 0)
     {
         throw std::runtime_error("failed to create window surface!");
     }
-    surface = vk::raii::SurfaceKHR(instance, _surface);
+    surface = vk::raii::SurfaceKHR(instance_, surface_);
 }

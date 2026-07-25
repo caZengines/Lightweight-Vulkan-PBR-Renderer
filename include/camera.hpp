@@ -5,8 +5,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/constants.hpp>
 
-#include <cmath>
-
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -14,7 +12,7 @@ class Camera {
 public:
     Camera(float azimuth  = glm::radians(45.0f),
            float polar    = glm::radians(45.0f),
-           float distance = 4.0f);
+           float distance = 32.0f);
 
     void onMouseButton(int button, int action, double cursorX, double cursorY);
     void onCursorMove(double xPos, double yPos);

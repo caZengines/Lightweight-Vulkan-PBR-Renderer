@@ -2,12 +2,13 @@
 #include <string>
 #include "resourcefactory.hpp"
 #include "command_manager.hpp"
-#include "vulkan/vulkan.hpp"
 
 #define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
 
+
+//It should be noticed that the Texture class needs Manually declare creation
 class Texture{
     public:
         //Ban copying, allowed movement
@@ -16,18 +17,24 @@ class Texture{
         Texture(Texture&& other) noexcept = default;
         Texture& operator=(Texture&& other) noexcept = default;
 
-        static Texture createTexture(const std::string& filepath, vk::Format textureFormat, vk::Filter filter, const vk::SamplerCreateInfo& samplerInfo, CommandPool& commandPool);
+        static Texture createTexture(const std::string& filepath, vk::Format textureFormat, vk::Filter filter, CommandPool& commandPool);
+
+        // Create a 1×1 white texture – fallback when no albedo is provided.
+        static Texture createDefaultAlbedo(CommandPool& commandPool);
+        // Create a 1×1 flat-normal texture (0,0,1 in tangent space) – fallback when no normal map is provided.
+        static Texture createDefaultNormal(CommandPool& commandPool);
 
         const vk::raii::ImageView& getTextureView() const { return textureImageView; }
-        const vk::raii::Sampler&   getTextureSampler() const { return textureSampler; }
 
     private:
         Texture() = default;
 
+        // Shared implementation for 1×1 default textures.
+        static Texture createDefaultTexture(const void* pixelDataRGBA8, vk::Format format, CommandPool& commandPool);
+
         vk::raii::Image                          textureImage         = nullptr;
         vk::raii::DeviceMemory                   textureImageMemory   = nullptr;
         vk::raii::ImageView                      textureImageView     = nullptr;
-        vk::raii::Sampler                        textureSampler       = nullptr;
 
         uint32_t                                 mipLevels            = 1;
 

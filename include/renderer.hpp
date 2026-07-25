@@ -1,13 +1,12 @@
 #pragma once
 #include "command_manager.hpp"
 #include "descriptor_manager.hpp"
-#include "generic/vertex.hpp"
+#include "generic/scene.hpp"
 #include "swapchain.hpp"
 #include "render_context.hpp"
 #include "pipeline_layout.hpp"
-#include "material.hpp"
-#include "generic/model.hpp"
 #include "camera.hpp"
+#include "vulkan/vulkan.hpp"
 #include <vector>
 #include <memory>
 
@@ -40,39 +39,39 @@ class Renderer final {
     public:
     bool     framebufferResized = false;
 
-    explicit Renderer(RenderContext& rct, Material& material, obj_Model& model, Camera& camera, CommandPool& commandPool, vk::raii::SurfaceKHR& surface, GLFWwindow* window);
+    explicit Renderer(RenderContext& rct,
+                      const std::vector<vk::DescriptorSetLayout>& dsls,
+                      const vk::DescriptorPool& pool,
+                      Camera& camera,
+                      CommandPool& commandPool,
+                      vk::raii::SurfaceKHR& surface,
+                      GLFWwindow* window);
     ~Renderer(){
         if(!cleaned_) cleanup();
     }
 
-    void drawFrame();
+    void drawFrame(const std::vector<DrawBatch>& batches);
     void cleanup();
 
     private:
-        GLFWwindow*                              window_              = nullptr;
+        GLFWwindow*                              window_;
         vk::raii::SurfaceKHR&                    surface_;
         RenderContext                            rct_;
-        Material&                                material_;
-        obj_Model&                               model_;
+        std::vector<vk::DescriptorSetLayout>     descriptorSetLayouts_;
+        vk::DescriptorPool                       descriptorPool_;
         Camera&                                  camera_;
-        std::unique_ptr<Swapchain>               swapchainInfo        = nullptr;
-        std::unique_ptr<Pipeline>                graphicsPipeline     = nullptr;
+
+        std::unique_ptr<Swapchain>               swapchainInfo          = nullptr;
+        std::unique_ptr<Pipeline>                graphicsPipeline       = nullptr;
+        std::unique_ptr<PerFrameDescriptorSet>   perframeDescriptorSet_ = nullptr;
 
         std::vector<vk::raii::DeviceMemory>      uniformBuffersMemory;
         std::vector<vk::raii::Buffer>            uniformBuffers;
         std::vector<void *>                      uniformBuffersMapped;
 
-        std::unique_ptr<DescriptorSetLayout>     descriptorSetLayout  = nullptr;
-        std::unique_ptr<DescriptorPool>          descriptorPool       = nullptr;
-
-        std::vector<std::unique_ptr<DescriptorSet>>              descriptorSets;
-
         std::vector<vk::raii::CommandBuffer>     graphicsCommandBuffers;
 
         CommandPool&                             graphicsCommandPool;
-
-        std::vector<InstanceData>                instanceDatas;
-        std::unique_ptr<Buffer<InstanceData>>    instanceBuffer       = nullptr;
 
         std::vector<vk::raii::Semaphore>         presentCompleteSemaphores;
         std::vector<vk::raii::Semaphore>         presentWaitSemaphores;
@@ -85,12 +84,8 @@ class Renderer final {
 
         bool                                     cleaned_         = false;
 
-        void initInstanceDatas();
-        void createInstanceBuffer();
         void createGraphicsPipeline();
         void createUniformBuffers();
-        void createDescriptorSetLayout();
-        void createDescriptorPoolAndSets();
         void createCommandBuffers(CommandPool& commandPool);
         void createSyncObjects();
         void recreateAfterResize();
@@ -98,7 +93,7 @@ class Renderer final {
 
         void updateUniformBuffer(uint32_t);
         void updateDescriptorSet(uint32_t);
-        void recordCommandBuffer(uint32_t ImageIndex);
+        void recordCommandBuffer(uint32_t ImageIndex, const std::vector<DrawBatch>& batches);
         void transition_image_layout(
                                  vk::Image               image,
                                  vk::ImageLayout         old_layout,

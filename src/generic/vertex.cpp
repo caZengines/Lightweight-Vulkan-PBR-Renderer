@@ -43,9 +43,9 @@ std::array<vk::VertexInputAttributeDescription, 4> Vertex::getAttributeDescripti
     return {posAttribute, uvAttribute, norAttribute, tanAttribute};
 }
 
-//======================================================================
-//===================== Instance implement =============================
-//======================================================================
+//==============================================================================
+//======================== -/Instance implement/- ==============================
+//==============================================================================
 
 vk::VertexInputBindingDescription InstanceData::getBindingDescription() {
     vk::VertexInputBindingDescription description;
@@ -54,13 +54,15 @@ vk::VertexInputBindingDescription InstanceData::getBindingDescription() {
     return description;
 }
 
-std::array<vk::VertexInputAttributeDescription, 5> InstanceData::getAttributeDescription() {
-    std::array<vk::VertexInputAttributeDescription, 5> attribute;
+std::array<vk::VertexInputAttributeDescription, 6> InstanceData::getAttributeDescription() {
+    std::array<vk::VertexInputAttributeDescription, 6> attribute;
     for(size_t i = 0 ; i < 4 ; ++i){
         attribute[i].setBinding(1).setLocation(4 + i).setFormat(vk::Format::eR32G32B32A32Sfloat)
                     .setOffset(sizeof(glm::vec4) * i);
     }
     attribute[4].setBinding(1).setLocation(8).setFormat(vk::Format::eR32Uint)
                 .setOffset(offsetof(InstanceData, enableNormal));
+    attribute[5].setBinding(1).setLocation(9).setFormat(vk::Format::eR32Uint)
+                .setOffset(offsetof(InstanceData, materialId));
     return attribute;
 }

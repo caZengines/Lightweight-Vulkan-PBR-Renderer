@@ -5,6 +5,8 @@
  such as:
 >
 > - [x] Instanced Rendering
+> - [x] Separate Image and Sampler
+> - [ ] Dynamic Uniform Buffer
 > - [ ] Multithreaded command buffer generation
 > - [x] Shader-reflection automatically generates descriptorset
 > - [x] Normal Texture

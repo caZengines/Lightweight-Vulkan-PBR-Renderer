@@ -1,89 +1,37 @@
 #include "renderer.hpp"
 #include "command_manager.hpp"
 #include "descriptor_manager.hpp"
-#include "generic/vertex.hpp"
 #include "render_context.hpp"
 #include "swapchain.hpp"
 #include "resourcefactory.hpp"
 #include "vulkan/vulkan.hpp"
 #include <cstddef>
 #include <memory>
-#include <random>
 
 #define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
 
-Renderer::Renderer(RenderContext& rct, Material& material, obj_Model& model, Camera& camera, CommandPool& commandPool, vk::raii::SurfaceKHR& surface, GLFWwindow* window)
-    : rct_(rct), material_(material), model_(model), camera_(camera), graphicsCommandPool(commandPool), surface_(surface), window_(window)
+Renderer::Renderer(RenderContext& rct,
+                      const std::vector<vk::DescriptorSetLayout>& dsls,
+                      const vk::DescriptorPool& pool,
+                      Camera& camera,
+                      CommandPool& commandPool,
+                      vk::raii::SurfaceKHR& surface,
+                      GLFWwindow* window)
+    : rct_(rct), descriptorSetLayouts_(dsls), descriptorPool_(pool), camera_(camera), graphicsCommandPool(commandPool), surface_(surface), window_(window)
 {
     swapchainInfo = std::make_unique<Swapchain>(rct_, surface, window_);
-    createDescriptorSetLayout();
-    initInstanceDatas();
-    createInstanceBuffer();
+    perframeDescriptorSet_ = std::make_unique<PerFrameDescriptorSet>(rct_, descriptorPool_, descriptorSetLayouts_[0]);
     createGraphicsPipeline();
     createUniformBuffers();
-    createDescriptorPoolAndSets();
     createCommandBuffers(graphicsCommandPool);
     createSyncObjects();
 }
 
-void Renderer::initInstanceDatas(){
-    InstanceData instanceData{};
-    instanceDatas.reserve(instanceText);
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<float> dist(-2.0, 2.0);
-    glm::mat4 rotation = glm::rotate(
-        glm::mat4(1.0f), 
-        glm::radians(180.0f), 
-        glm::vec3(1.0f, 0.0f, 0.0f)
-    );
-    for(size_t i = 0 ; i < instanceText ; ++i){
-        instanceData.enableNormal = 1;
-        float x = dist(gen);
-        float z = dist(gen);
-        float y = dist(gen);
-        glm::vec3 translation(x, y, z);
-        instanceData.model = glm::translate(glm::mat4(1.0f), translation) * rotation;
-        instanceDatas.emplace_back(instanceData);
-    }
-}
-
-void Renderer::createInstanceBuffer(){
-    Buffer<InstanceData>::CreateInfo instanceInfo;
-    instanceInfo.size = sizeof(InstanceData) * instanceDatas.size();
-    instanceInfo.usage = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer;
-    instanceInfo.memProperties = vk::MemoryPropertyFlagBits::eDeviceLocal;
-
-    instanceBuffer = std::make_unique<Buffer<InstanceData>>(instanceDatas, instanceInfo, graphicsCommandPool);
-}
-
 void Renderer::createGraphicsPipeline(){
     vk::Format                     format = swapchainInfo->getSurfaceFormat().format;
-    graphicsPipeline = std::make_unique<Pipeline>(rct_, descriptorSetLayout->getLayoutHandles(), format);
-}
-
-void Renderer::createDescriptorSetLayout(){
-    auto spvCode = Pipeline::readFile("../shaders/slang.spv");
-    descriptorSetLayout = std::make_unique<DescriptorSetLayout>(rct_, spvCode);
-}
-
-void Renderer::createDescriptorPoolAndSets(){
-    descriptorPool = std::make_unique<DescriptorPool>(rct_,
-                                                      descriptorSetLayout->getPoolMaxSets(), 
-                                                      descriptorSetLayout->getPoolSize()
-    );
-    //create DescriptorSets
-    descriptorSets.reserve(MAX_FRAMES_IN_FLIGHT);
-
-    for(size_t i = 0 ; i < MAX_FRAMES_IN_FLIGHT ; ++i){
-        vk::DescriptorSetAllocateInfo allocInfo;
-        allocInfo.setDescriptorPool(descriptorPool->getDescriptorPool())
-                 .setDescriptorSetCount(descriptorSetLayout->getSetCount())
-                 .setSetLayouts(descriptorSetLayout->getLayoutHandles());
-        descriptorSets.emplace_back(std::make_unique<DescriptorSet>(rct_, allocInfo));
-    }
+    graphicsPipeline = std::make_unique<Pipeline>(rct_, descriptorSetLayouts_, format);
 }
 
 void Renderer::createUniformBuffers(){
@@ -155,12 +103,12 @@ void Renderer::cleanup(){
     cleaned_ = true;
 }
 
-void Renderer::drawFrame(){
+void Renderer::drawFrame(const std::vector<DrawBatch>& batches){
     auto fenceResult = rct_.device.waitForFences(*inFlightFences[frameIndex], vk::True, UINT64_MAX);
     if(fenceResult != vk::Result::eSuccess){
         throw std::runtime_error("failed to wait for fence!");
     }
-    
+
     auto [result, imageIndex] = swapchainInfo->swapChain().acquireNextImage(UINT64_MAX, *presentCompleteSemaphores[frameIndex], nullptr);
     if(result == vk::Result::eErrorOutOfDateKHR) {
         recreateAfterResize();
@@ -176,7 +124,7 @@ void Renderer::drawFrame(){
     //Only reset the fence if we are submitting work
     rct_.device.resetFences(*inFlightFences[frameIndex]);
     graphicsCommandBuffers[frameIndex].reset();
-    recordCommandBuffer(imageIndex);
+    recordCommandBuffer(imageIndex, batches);
 
     uint64_t signalValue = ++frameCount;
     std::array<vk::Semaphore, 2> signalSemaphores = {
@@ -221,7 +169,7 @@ void Renderer::drawFrame(){
     frameIndex = (frameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-void Renderer::recordCommandBuffer(uint32_t ImageIndex){
+void Renderer::recordCommandBuffer(uint32_t ImageIndex, const std::vector<DrawBatch>& batches){
     graphicsCommandBuffers[frameIndex].begin({});
 
     // Before starting rendering, transition the swapchain image to vk::ImageLayout::eColorAttachmentOptimal
@@ -249,14 +197,14 @@ void Renderer::recordCommandBuffer(uint32_t ImageIndex){
         *swapchainInfo->getDepthImage(),
         vk::ImageLayout::eUndefined,
         vk::ImageLayout::eDepthAttachmentOptimal,
-        vk::AccessFlagBits2::eDepthStencilAttachmentWrite,
+        {},
         vk::AccessFlagBits2::eDepthStencilAttachmentWrite,
         vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests,
         vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests,
         vk::ImageAspectFlagBits::eDepth
     );
     vk::ClearValue              clearColor = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
-    vk::ClearValue              clearDepth = vk::ClearDepthStencilValue(1.0f, 0); 
+    vk::ClearValue              clearDepth = vk::ClearDepthStencilValue(1.0f, 0);
     vk::RenderingAttachmentInfo attachmentInfo;
     attachmentInfo.setImageView(swapchainInfo->getColorImageView())
                   .setImageLayout(vk::ImageLayout::eColorAttachmentOptimal)
@@ -286,18 +234,33 @@ void Renderer::recordCommandBuffer(uint32_t ImageIndex){
     graphicsCommandBuffers[frameIndex].beginRendering(renderingInfo);
         //binding the graphics pipeline
         graphicsCommandBuffers[frameIndex].bindPipeline(vk::PipelineBindPoint::eGraphics, *graphicsPipeline->binding());
-        //binding the vertexbuffer & instanceBuffer
-        const std::array<vk::Buffer, 2> vertexBuffers {*model_.getVertexBuffer(), instanceBuffer->getBuffer()};
-        constexpr std::array<vk::DeviceSize, 2> offsets {0, 0};
-        graphicsCommandBuffers[frameIndex].bindVertexBuffers(0, vertexBuffers, offsets);
-        graphicsCommandBuffers[frameIndex].bindIndexBuffer(*model_.getIndexBuffer(), 0, vk::IndexType::eUint32);
         //command buffer dynamic state
         graphicsCommandBuffers[frameIndex].setViewport(0, vk::Viewport(0.0f, 0.0f, static_cast<float>(swapchainInfo->getExtent().width),static_cast<float>(swapchainInfo->getExtent().height), 0.0f, 1.0f));
         graphicsCommandBuffers[frameIndex].setScissor(0, vk::Rect2D(vk::Offset2D(0,0), swapchainInfo->getExtent()));
-        //binding descriptorSets
-        graphicsCommandBuffers[frameIndex].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *graphicsPipeline->getLayout(), 0, descriptorSets[frameIndex]->getSetsHandles(), nullptr);
-        //record draw command
-        graphicsCommandBuffers[frameIndex].drawIndexed(static_cast<uint32_t>(model_.getIndices().size()), instanceDatas.size(), 0, 0, 0);
+        // Bind Set 0: per-frame UBO (shared by all draws)
+        graphicsCommandBuffers[frameIndex].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *graphicsPipeline->getLayout(), 0, perframeDescriptorSet_->getHandles()[frameIndex], nullptr);
+        // Draw each batch (mesh + material + instances)
+        for(const auto& batch : batches){
+            if(batch.instanceCount == 0) continue;
+            // Bind Set 1: per-material textures + samplers
+            graphicsCommandBuffers[frameIndex].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *graphicsPipeline->getLayout(), 1, batch.material->getDescriptorSet(), nullptr);
+            // Bind vertex + instance buffers
+            const std::array<vk::Buffer, 2> vertexBuffers {
+                batch.mesh->getVertexBuffer(),
+                batch.instanceBuffer
+            };
+            constexpr std::array<vk::DeviceSize, 2> offsets {0, 0};
+            graphicsCommandBuffers[frameIndex].bindVertexBuffers(0, vertexBuffers, offsets);
+            graphicsCommandBuffers[frameIndex].bindIndexBuffer(batch.mesh->getIndexBuffer(), 0, vk::IndexType::eUint32);
+
+            // Draw all instances of this batch
+            graphicsCommandBuffers[frameIndex].drawIndexed(
+                static_cast<uint32_t>(batch.mesh->getIndices().size()),
+                batch.instanceCount,
+                0, 0,
+                batch.firstInstance
+            );
+        }
     //end rendering
     graphicsCommandBuffers[frameIndex].endRendering();
     // After rendering, transition the swapchain image to vk::ImageLayout::ePresentSrcKHR
@@ -311,7 +274,7 @@ void Renderer::recordCommandBuffer(uint32_t ImageIndex){
         vk::PipelineStageFlagBits2::eBottomOfPipe,          // dstStage
         vk::ImageAspectFlagBits::eColor
     );
-            
+
     graphicsCommandBuffers[frameIndex].end();
 }
 
@@ -326,37 +289,25 @@ void Renderer::updateUniformBuffer(uint32_t currentImage){
     ubo.proj[1][1] *= -1;
 
     ubo.camPos = glm::vec4(eyePos, 1);
-    ubo.light.pos = glm::vec4(1.0f, 3.0f, 3.0f, 1);
+    ubo.light.pos = glm::vec4(50.0f, 40.0f, -25.0f, 1);
     ubo.light.color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-    ubo.light.intensity = 0.6f;
+    ubo.light.intensity = 1.0f;
 
     memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 }
 
 void Renderer::updateDescriptorSet(uint32_t currentImage){
-    const auto& descriptorSets_ = descriptorSets[currentImage]->getDescriptorSets();
-    //Temporarily hard coded
-    vk::DescriptorBufferInfo bufferInfo;
-    bufferInfo.setBuffer(uniformBuffers[currentImage]).setOffset(0).setRange(sizeof(UniformBufferObject));
+    vk::DescriptorBufferInfo bufferInfo{};
+    bufferInfo.setBuffer(uniformBuffers[currentImage])
+              .setOffset(0)
+              .setRange(sizeof(UniformBufferObject));
 
-    const auto& bindings_ = descriptorSetLayout->getBindings();
-    std::vector<vk::WriteDescriptorSet> writes; writes.reserve(bindings_.size());
-    for(const auto& b : bindings_){
-        vk::WriteDescriptorSet write;
-        write.setDstSet(*descriptorSets_[b.set]).setDstBinding(b.binding)
-             .setDescriptorType(b.descriptorType)
-             .setDescriptorCount(b.count);
-        if(b.descriptorType == vk::DescriptorType::eUniformBuffer){
-            write.setBufferInfo(bufferInfo);
-        }
-        else if(b.binding == Binding::kAlbedoTexture){
-            write.setImageInfo(material_.getImageInfo());
-        }
-        else if(b.binding == Binding::kNormalTexure) write.setImageInfo(material_.getNormalInfo());
-
-        writes.emplace_back(write);
-    }
-    rct_.device.updateDescriptorSets(writes, {});
+    vk::WriteDescriptorSet write{};
+    write.setDstSet(perframeDescriptorSet_->getHandles()[currentImage])
+          .setDstBinding(0)
+          .setDescriptorType(vk::DescriptorType::eUniformBuffer)
+          .setBufferInfo(bufferInfo);
+    rct_.device.updateDescriptorSets(write, {});
 }
 
 void Renderer::transition_image_layout(

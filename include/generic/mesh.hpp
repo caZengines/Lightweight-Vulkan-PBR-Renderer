@@ -4,13 +4,13 @@
 #include "command_manager.hpp"
 #include <string>
 
-class obj_Model{
+class Mesh{
     public:
         //Ban copying
-        obj_Model(const obj_Model&) = delete;
-        obj_Model& operator=(const obj_Model&) = delete;
+        Mesh(const Mesh&) = delete;
+        Mesh& operator=(const Mesh&) = delete;
 
-        explicit obj_Model(const std::string modelPath, CommandPool& commandPool);
+        explicit Mesh(const std::string modelPath, CommandPool& commandPool);
 
         const std::vector<Vertex>& getVertices() const { return vertices; }
         const std::vector<uint32_t>& getIndices() const { return indices; }

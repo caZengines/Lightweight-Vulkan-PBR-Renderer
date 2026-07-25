@@ -8,6 +8,7 @@ struct VertexInput {
 struct InstanceData {
     float4x4 model;
     uint32_t enableNormal;
+    uint32_t materialID;
 };
 
 struct Light {
@@ -73,17 +74,19 @@ VertexOutput vertMain(VertexInput Input, InstanceData instance) {
     return Output;
 }
 
-[[vk::binding(0, 1)]]Sampler2D Texture;
-[[vk::binding(1, 1)]]Sampler2D normalTexture;
+[[vk::binding(0, 1)]] Texture2D albedoTexture;
+[[vk::binding(1, 1)]] Texture2D normalTexture;
+[[vk::binding(2, 1)]] SamplerState gtexSampler;
+[[vk::binding(3, 1)]] SamplerState gNorSampler;
 
 [shader("fragment")]
 float4 fragMain(VertexOutput inVert) : SV_Target {
     //Sample texture
-    float4 albedo = Texture.Sample(inVert.fragTexCoord);
+    float4 albedo = albedoTexture.Sample(gtexSampler, inVert.fragTexCoord);
     // Sample normal
     float3 N;
     if (inVert.isEnableNormalTexture > 0) {
-        float3 tn = normalTexture.Sample(inVert.fragTexCoord).rgb;
+        float3 tn = normalTexture.Sample(gNorSampler, inVert.fragTexCoord).rgb;
         tn.rg = tn.rg * 2 - 1.0;
         tn.g = 1.0 - tn.g;
         N = normalize(tn);
@@ -102,7 +105,7 @@ float4 fragMain(VertexOutput inVert) : SV_Target {
     float3 radiance = ubo.light.color.rgb * ubo.light.intensity * atten;
 
     // Ambient
-    float3 ambient = 0.05 * albedo.rgb;
+    float3 ambient = albedo.rgb * 0.1;
 
     // Diffuse(lambert)
     float diff = max(dot(N, L), 0.0);
@@ -115,5 +118,5 @@ float4 fragMain(VertexOutput inVert) : SV_Target {
 
     float3 finalColor = (ambient + diffuse + specular) * radiance;
 
-    return float4(finalColor, albedo.a);
+    return float4(ambient, albedo.a);
 }

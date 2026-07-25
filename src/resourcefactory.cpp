@@ -56,10 +56,6 @@ std::pair<vk::raii::Buffer, vk::raii::DeviceMemory> ResourceFactory::createBuffe
     return {std::move(buffer), std::move(bufferMemory)};
 }
 
-vk::raii::Sampler ResourceFactory::createSampler(vk::SamplerCreateInfo samplerInfo_) const {
-    return vk::raii::Sampler(*device, samplerInfo_);
-}
-
 void ResourceFactory::copyBufferToImage(vk::raii::CommandBuffer &commandBuffer, const vk::raii::Buffer &buffer, vk::raii::Image &image, uint32_t width, uint32_t height) const {
     assert(physicalDevice && device);
     vk::BufferImageCopy region;

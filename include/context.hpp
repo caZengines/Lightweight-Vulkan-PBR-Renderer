@@ -11,7 +11,11 @@
 #include "render_context.hpp"
 
 inline const std::string MODEL_PATH = "../models/container.obj";
+inline const std::string ROCK_PATH  = "../models/rock.obj";
+inline const std::string PLANET_PATH = "../models/planet.obj";
 inline const std::string TEXTURE_PATH = "../textures/container.png";
+inline const std::string ROCK_TEXTURE_PATH  = "../textures/rock.png";
+inline const std::string MARS_PATH          = "../textures/mars.png";
 inline const std::string NORMAL_PATH  = "../textures/container_normal_OpenGL.png";
 
 class Context {
@@ -26,20 +30,15 @@ class Context {
             vk::SampleCountFlagBits   msaaSamples_             = vk::SampleCountFlagBits::e1;
         };
 
-       explicit Context(const Config& cfg, vk::raii::PhysicalDevice& physicalDevice_, vk::raii::Device& device_, vk::raii::Instance& instance_, vk::raii::Context&& ct_);
+       explicit Context(const Config& cfg, vk::raii::PhysicalDevice& physicalDevice, vk::raii::Device& device, vk::raii::Instance& instance);
         ~Context() = default;
 
-        RenderContext renderContext() {
-            return { physicalDevice, device, cfg_.msaaSamples_ };
-        }
-
     private:
-        vk::raii::Context                        ct;
         Config                                   cfg_;
 
-        vk::raii::PhysicalDevice&                physicalDevice;
-        vk::raii::Device&                        device;
-        vk::raii::Instance&                      instance;
+        vk::raii::PhysicalDevice&                physicalDevice_;
+        vk::raii::Device&                        device_;
+        vk::raii::Instance&                      instance_;
         
         static VKAPI_ATTR vk::Bool32 VKAPI_CALL debugCallback(
             vk::DebugUtilsMessageSeverityFlagBitsEXT Severity,

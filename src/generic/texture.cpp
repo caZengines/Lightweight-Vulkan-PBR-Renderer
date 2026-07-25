@@ -6,7 +6,70 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "extern/stb_image.h"
 
-Texture Texture::createTexture(const std::string &filepath, vk::Format textureFormat, vk::Filter filter, const vk::SamplerCreateInfo& samplerInfo, CommandPool& commandPool){
+// ============================================================================
+// Default 1×1 textures (CPU-generated, no file I/O)
+// ============================================================================
+
+Texture Texture::createDefaultTexture(const void* pixelDataRGBA8, vk::Format format, CommandPool& commandPool) {
+    auto& factory = ResourceFactory::get();
+    Texture tex;
+    tex.mipLevels = 1;
+
+    constexpr uint32_t      kWidth  = 1;
+    constexpr uint32_t      kHeight = 1;
+    constexpr vk::DeviceSize kSize  = 4;  // RGBA8 = 4 bytes
+
+    auto [stagingBuffer, stagingMemory] =
+        factory.createBuffer(kSize,
+                             vk::BufferUsageFlagBits::eTransferSrc,
+                             vk::MemoryPropertyFlagBits::eHostVisible |
+                                 vk::MemoryPropertyFlagBits::eHostCoherent);
+    void* dst = stagingMemory.mapMemory(0, kSize);
+    std::memcpy(dst, pixelDataRGBA8, kSize);
+    stagingMemory.unmapMemory();
+
+    auto [image, imageMemory] =
+        factory.createImage(kWidth, kHeight, 1, vk::SampleCountFlagBits::e1,
+                            format, vk::ImageTiling::eOptimal,
+                            vk::ImageUsageFlagBits::eTransferDst |
+                                vk::ImageUsageFlagBits::eSampled,
+                            vk::MemoryPropertyFlagBits::eDeviceLocal);
+    tex.textureImage      = std::move(image);
+    tex.textureImageMemory = std::move(imageMemory);
+
+    vk::raii::CommandBuffer cmd = commandPool.beginSingleTimeCommands();
+    factory.transitionImageLayout(cmd, tex.textureImage,
+                                  vk::ImageLayout::eUndefined,
+                                  vk::ImageLayout::eTransferDstOptimal, 1);
+    factory.copyBufferToImage(cmd, stagingBuffer, tex.textureImage, kWidth, kHeight);
+    factory.transitionImageLayout(cmd, tex.textureImage,
+                                  vk::ImageLayout::eTransferDstOptimal,
+                                  vk::ImageLayout::eShaderReadOnlyOptimal, 1);
+    commandPool.endSingleTimeCommands(std::move(cmd));
+
+    tex.textureImageView = factory.createImageView(*tex.textureImage, format,
+                                                   vk::ImageAspectFlagBits::eColor, 1);
+    return tex;
+}
+
+Texture Texture::createDefaultAlbedo(CommandPool& commandPool) {
+    // 1×1 opaque white: (R=255, G=255, B=255, A=255)
+    constexpr uint8_t kWhite[4] = {255, 255, 255, 255};
+    return createDefaultTexture(kWhite, vk::Format::eR8G8B8A8Srgb, commandPool);
+}
+
+Texture Texture::createDefaultNormal(CommandPool& commandPool) {
+    // 1×1 flat tangent-space normal pointing straight up: (R=128, G=128, B=255, A=255)
+    // Decoded: x = 128/255*2-1 = 0, y = 128/255*2-1 = 0, z = 255/255 = 1  →  (0,0,1)
+    constexpr uint8_t kFlatNormal[4] = {128, 128, 255, 255};
+    return createDefaultTexture(kFlatNormal, vk::Format::eR8G8B8A8Unorm, commandPool);
+}
+
+// ============================================================================
+// File-based texture loading
+// ============================================================================
+
+Texture Texture::createTexture(const std::string &filepath, vk::Format textureFormat, vk::Filter filter, CommandPool& commandPool){
     auto& factory = ResourceFactory::get();
     Texture tex;
 
@@ -49,8 +112,6 @@ Texture Texture::createTexture(const std::string &filepath, vk::Format textureFo
     tex.generateMipMaps(tex.textureImage, textureFormat, filter, texWidth, texHeight, tex.mipLevels, factory, commandPool);
 
     tex.textureImageView = factory.createImageView(*tex.textureImage, textureFormat, vk::ImageAspectFlagBits::eColor, tex.mipLevels);
-
-    tex.textureSampler   = factory.createSampler(samplerInfo);
 
     return tex;
 }

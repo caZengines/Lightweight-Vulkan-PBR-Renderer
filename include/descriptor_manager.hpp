@@ -33,26 +33,34 @@ struct ReflectBinding {
 //Auto create DescriptorSetLayout by SPRIV-Reflect
 class DescriptorSetLayout {
     public:
+        // Default upper bound for per-object (Set 1+) descriptor sets.
+        // The engine should override if it needs more simultaneous materials.
+        static constexpr uint32_t kDefaultObjectMultiplier = 8;
+
         explicit DescriptorSetLayout(RenderContext& rct, const std::vector<uint8_t>& spvCode);
         ~DescriptorSetLayout() = default;
 
+        const std::vector<vk::raii::DescriptorSetLayout>& getDescriptorSetLayouts() const { return descriptorSetLayouts_; }
         //The binding information saved by describorSetLayouts is in units of each Set in the shader
-        const std::vector<vk::raii::DescriptorSetLayout>& getDescriptorSetLayouts() const { return descriptorSetLayouts; }
-        const std::vector<vk::DescriptorSetLayout>& getLayoutHandles() const { return layouthandles; }
+        const std::vector<vk::DescriptorSetLayout>& getLayoutHandles() const { return layoutHandles_; }
 
-        const ReflectBinding* getBinding(const std::string& name) const;
+        //const ReflectBinding* getBinding(const std::string& name) const;
         const std::vector<ReflectBinding>& getBindings() const { return bindings_; }
         const int& getPoolMaxSets() const { return poolMaxSets; }
         const int& getSetCount() const { return setCount; }
-        const std::vector<vk::DescriptorPoolSize>& getPoolSize() const { return poolSizes; }
+        const std::vector<vk::DescriptorPoolSize>& getPoolSize() const { return poolSizes_; }
+
+        // Recalculate poolMaxSets for a given number of per-object sets.
+        // Useful when the engine knows it will allocate more than kDefaultObjectMultiplier materials.
+        int computePoolMaxSets(uint32_t objectCount) const;
 
     private:
         RenderContext                                     rct_;
 
-        std::vector<vk::raii::DescriptorSetLayout>        descriptorSetLayouts;
-        std::vector<vk::DescriptorSetLayout>              layouthandles;
+        std::vector<vk::raii::DescriptorSetLayout>        descriptorSetLayouts_;
+        std::vector<vk::DescriptorSetLayout>              layoutHandles_;
         std::vector<ReflectBinding>                       bindings_;
-        std::vector<vk::DescriptorPoolSize>               poolSizes;
+        std::vector<vk::DescriptorPoolSize>               poolSizes_;
 
         int                                               setCount = 0;
         int                                               poolMaxSets = 0;
@@ -80,19 +88,36 @@ class DescriptorPool {
         vk::raii::DescriptorPool                 descriptorPool      = nullptr;
 };
 
-class DescriptorSet{
+class DescriptorSet {
     public:
         //Ban copying
         DescriptorSet(const DescriptorSet&) = delete;
         DescriptorSet& operator=(const DescriptorSet&) = delete;
 
-        explicit DescriptorSet(RenderContext& rct, vk::DescriptorSetAllocateInfo allocInfo_);
+        explicit DescriptorSet(RenderContext& rct,const vk::DescriptorSetAllocateInfo& allocInfo_);
          ~DescriptorSet() = default;
 
-        const std::vector<vk::raii::DescriptorSet>& getDescriptorSets() const { return descriptorSets; }
-        const std::vector<vk::DescriptorSet>& getSetsHandles() const { return handles; }
+        const std::vector<vk::raii::DescriptorSet>& getDescriptorSets() const { return descriptorSets_; }
+        const std::vector<vk::DescriptorSet>& getSetsHandles() const { return handles_; }
     private:
         RenderContext                                   rct_;
-        std::vector<vk::raii::DescriptorSet>            descriptorSets;
-        std::vector<vk::DescriptorSet>                  handles;
+        std::vector<vk::raii::DescriptorSet>            descriptorSets_;
+        std::vector<vk::DescriptorSet>                  handles_;
+};
+
+class PerFrameDescriptorSet {
+    public:
+        //Ban copying
+        PerFrameDescriptorSet(const PerFrameDescriptorSet&) = delete;
+        PerFrameDescriptorSet& operator=(const PerFrameDescriptorSet&) = delete;
+
+        PerFrameDescriptorSet(RenderContext& rct, const vk::DescriptorPool& pool, const vk::DescriptorSetLayout& layoutHandle);
+
+        void update(const vk::raii::Buffer& uniformBuffer, VkDeviceSize size);
+
+        const std::vector<vk::DescriptorSet>& getHandles() const { return handles_; }
+
+    private:
+        std::vector<vk::raii::DescriptorSet>            sets_;
+        std::vector<vk::DescriptorSet>                  handles_;
 };

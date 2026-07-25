@@ -35,9 +35,11 @@ namespace std{
 
 struct InstanceData {
     glm::mat4 model;
-
-    uint32_t enableNormal;
+    uint32_t  enableNormal;
+    uint32_t  materialId;
+    uint32_t  _pad[2];
 
     static vk::VertexInputBindingDescription getBindingDescription();
-    static std::array<vk::VertexInputAttributeDescription, 5> getAttributeDescription();
+    static std::array<vk::VertexInputAttributeDescription, 6> getAttributeDescription();
 };
+static_assert(sizeof(InstanceData) == 80, "InstanceData must match shader layout");

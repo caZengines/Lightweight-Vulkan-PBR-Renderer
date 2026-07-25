@@ -1,8 +1,8 @@
 #include "camera.hpp"
+#include "generic/scene.hpp"
+#include "vulkandevice.hpp"
 #include "context.hpp"
-#include "generic/texture.hpp"
-#include "generic/model.hpp"
-#include "material.hpp"
+#include "asset_manager.hpp"
 #include "renderer.hpp"
 #include <memory>
 
@@ -32,30 +32,30 @@ class CEngine final {
     private:
 
         GLFWwindow*                              window  = nullptr;
-        Camera                                   camera;
-        vk::raii::Instance                       instance             = nullptr;
-        vk::raii::PhysicalDevice                 physicalDevice       = nullptr;
-        vk::raii::Device                         device               = nullptr;
+        Camera                                   camera{};
+        VulkanDevice                             vulkanDevice_{};
         vk::raii::Context                        ct;
         std::unique_ptr<Context>                 context              = nullptr;
-
-        vk::raii::Queue                          graphicsQueue        = nullptr;
-        vk::raii::Queue                          transferQueue        = nullptr;
-        uint32_t                                 graphicsQueueIndex   = ~0;
-        uint32_t                                 transferQueueIndex   = ~0;
 
         std::unique_ptr<CommandPool>             graphicsCommandPool  = nullptr;
         std::unique_ptr<CommandPool>             transientCommandPool = nullptr;
 
+        AssetManager                             assetManage {};
+        std::unique_ptr<Sampler>                 albedoSampler        = nullptr;
+        std::unique_ptr<Sampler>                 normalSampler        = nullptr;
 
-        vk::SampleCountFlagBits                  msaaSamples          = vk::SampleCountFlagBits::e1;
-
-        std::unique_ptr<Texture>                 albedoTexture        = nullptr;
-        std::unique_ptr<Texture>                 NormalTexture        = nullptr;
-
-        std::unique_ptr<obj_Model>               mainModel            = nullptr;
-        std::unique_ptr<Material>                mainMaterial         = nullptr;
+        std::shared_ptr<Material>                MarsMaterial         = nullptr;
+        std::shared_ptr<Material>                rockMaterial         = nullptr;
         std::vector<InstanceData>                instanceDatas;
+
+        // Pre-created 1×1 fallback textures – safe to use when a real texture is unavailable.
+        std::shared_ptr<Texture>                 defaultAlbedoTexture_  = nullptr;
+        std::shared_ptr<Texture>                 defaultNormalTexture_  = nullptr;
+
+        Scene                                    scene_{};
+
+        std::unique_ptr<DescriptorSetLayout>     descriptorSetLayout  = nullptr;
+        std::unique_ptr<DescriptorPool>          descriptorPool       = nullptr;
 
         std::unique_ptr<Renderer>                renderer             = nullptr;
         
@@ -70,16 +70,13 @@ class CEngine final {
         static void cursorPosCallBack(GLFWwindow* window, double xPos, double yPos);
         static void glfwFramebufferResizeCallback(GLFWwindow* window, int width, int height);
 
-        void createInstance();
-        void pickPhysicalDevice();
-        void createLogicalDevice();
-        bool isDeviceSuitable(vk::raii::PhysicalDevice const &physicalDevice);
-        void setSampleCount();
-        std::vector<const char*> GetRequiredExtension();
-
-        void createSurface();
         void createCommandPools();
-        void createTextures();
-        void loadModel();
+        void initAssetManager();
+        void loadTextures();
+        void createSamplers();
+        void createMaterials();
+        void createDescriptorSetLayout();
+        void createDescriptorSetPool();
+        void initScene();
         void initRenderer();
 };

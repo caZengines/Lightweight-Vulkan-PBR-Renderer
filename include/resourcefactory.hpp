@@ -32,8 +32,6 @@ class ResourceFactory{
         [[nodiscard("Factory: Ignoring return value of nodiscard function: Buffer")]]
         std::pair<vk::raii::Buffer, vk::raii::DeviceMemory> createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, vk::SharingMode mode = vk::SharingMode::eExclusive, const std::vector<uint32_t>& queueFamilyIndices = {}) const;
 
-        vk::raii::Sampler createSampler(vk::SamplerCreateInfo samplerInfo_) const;
-
         void copyBufferToImage(vk::raii::CommandBuffer &commandBuffer, const vk::raii::Buffer &buffer, vk::raii::Image &image, uint32_t width, uint32_t height) const;
 
         void transitionImageLayout(vk::raii::CommandBuffer &commandBuffer, const vk::raii::Image &image, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mipLevels_) const;

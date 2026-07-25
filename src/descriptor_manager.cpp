@@ -1,4 +1,5 @@
 #include "descriptor_manager.hpp"
+#include "render_context.hpp"
 #include "vulkan/vulkan.hpp"
 #include <map>
 #include <utility>
@@ -37,7 +38,9 @@ void DescriptorSetLayout::autoCreateDSL( const std::vector<uint8_t>& spvCode_){
             stageMap[key] |= static_cast<vk::ShaderStageFlags>(epStage);
         }
     }
-    std::map<vk::DescriptorType, int> DescriptorTypes; //used for determining PoolSize
+    // Track descriptor counts per set (set index → descriptor type → count)
+    std::map<uint32_t, std::map<vk::DescriptorType, uint32_t>> perSetDescCounts;
+
     for(auto* set : sets){
         std::vector<vk::DescriptorSetLayoutBinding> layoutBindings;
         vk::DescriptorSetLayoutCreateInfo layoutInfo{};
@@ -61,19 +64,45 @@ void DescriptorSetLayout::autoCreateDSL( const std::vector<uint8_t>& spvCode_){
                                 .setEntryPoint(b->name ? b->name : "")
                                 .setBlockSize(b->descriptor_type == SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER ? b->block.size : 0)
             );
-            DescriptorTypes[static_cast<vk::DescriptorType>(b->descriptor_type)] += MAX_FRAMES_IN_FLIGHT;
+
+            // Accumulate per-set descriptor type count (unmultiplied)
+            perSetDescCounts[b->set][static_cast<vk::DescriptorType>(b->descriptor_type)] += b->count;
         }
         layoutInfo.setBindings(layoutBindings);
 
-        descriptorSetLayouts.emplace_back(std::move(vk::raii::DescriptorSetLayout(rct_.device, layoutInfo)));
+        descriptorSetLayouts_.emplace_back(std::move(vk::raii::DescriptorSetLayout(rct_.device, layoutInfo)));
     }
-    for(const auto& dsl : descriptorSetLayouts){
-        layouthandles.emplace_back(*dsl);
+    for(const auto& dsl : descriptorSetLayouts_){
+        layoutHandles_.emplace_back(*dsl);
     }
-    for(const auto& dt : DescriptorTypes){
-        poolSizes.emplace_back(vk::DescriptorPoolSize().setType(dt.first).setDescriptorCount(dt.second));
-        poolMaxSets += dt.second;
+
+    // Compute pool sizes with per-set multipliers.
+    // Set 0: per-frame → × MAX_FRAMES_IN_FLIGHT
+    // Set 1+: per-object → × kDefaultObjectMultiplier (upper bound for materials)
+    std::map<vk::DescriptorType, uint32_t> totalDescriptors;
+    poolMaxSets = 0;
+
+    for(const auto& [setIdx, descCounts] : perSetDescCounts){
+        uint32_t multiplier = (setIdx == 0) ? MAX_FRAMES_IN_FLIGHT : DescriptorSetLayout::kDefaultObjectMultiplier;
+        poolMaxSets += multiplier;
+        for(const auto& [type, count] : descCounts){
+            totalDescriptors[type] += count * multiplier;
+        }
     }
+
+    poolSizes_.clear();
+    for(const auto& [type, count] : totalDescriptors){
+        poolSizes_.emplace_back(vk::DescriptorPoolSize().setType(type).setDescriptorCount(count));
+    }
+}
+
+int DescriptorSetLayout::computePoolMaxSets(uint32_t objectCount) const {
+    // Set 0 is per-frame, Set 1+ are per-object
+    int total = MAX_FRAMES_IN_FLIGHT;  // Set 0
+    for (int i = 1; i < setCount; ++i) {
+        total += static_cast<int>(objectCount);
+    }
+    return total;
 }
 
 DescriptorPool::DescriptorPool(RenderContext& rct, int maxSets, const std::vector<vk::DescriptorPoolSize>& poolSizes_) : rct_(rct){
@@ -84,12 +113,26 @@ DescriptorPool::DescriptorPool(RenderContext& rct, int maxSets, const std::vecto
     descriptorPool = vk::raii::DescriptorPool(rct_.device, poolInfo);
 }
 
-DescriptorSet::DescriptorSet(RenderContext& rct, vk::DescriptorSetAllocateInfo allocInfo_) : rct_(rct){
-    descriptorSets.clear();
-    descriptorSets = vk::raii::DescriptorSets(rct_.device, allocInfo_);
+DescriptorSet::DescriptorSet(RenderContext& rct, const vk::DescriptorSetAllocateInfo& allocInfo_) : rct_(rct){
+    descriptorSets_.clear();
+    descriptorSets_ = vk::raii::DescriptorSets(rct_.device, allocInfo_);
 
-    handles.clear();
-    for(auto& ds : descriptorSets){
-        handles.emplace_back(*ds);
+    handles_.clear();
+    for(auto& ds : descriptorSets_){
+        handles_.emplace_back(*ds);
+    }
+}
+
+PerFrameDescriptorSet::PerFrameDescriptorSet(RenderContext& rct, const vk::DescriptorPool& pool, const vk::DescriptorSetLayout& layoutHandle) {
+    sets_.clear();
+    std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, layoutHandle);
+    vk::DescriptorSetAllocateInfo alloc{};
+    alloc.setDescriptorPool(pool)
+         .setDescriptorSetCount(MAX_FRAMES_IN_FLIGHT)
+         .setSetLayouts(layouts);
+    sets_ = vk::raii::DescriptorSets(rct.device, alloc);
+    handles_.clear();
+    for(auto& set : sets_){
+        handles_.emplace_back(*set);
     }
 }

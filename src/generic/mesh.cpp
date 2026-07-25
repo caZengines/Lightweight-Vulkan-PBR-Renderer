@@ -1,10 +1,10 @@
-#include "generic/model.hpp"
+#include "generic/mesh.hpp"
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "extern/tiny_obj_loader.h"
 #include "generic/vertex.hpp"
 #include "vulkan/vulkan.hpp"
 
-obj_Model::obj_Model(const std::string modelPath, CommandPool& commandPool){
+Mesh::Mesh(const std::string modelPath, CommandPool& commandPool){
     tinyobj::attrib_t                attrib;
     std::vector<tinyobj::shape_t>    shapes;
     std::vector<tinyobj::material_t> materials;
