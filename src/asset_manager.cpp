@@ -14,7 +14,7 @@ void AssetManager::loadTexture(const std::string& path,
     textureCache_.insert({path, std::move(texture_)});
 }
 
-void AssetManager::loadMesh(const std::string& path, CommandPool& cmdPool){
+void AssetManager::loadMesh(const std::string& path, CommandPool& cmdPool) {
     std::shared_ptr<Mesh> mesh_ = std::make_shared<Mesh>(path, cmdPool);
     std::cout <<"Number of " <<path <<" vertices: " <<mesh_->getVertices().size() <<"\n";
     meshCache_.insert({path, std::move(mesh_)});

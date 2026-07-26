@@ -69,6 +69,7 @@ class CEngine final {
         static void mouseButtonCallBack(GLFWwindow* window, int button, int action, int /*mods*/);
         static void cursorPosCallBack(GLFWwindow* window, double xPos, double yPos);
         static void glfwFramebufferResizeCallback(GLFWwindow* window, int width, int height);
+        static void scrollCallBack(GLFWwindow* window, double xOffset, double yOffset);
 
         void createCommandPools();
         void initAssetManager();

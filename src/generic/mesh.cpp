@@ -4,7 +4,7 @@
 #include "generic/vertex.hpp"
 #include "vulkan/vulkan.hpp"
 
-Mesh::Mesh(const std::string modelPath, CommandPool& commandPool){
+Mesh::Mesh(const std::string modelPath, CommandPool& commandPool) {
     tinyobj::attrib_t                attrib;
     std::vector<tinyobj::shape_t>    shapes;
     std::vector<tinyobj::material_t> materials;

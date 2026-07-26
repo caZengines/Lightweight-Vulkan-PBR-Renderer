@@ -10,7 +10,7 @@ Context::Context(const Config& cfg, vk::raii::PhysicalDevice& physicalDevice, vk
     createSurface();
 }
 
-void Context::setupDebugMessenger(){
+void Context::setupDebugMessenger() {
     if(!cfg_.enableValidationLayers_) return;
 
     vk::DebugUtilsMessengerCreateInfoEXT createInfo{};
@@ -36,7 +36,7 @@ VKAPI_ATTR vk::Bool32 VKAPI_CALL Context::debugCallback(
     return VK_FALSE;
 }
 
-void Context::createSurface(){
+void Context::createSurface() {
     VkSurfaceKHR surface_;
     if (glfwCreateWindowSurface(*instance_, cfg_.window_, nullptr, &surface_) != 0)
     {

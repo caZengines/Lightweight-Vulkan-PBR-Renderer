@@ -1,11 +1,11 @@
 #include "renderer.hpp"
-#include "command_manager.hpp"
-#include "descriptor_manager.hpp"
 #include "render_context.hpp"
-#include "swapchain.hpp"
 #include "resourcefactory.hpp"
 #include "vulkan/vulkan.hpp"
+#include <GLFW/glfw3.h>
 #include <cstddef>
+#include <chrono>
+#include <iostream>
 #include <memory>
 
 #define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
@@ -29,12 +29,12 @@ Renderer::Renderer(RenderContext& rct,
     createSyncObjects();
 }
 
-void Renderer::createGraphicsPipeline(){
+void Renderer::createGraphicsPipeline() {
     vk::Format                     format = swapchainInfo->getSurfaceFormat().format;
     graphicsPipeline = std::make_unique<Pipeline>(rct_, descriptorSetLayouts_, format);
 }
 
-void Renderer::createUniformBuffers(){
+void Renderer::createUniformBuffers() {
     auto& factory = ResourceFactory::get();
 
     for(size_t i = 0 ; i < MAX_FRAMES_IN_FLIGHT; ++i){
@@ -51,7 +51,7 @@ void Renderer::createUniformBuffers(){
     }
 }
 
-void Renderer::createCommandBuffers(CommandPool& commandPool){
+void Renderer::createCommandBuffers(CommandPool& commandPool) {
     vk::CommandBufferAllocateInfo allocInfo;
      allocInfo.setCommandPool(*commandPool.setCommandPool())
               .setLevel(vk::CommandBufferLevel::ePrimary)
@@ -60,7 +60,7 @@ void Renderer::createCommandBuffers(CommandPool& commandPool){
     graphicsCommandBuffers = vk::raii::CommandBuffers(rct_.device, allocInfo);
 }
 
-void Renderer::createSyncObjects(){
+void Renderer::createSyncObjects() {
     vk::StructureChain<vk::SemaphoreCreateInfo, vk::SemaphoreTypeCreateInfo> SemaphoreType;
     SemaphoreType.get<vk::SemaphoreTypeCreateInfo>().setSemaphoreType(vk::SemaphoreType::eTimeline)
                                                     .setInitialValue(0);
@@ -74,7 +74,7 @@ void Renderer::createSyncObjects(){
     }
 }
 
-void Renderer::destroySyncObjects(){
+void Renderer::destroySyncObjects() {
     rct_.device.waitIdle();
     frameCount = 0;
     presentCompleteSemaphores.clear();
@@ -103,7 +103,7 @@ void Renderer::cleanup(){
     cleaned_ = true;
 }
 
-void Renderer::drawFrame(const std::vector<DrawBatch>& batches){
+void Renderer::drawFrame(const std::vector<DrawBatch>& batches) {
     auto fenceResult = rct_.device.waitForFences(*inFlightFences[frameIndex], vk::True, UINT64_MAX);
     if(fenceResult != vk::Result::eSuccess){
         throw std::runtime_error("failed to wait for fence!");
@@ -148,9 +148,15 @@ void Renderer::drawFrame(const std::vector<DrawBatch>& batches){
           .setPNext(&timelineSubmitInfo);
       return info;
     }();
-
     graphicsCommandPool.queue().submit(submitInfo, *inFlightFences[frameIndex]);
 
+    if(frameCount % 600 == 0){
+        glm::vec3 pos = camera_.position();
+        std::cout << "\rcamera position: (" 
+        << std::fixed << std::setprecision(2) 
+        << pos.x << ", " << pos.y << ", " << pos.z << ")    ";
+        std::cout.flush();
+    }
     const vk::PresentInfoKHR presentInfoKHR = [this, &imageIndex]() {
         vk::PresentInfoKHR info;
         info.setWaitSemaphores(*presentWaitSemaphores[imageIndex])
@@ -169,7 +175,7 @@ void Renderer::drawFrame(const std::vector<DrawBatch>& batches){
     frameIndex = (frameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-void Renderer::recordCommandBuffer(uint32_t ImageIndex, const std::vector<DrawBatch>& batches){
+void Renderer::recordCommandBuffer(uint32_t ImageIndex, const std::vector<DrawBatch>& batches) {
     graphicsCommandBuffers[frameIndex].begin({});
 
     // Before starting rendering, transition the swapchain image to vk::ImageLayout::eColorAttachmentOptimal
@@ -278,25 +284,50 @@ void Renderer::recordCommandBuffer(uint32_t ImageIndex, const std::vector<DrawBa
     graphicsCommandBuffers[frameIndex].end();
 }
 
-void Renderer::updateUniformBuffer(uint32_t currentImage){
+void Renderer::updateUniformBuffer(uint32_t currentImage) {
+    updateCamera();
     glm::vec3 eyePos = camera_.position();
 
-
     UniformBufferObject ubo{};
-    ubo.view = lookAt(eyePos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    ubo.view = camera_.viewMatrix();
     ubo.proj =
                  glm::perspective(glm::radians(45.0f), static_cast<float>(swapchainInfo->getExtent().width) /static_cast<float>(swapchainInfo->getExtent().height) , 0.1f, 100.0f);
     ubo.proj[1][1] *= -1;
 
     ubo.camPos = glm::vec4(eyePos, 1);
-    ubo.light.pos = glm::vec4(50.0f, 40.0f, -25.0f, 1);
+    ubo.light.pos = glm::vec4(-35.0f, 12.0f, 28.0f, 1);
     ubo.light.color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
     ubo.light.intensity = 1.0f;
 
     memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 }
+void Renderer::updateCamera() {
+    static auto  startTime = std::chrono::high_resolution_clock::now();
+    const  auto  currentTime = std::chrono::high_resolution_clock::now();
+    const  float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+    startTime = currentTime;
 
-void Renderer::updateDescriptorSet(uint32_t currentImage){
+    if(glfwGetKey(window_, GLFW_KEY_W)){
+        camera_.moveHorizontal(1.0f, 0.0f, time);
+    }
+    if(glfwGetKey(window_, GLFW_KEY_A)){
+        camera_.moveHorizontal(0.0f, -1.0f, time);
+    }
+    if(glfwGetKey(window_, GLFW_KEY_S)){
+        camera_.moveHorizontal(-1.0f, 0.0f, time);
+    }
+    if(glfwGetKey(window_, GLFW_KEY_D)){
+        camera_.moveHorizontal(0.0f, 1.0f, time);
+    }
+    if(glfwGetKey(window_, GLFW_KEY_SPACE)){
+        camera_.moveVertical(1.0f, time);
+    }
+    if(glfwGetKey(window_, GLFW_KEY_LEFT_SHIFT)){
+        camera_.moveVertical(-1.0f, time);
+    }
+}
+
+void Renderer::updateDescriptorSet(uint32_t currentImage) {
     vk::DescriptorBufferInfo bufferInfo{};
     bufferInfo.setBuffer(uniformBuffers[currentImage])
               .setOffset(0)

@@ -18,3 +18,11 @@ std::vector<DrawBatch> Scene::buildDrawBatches() const {
 
     return batches;
 }
+
+const std::vector<DrawBatch> Scene::getDrawBatches() {
+    if (batchesDirty_) {
+        cachedBatches_ = buildDrawBatches();
+        batchesDirty_ = false;
+    }
+    return cachedBatches_;
+}

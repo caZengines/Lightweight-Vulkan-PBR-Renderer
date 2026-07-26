@@ -92,6 +92,7 @@ class Renderer final {
         void destroySyncObjects();
 
         void updateUniformBuffer(uint32_t);
+        void updateCamera();
         void updateDescriptorSet(uint32_t);
         void recordCommandBuffer(uint32_t ImageIndex, const std::vector<DrawBatch>& batches);
         void transition_image_layout(

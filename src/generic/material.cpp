@@ -14,7 +14,7 @@ Material::Material(const std::shared_ptr<const Texture>& albedo, const std::shar
     normalSamplerInfo_.setSampler(norSamplerHandle_);
 }
 
-void Material::createDescriptorSet(RenderContext& rct, const vk::DescriptorSetAllocateInfo allocInfo_){
+void Material::createDescriptorSet(RenderContext& rct, const vk::DescriptorSetAllocateInfo allocInfo_) {
     if(descriptorSetCreated_){
         return;
     }

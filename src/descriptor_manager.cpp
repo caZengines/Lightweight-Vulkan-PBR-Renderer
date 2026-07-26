@@ -12,7 +12,7 @@ DescriptorSetLayout::DescriptorSetLayout(RenderContext& rct, const std::vector<u
     autoCreateDSL(spvCode);
 }
 
-void DescriptorSetLayout::autoCreateDSL( const std::vector<uint8_t>& spvCode_){
+void DescriptorSetLayout::autoCreateDSL( const std::vector<uint8_t>& spvCode_) {
     // Generate reflection data for a shader
     spv_reflect:: ShaderModule module(spvCode_);
 
@@ -113,7 +113,7 @@ DescriptorPool::DescriptorPool(RenderContext& rct, int maxSets, const std::vecto
     descriptorPool = vk::raii::DescriptorPool(rct_.device, poolInfo);
 }
 
-DescriptorSet::DescriptorSet(RenderContext& rct, const vk::DescriptorSetAllocateInfo& allocInfo_) : rct_(rct){
+DescriptorSet::DescriptorSet(RenderContext& rct, const vk::DescriptorSetAllocateInfo& allocInfo_) : rct_(rct) {
     descriptorSets_.clear();
     descriptorSets_ = vk::raii::DescriptorSets(rct_.device, allocInfo_);
 

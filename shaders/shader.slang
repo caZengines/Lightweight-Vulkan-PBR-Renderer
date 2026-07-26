@@ -79,6 +79,10 @@ VertexOutput vertMain(VertexInput Input, InstanceData instance) {
 [[vk::binding(2, 1)]] SamplerState gtexSampler;
 [[vk::binding(3, 1)]] SamplerState gNorSampler;
 
+static float constant = 1.0;    // 常数项，防止分母过小
+static float linear = 0.09;     // 线性衰减系数
+static float quadratic = 0.032; // 平方衰减系数
+
 [shader("fragment")]
 float4 fragMain(VertexOutput inVert) : SV_Target {
     //Sample texture
@@ -101,11 +105,11 @@ float4 fragMain(VertexOutput inVert) : SV_Target {
 
     // dot light
     float dist = length(ubo.light.position.xyz - inVert.worldPos);
-    float atten = 0.8;
+    float atten = 1.0 / (constant + linear * dist + quadratic * (dist * dist));
     float3 radiance = ubo.light.color.rgb * ubo.light.intensity * atten;
 
     // Ambient
-    float3 ambient = albedo.rgb * 0.1;
+    float3 ambient = albedo.rgb * 0.07;
 
     // Diffuse(lambert)
     float diff = max(dot(N, L), 0.0);

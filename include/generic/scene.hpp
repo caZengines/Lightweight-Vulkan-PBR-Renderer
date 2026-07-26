@@ -13,16 +13,20 @@ struct DrawBatch {
 class Scene {
 public:
     //em, just as its name implies
-    void addObject(std::shared_ptr<RenderObject> object) { objects_.emplace_back(object); }
+    void addObject(std::shared_ptr<RenderObject> object) { objects_.emplace_back(object); batchesDirty_ = true; }
     //just as its name implies also
     //void removeObject(size_t index);
 
-    // Build sorted drawing batches
-    // Merge instances of the same (Material, Mesh) into one DrawBatch
-    std::vector<DrawBatch> buildDrawBatches() const;
+    const std::vector<DrawBatch> getDrawBatches();
 
     const auto& getObjects() const { return objects_; }
 
 private:
-    std::vector<std::shared_ptr<RenderObject>> objects_;
+    std::vector<std::shared_ptr<RenderObject>>  objects_{};
+    std::vector<DrawBatch>                      cachedBatches_{}; 
+    bool                                        batchesDirty_ = true;
+
+    // Build sorted drawing batches
+    // Merge instances of the same (Material, Mesh) into one DrawBatch
+    std::vector<DrawBatch> buildDrawBatches() const;
 };

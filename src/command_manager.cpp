@@ -11,7 +11,7 @@ CommandPool::CommandPool(vk::raii::Device& device, const uint32_t& queueIndex, v
     commandPool = vk::raii::CommandPool(device, poolInfo);
 }
 
-vk::raii::CommandBuffer CommandPool::beginSingleTimeCommands(){
+vk::raii::CommandBuffer CommandPool::beginSingleTimeCommands() {
     assert(device_);
     vk::CommandBufferAllocateInfo allocInfo;
     allocInfo.setCommandPool(commandPool).setLevel(vk::CommandBufferLevel::ePrimary).setCommandBufferCount(1);
@@ -22,7 +22,7 @@ vk::raii::CommandBuffer CommandPool::beginSingleTimeCommands(){
 
     return commandBuffer;
 }
-void CommandPool::endSingleTimeCommands(vk::raii::CommandBuffer &&commandBuffer){
+void CommandPool::endSingleTimeCommands(vk::raii::CommandBuffer &&commandBuffer) {
     assert(device_);
     commandBuffer.end();
     //wait for submit

@@ -26,6 +26,7 @@ void CEngine::initWindow() {
     glfwSetFramebufferSizeCallback(window, glfwFramebufferResizeCallback);
     glfwSetMouseButtonCallback(window, mouseButtonCallBack);
     glfwSetCursorPosCallback(window, cursorPosCallBack);
+    glfwSetScrollCallback(window, scrollCallBack);
 }
 void CEngine::glfwFramebufferResizeCallback(GLFWwindow* window, int width, int height) {
     auto app                = static_cast<CEngine*>(glfwGetWindowUserPointer(window));
@@ -57,9 +58,9 @@ void CEngine::initVulkan() {
 }
 
 void CEngine::run() {
+    const auto& batches = scene_.getDrawBatches();
     while(!glfwWindowShouldClose(window)) {
         glfwPollEvents();
-        auto batches = scene_.buildDrawBatches();
         renderer->drawFrame(batches);
     }
     vulkanDevice_.device.waitIdle();
@@ -194,8 +195,8 @@ void CEngine::initScene() {
         float angle = (360.0f / amount) * i + phaseDist(gen);
         float r = radius + radialDist(gen);      
         float x = sin(glm::radians(angle)) * r;
-        float y = cos(glm::radians(angle)) * r;
-        float z = heightDist(gen);   
+        float z = cos(glm::radians(angle)) * r;
+        float y = heightDist(gen);   
         model_ = glm::translate(model_, glm::vec3(x, y, z));
 
         glm::vec3 axis = glm::normalize(glm::vec3(
