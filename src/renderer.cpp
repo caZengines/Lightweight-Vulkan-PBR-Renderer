@@ -248,7 +248,7 @@ void Renderer::recordCommandBuffer(uint32_t ImageIndex, const std::vector<DrawBa
         // Draw each batch (mesh + material + instances)
         for(const auto& batch : batches){
             if(batch.instanceCount == 0) continue;
-            // Bind Set 1: per-material textures + samplers
+            // Bind Set 1: per-material
             graphicsCommandBuffers[frameIndex].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *graphicsPipeline->getLayout(), 1, batch.material->getDescriptorSet(), nullptr);
             // Push constants: per-material render flags (bitmask)
             uint32_t flags = to_uint32(batch.material->getFlags());

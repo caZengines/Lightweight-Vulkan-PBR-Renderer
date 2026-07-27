@@ -15,8 +15,8 @@ class Mesh{
         const std::vector<Vertex>& getVertices() const { return vertices; }
         const std::vector<uint32_t>& getIndices() const { return indices; }
 
-        const vk::raii::Buffer& getVertexBuffer() const { return vertexBuffer->getBuffer(); }
-        const vk::raii::Buffer& getIndexBuffer()  const { return indicesBuffer->getBuffer(); }
+        const vk::Buffer& getVertexBuffer() const { return *vertexBuffer->getBuffer(); }
+        const vk::Buffer& getIndexBuffer()  const { return *indicesBuffer->getBuffer(); }
 
     private:
         std::unordered_map<Vertex, uint32_t>     uniqueVertices{};
