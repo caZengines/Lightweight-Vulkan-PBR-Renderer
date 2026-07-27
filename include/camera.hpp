@@ -10,9 +10,9 @@
 
 class Camera {
 public:
-    Camera(float azimuth  = glm::radians(45.0f),
-           float polar    = glm::radians(45.0f),
-           double = 32.0f);
+    Camera(float azimuth   = glm::radians(45.0f),
+           float polar     = glm::radians(45.0f),
+           double distance = 32.0f);
 
     void onMouseButton(int button, int action, double cursorX, double cursorY);
     void onCursorMove(double xPos, double yPos);
@@ -43,6 +43,9 @@ private:
     float azimuth;
     float polar;
     double distance;
+
+    static constexpr double kMinDistance = 0.01f;
+    static constexpr double kMaxDistance = 100.0f;
 
     glm::vec3 target_{0.0f, 0.0f, 0.0f};
 

@@ -175,7 +175,7 @@ void CEngine::initScene() {
     scene_.addObject(std::move(mars));
 
     std::shared_ptr<RenderObject> rock = std::make_shared<RenderObject>(assetManage.getMesh(ROCK_PATH), rockMaterial);
-    unsigned int amount = 2000;
+    unsigned int amount = 1000;
     float radius = 40.0;
     float offset = 2.5f;
     std::vector<InstanceData> rocks(amount);

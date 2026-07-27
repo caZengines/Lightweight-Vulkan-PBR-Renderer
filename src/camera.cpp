@@ -69,13 +69,8 @@ void Camera::clampPolar() {
 }
 
 void Camera::Zoom(double yOff) {
-    double delta_dist = distance - yOff * 0.5f;
-    if(std::abs(delta_dist) < 0.01f) {
-        distance = 0.01f;
-    }
-    else {
-        distance = delta_dist;
-    }
+    distance -= yOff * 0.5f;
+    distance = std::clamp(distance, kMinDistance, kMaxDistance);
 }
 
 
