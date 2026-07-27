@@ -250,6 +250,12 @@ void Renderer::recordCommandBuffer(uint32_t ImageIndex, const std::vector<DrawBa
             if(batch.instanceCount == 0) continue;
             // Bind Set 1: per-material textures + samplers
             graphicsCommandBuffers[frameIndex].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *graphicsPipeline->getLayout(), 1, batch.material->getDescriptorSet(), nullptr);
+            // Push constants: per-material render flags (bitmask)
+            uint32_t flags = to_uint32(batch.material->getFlags());
+            graphicsCommandBuffers[frameIndex].pushConstants<uint32_t>(
+                *graphicsPipeline->getLayout(),
+                vk::ShaderStageFlagBits::eFragment,
+                0, flags);
             // Bind vertex + instance buffers
             const std::array<vk::Buffer, 2> vertexBuffers {
                 batch.mesh->getVertexBuffer(),
@@ -295,9 +301,9 @@ void Renderer::updateUniformBuffer(uint32_t currentImage) {
     ubo.proj[1][1] *= -1;
 
     ubo.camPos = glm::vec4(eyePos, 1);
-    ubo.light.pos = glm::vec4(-35.0f, 12.0f, 28.0f, 1);
+    ubo.light.pos = glm::vec4(28.0f, 21.0f, -7.0f, 1);
     ubo.light.color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-    ubo.light.intensity = 1.0f;
+    ubo.light.intensity = 10.0f;
 
     memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 }

@@ -12,6 +12,10 @@ Material::Material(const std::shared_ptr<const Texture>& albedo, const std::shar
 
     albedoSamplerInfo_.setSampler(texSamplerHandle_);
     normalSamplerInfo_.setSampler(norSamplerHandle_);
+
+    // Build push-constant flags: textures and samplers are always bound
+    // Use setFlags() to override per-material at runtime.
+    flags_ = RenderFlags::FLAG_ALBEDO_TEXTURE | RenderFlags::FLAG_NORMAL_TEXTURE;
 }
 
 void Material::createDescriptorSet(RenderContext& rct, const vk::DescriptorSetAllocateInfo allocInfo_) {

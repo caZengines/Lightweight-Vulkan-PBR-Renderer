@@ -168,10 +168,8 @@ void CEngine::initScene() {
     marsmodel = glm::translate(marsmodel, glm::vec3(0.0f, -3.0f, 0.0f));
     marsmodel = glm::scale(marsmodel, glm::vec3(2.0f, 2.0f, 2.0f));
     instances[0].model = marsmodel;
-    instances[0].enableNormal = 0;
-    instances[0].materialId = 0;
     mars->setInstances(instances, *transientCommandPool);
-    mars->initMaterialDescriptor(RCT, descriptorSetLayout->getDescriptorSetLayouts()[1], *descriptorPool);
+    mars->initMaterialDescriptor(RCT, descriptorSetLayout->getLayoutHandles()[1], *descriptorPool);
     scene_.addObject(std::move(mars));
 
     std::shared_ptr<RenderObject> rock = std::make_shared<RenderObject>(assetManage.getMesh(ROCK_PATH), rockMaterial);
@@ -210,10 +208,8 @@ void CEngine::initScene() {
         model_ = glm::scale(model_, glm::vec3(s));
 
         rocks[i].model = model_;
-        rocks[i].enableNormal = 0;
-        rocks[i].materialId = 1;
     }
     rock->setInstances(rocks, *transientCommandPool);
-    rock->initMaterialDescriptor(RCT, descriptorSetLayout->getDescriptorSetLayouts()[1], *descriptorPool);
+    rock->initMaterialDescriptor(RCT, descriptorSetLayout->getLayoutHandles()[1], *descriptorPool);
     scene_.addObject(std::move(rock));
 }

@@ -4,6 +4,7 @@
 
  such as:
 >
+> - [x] Push Constant
 > - [x] Instanced Rendering
 > - [x] Separate Image and Sampler
 > - [ ] Dynamic Uniform Buffer

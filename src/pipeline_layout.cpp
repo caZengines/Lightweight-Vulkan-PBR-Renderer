@@ -13,6 +13,7 @@ Pipeline::Pipeline(RenderContext& rct,const std::vector<vk::DescriptorSetLayout>
 }
 
 void Pipeline::createGraphicsPipeline(const std::vector<vk::DescriptorSetLayout>& dsls, vk::Format colorFormat) {
+    const auto properties = rct_.physicalDevice.getProperties();
     // shader modules
     auto code = readFile("../shaders/slang.spv");
     vk::raii::ShaderModule shaderModule = createShaderModule(code);
@@ -78,7 +79,7 @@ void Pipeline::createGraphicsPipeline(const std::vector<vk::DescriptorSetLayout>
                 .setStencilTestEnable(vk::False);
 
     // color blending
-    vk::PipelineColorBlendAttachmentState blendAttachment;
+    vk::PipelineColorBlendAttachmentState blendAttachment{};
     blendAttachment.setBlendEnable(vk::True)
                    .setSrcColorBlendFactor(vk::BlendFactor::eSrcAlpha)
                    .setDstColorBlendFactor(vk::BlendFactor::eOneMinusSrcAlpha)
@@ -95,15 +96,20 @@ void Pipeline::createGraphicsPipeline(const std::vector<vk::DescriptorSetLayout>
                  .setLogicOp(vk::LogicOp::eCopy)
                  .setAttachmentCount(1)
                  .setPAttachments(&blendAttachment);
+    //push constant — 4-byte bitmask for render flags
+    vk::PushConstantRange pushConstantRange{};
+    pushConstantRange.setStageFlags(vk::ShaderStageFlagBits::eFragment)
+                     .setOffset(0)
+                     .setSize(sizeof(uint32_t));  // just one uint32_t bitmask
 
     // pipeline layout
     vk::PipelineLayoutCreateInfo layoutInfo{};
-    layoutInfo.setSetLayouts(dsls).setPushConstantRangeCount(0);
+    layoutInfo.setSetLayouts(dsls).setPushConstantRanges(pushConstantRange);
     pipelineLayout = vk::raii::PipelineLayout(rct_.device, layoutInfo);
 
     // dynamic rendering
     vk::StructureChain<vk::GraphicsPipelineCreateInfo,
-                        vk::PipelineRenderingCreateInfo> pipelineCreateInfoChain;
+                        vk::PipelineRenderingCreateInfo> pipelineCreateInfoChain{};
     pipelineCreateInfoChain.get<vk::GraphicsPipelineCreateInfo>()
          .setStages(stages)
          .setPVertexInputState(&vertexInput)
