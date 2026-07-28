@@ -1,5 +1,4 @@
 #include "generic/renderobject.hpp"
-#include "vulkan/vulkan.hpp"
 
 RenderObject::RenderObject(std::shared_ptr<const Mesh> mesh, std::shared_ptr<Material> material)
     : mesh_(mesh), material_(material) {}

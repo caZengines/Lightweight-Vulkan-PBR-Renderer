@@ -1,6 +1,5 @@
 #include "generic/texture.hpp" 
 #include "resourcefactory.hpp"
-#include "vulkan/vulkan.hpp"
 #include <cmath>
 
 #define STB_IMAGE_IMPLEMENTATION

@@ -2,7 +2,6 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "extern/tiny_obj_loader.h"
 #include "generic/vertex.hpp"
-#include "vulkan/vulkan.hpp"
 
 Mesh::Mesh(const std::string modelPath, CommandPool& commandPool) {
     tinyobj::attrib_t                attrib;

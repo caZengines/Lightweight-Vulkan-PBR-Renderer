@@ -1,5 +1,4 @@
 #include "generic/material.hpp"
-#include "vulkan/vulkan.hpp"
 
 Material::Material(const std::shared_ptr<const Texture>& albedo, const std::shared_ptr<const Texture>& normal, const Sampler& texSampler, const Sampler& norSampler)
     : albedoTexture_(albedo), normalTexture_(normal), texSamplerHandle_(texSampler.getSampler()), norSamplerHandle_(norSampler.getSampler())

@@ -1,5 +1,4 @@
 #include "generic/vertex.hpp"
-#include "vulkan/vulkan.hpp"
 #include <cstddef>
 
 void Vertex::setNormal(const glm::vec3& n){
