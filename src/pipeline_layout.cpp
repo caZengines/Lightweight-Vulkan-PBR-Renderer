@@ -1,6 +1,5 @@
 #include "pipeline_layout.hpp"
 #include "generic/vertex.hpp"
-#include "vulkan/vulkan.hpp"
 
 #include <stdexcept>
 #include <fstream>

@@ -1,8 +1,6 @@
-#include "renderer.hpp"
+#include "renderer/renderer.hpp"
 #include "render_context.hpp"
 #include "resourcefactory.hpp"
-#include "vulkan/vulkan.hpp"
-#include <GLFW/glfw3.h>
 #include <cstddef>
 #include <chrono>
 #include <iostream>

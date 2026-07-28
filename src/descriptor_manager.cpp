@@ -1,6 +1,5 @@
 #include "descriptor_manager.hpp"
 #include "render_context.hpp"
-#include "vulkan/vulkan.hpp"
 #include <map>
 #include <utility>
 

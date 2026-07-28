@@ -4,8 +4,6 @@
 #include "generic/renderobject.hpp"
 #include "generic/vertex.hpp"
 #include "render_context.hpp"
-#include "vulkan/vulkan.hpp"
-#include <GLFW/glfw3.h>
 #include <cstddef>
 #include <random>
 #include <memory>

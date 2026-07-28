@@ -1,5 +1,4 @@
 #include "command_manager.hpp"
-#include "vulkan/vulkan.hpp"
 
 CommandPool::CommandPool(vk::raii::Device& device, const uint32_t& queueIndex, vk::raii::Queue&& queue, vk::CommandPoolCreateFlags createFlags)
     : device_(&device), queue_(std::move(queue))

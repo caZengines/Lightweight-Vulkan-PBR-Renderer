@@ -1,5 +1,4 @@
 #include "resourcefactory.hpp"
-#include "vulkan/vulkan.hpp"
 
 std::pair<vk::raii::Image, vk::raii::DeviceMemory> ResourceFactory::createImage(uint32_t width, uint32_t height, uint32_t _mipLevels, vk::SampleCountFlagBits numSamples, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties, vk::SharingMode mode, const std::vector<uint32_t>& queueFamilies) const {
     assert(physicalDevice && device);

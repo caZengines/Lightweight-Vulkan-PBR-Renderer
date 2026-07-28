@@ -1,5 +1,4 @@
 #include "vulkandevice.hpp"
-#include "vulkan/vulkan.hpp"
 #include <iostream>
 #include <map>
 
