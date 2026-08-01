@@ -4,14 +4,15 @@
 
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
-
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+#include "vma_allocator.hpp"
+
 
 
 class Swapchain final {
 public:
-    explicit Swapchain(RenderContext& rct, vk::raii::SurfaceKHR& surface, GLFWwindow* window);
+    explicit Swapchain(RenderContext& rct, VmaAllocator* alloc, vk::raii::SurfaceKHR& surface, GLFWwindow* window);
     void recreateSwapChain(vk::raii::SurfaceKHR& surface, GLFWwindow* window);
     void cleanupSwapChain();
 
@@ -26,8 +27,8 @@ public:
     vk::SurfaceFormatKHR getSurfaceFormat()       const { return surfaceformat; }
     vk::raii::SwapchainKHR& swapChain()          { return swapChain_; }
 
-    vk::raii::Image& getcolorImage() { return colorImage; }
-    vk::raii::Image& getDepthImage() { return depthImage; }
+    const VkImage& getcolorImage() const { return colorImage_.getHandle(); }
+    const VkImage& getDepthImage() const { return depthImage_.getHandle(); }
 
     const vk::raii::ImageView& getColorImageView() const { return colorImageView; }
     const vk::raii::ImageView& getDepthImageView() const { return depthImageView; }
@@ -37,13 +38,11 @@ private:
     vk::raii::SwapchainKHR               swapChain_       = nullptr;
     vk::SurfaceFormatKHR                 surfaceformat;
     vk::Extent2D                         extent;
+    VmaAllocator*                        allocator_       = nullptr;
 
-    vk::raii::DeviceMemory               colorImageMemory = nullptr;
-    vk::raii::Image                      colorImage       = nullptr;
+    VmaImage                             colorImage_;
     vk::raii::ImageView                  colorImageView   = nullptr;
-
-    vk::raii::DeviceMemory               depthImageMemory = nullptr;
-    vk::raii::Image                      depthImage       = nullptr;
+    VmaImage                             depthImage_;
     vk::raii::ImageView                  depthImageView   = nullptr;
 
     static vk::Extent2D         chooseExtent(vk::SurfaceCapabilitiesKHR const&, GLFWwindow*);
@@ -53,5 +52,5 @@ private:
 
     void createSwapChain(vk::raii::SurfaceKHR& surface, GLFWwindow* window);
     void createImageViews();
-    void createColorAndDepthResources(vk::SampleCountFlagBits msaaSamples);
+    void createColorAndDepthResources(VmaAllocator* alloc, vk::SampleCountFlagBits msaaSamples);
 };

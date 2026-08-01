@@ -16,7 +16,7 @@ class RenderObject {
         explicit RenderObject(std::shared_ptr<const Mesh> mesh,
                               std::shared_ptr<Material> material);
 
-        void setInstances(const std::vector<InstanceData>& instances, CommandPool& cmdPool);
+        void setInstances(VmaAllocator* alloc, const std::vector<InstanceData>& instances, CommandPool& cmdPool);
         void initMaterialDescriptor(RenderContext& rct,
                                     const vk::DescriptorSetLayout& layout,
                                     const DescriptorPool& pool);
@@ -24,7 +24,7 @@ class RenderObject {
         const Mesh& getMesh() const { return *mesh_; }
         std::shared_ptr<const Mesh> getMeshShared() const { return mesh_; }
         std::shared_ptr<Material> getMaterialShared() const { return material_; }
-        const vk::raii::Buffer& getInstanceBuffer() const { return instanceBuffer_->getBuffer(); }
+        const VkBuffer& getInstanceBuffer() const { return instanceBuffer_->getBuffer(); }
         uint32_t getInstanceCount() const { return static_cast<uint32_t>(instanceDatas_.size()); }
 
     private:

@@ -1,6 +1,6 @@
 #pragma once
 #include "command_manager.hpp"
-#include "resourcefactory.hpp"
+#include "vma_allocator.hpp"
 #include "vulkan/vulkan.hpp"
 #include <vector>
 
@@ -14,7 +14,6 @@ template<typename T> class Buffer{
         struct CreateInfo{
             vk::DeviceSize size;
             vk::BufferUsageFlags usage;
-            vk::MemoryPropertyFlags memProperties;
             vk::SharingMode sharingMode = vk::SharingMode::eExclusive;
             std::vector<uint32_t> queueFamilyIndices;
         };
@@ -22,34 +21,34 @@ template<typename T> class Buffer{
         //Ban copying
         Buffer<T>& operator=(const Buffer<T>&) = delete;
 
-        explicit Buffer(const std::vector<T>& data_,const CreateInfo& info, CommandPool& commandPool){
-            auto& factory = ResourceFactory::get();
+        explicit Buffer(VmaAllocator* alloc, const std::vector<T>& data_,const CreateInfo& info, CommandPool& commandPool){
+            vk::BufferCreateInfo stagingInfo{};
+            stagingInfo.setSize(info.size).setUsage(vk::BufferUsageFlagBits::eTransferSrc);
+            VmaAllocationCreateInfo stagingCI{};
+            stagingCI.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
+            stagingCI.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+            VmaBuffer stagingBuffer(alloc, static_cast<const VkBufferCreateInfo&>(stagingInfo), stagingCI);
 
-            auto [stagingBuffer, stagingBufferMemory] = 
-                        factory.createBuffer(info.size, 
-                                    vk::BufferUsageFlagBits::eTransferSrc, 
-                                    vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible
-            );
-            void* dataStaging = stagingBufferMemory.mapMemory(0, info.size);
+            void* dataStaging = stagingBuffer.map();
             memcpy(dataStaging, data_.data(), info.size);
-            stagingBufferMemory.unmapMemory();
+            stagingBuffer.unmap();
 
-            std::tie(buffer, bufferMemory) = 
-                        factory.createBuffer(info.size,
-                                     info.usage,
-                                     info.memProperties,
-                                     info.sharingMode,
-                                     info.queueFamilyIndices
-            );
+            vk::BufferCreateInfo bufferInfo;
+            bufferInfo.setSize(info.size).setUsage(info.usage).setSharingMode(info.sharingMode);
+            if(info.sharingMode == vk::SharingMode::eConcurrent) {
+                bufferInfo.setQueueFamilyIndices(info.queueFamilyIndices);
+            }
+            VmaAllocationCreateInfo allocCI{};
+            allocCI.usage = VMA_MEMORY_USAGE_AUTO;
+            vmaBuffer_ = VmaBuffer(alloc, static_cast<const VkBufferCreateInfo&>(bufferInfo), allocCI);
             vk::raii::CommandBuffer commandBuffer = commandPool.beginSingleTimeCommands();
-            commandBuffer.copyBuffer(*stagingBuffer, *buffer, vk::BufferCopy(0, 0, info.size));
+            commandBuffer.copyBuffer(stagingBuffer.getHandle(), vmaBuffer_.getHandle(), vk::BufferCopy(0, 0, info.size));
             commandPool.endSingleTimeCommands(std::move(commandBuffer));
         }
         ~Buffer() = default;
 
-        const vk::raii::Buffer& getBuffer() const { return buffer; }
+        const VkBuffer& getBuffer() const { return vmaBuffer_.getHandle(); }
 
     private:
-        vk::raii::DeviceMemory                   bufferMemory = nullptr;
-        vk::raii::Buffer                         buffer = nullptr;
+        VmaBuffer                                vmaBuffer_;
 };

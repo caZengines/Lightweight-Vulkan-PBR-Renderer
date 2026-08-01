@@ -16,3 +16,6 @@ _deps
 CMakeUserPresets.json
 .ninja_deps
 .ninja_log
+.cluade
+AGENTS.md
+CLAUDE.md

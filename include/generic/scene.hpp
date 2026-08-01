@@ -5,7 +5,7 @@
 struct DrawBatch {
     std::shared_ptr<const Mesh>     mesh;
     std::shared_ptr<Material>       material;
-    vk::Buffer                      instanceBuffer;  //Buffer pointing to RenderObject
+    VkBuffer                        instanceBuffer;  //Buffer pointing to RenderObject
     uint32_t                        instanceCount;
     uint32_t                        firstInstance;   // used for indirect draw
 };

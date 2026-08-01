@@ -10,7 +10,7 @@ std::vector<DrawBatch> Scene::buildDrawBatches() const {
         DrawBatch batch{};
         batch.mesh           =  obj->getMeshShared();
         batch.material       =  obj->getMaterialShared();
-        batch.instanceBuffer = *obj->getInstanceBuffer();
+        batch.instanceBuffer =  obj->getInstanceBuffer();
         batch.instanceCount  =  obj->getInstanceCount();
         batch.firstInstance  =  0;
         batches.push_back(std::move(batch));

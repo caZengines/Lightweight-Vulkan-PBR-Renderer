@@ -74,19 +74,19 @@ void Camera::Zoom(double yOff) {
 }
 
 
-void CEngine::mouseButtonCallBack(GLFWwindow* window, int button, int action, int /*mods*/) {
+void CEngine::mouseButtonCallback(GLFWwindow* window, int button, int action, int /*mods*/) {
     auto* app = static_cast<CEngine*>(glfwGetWindowUserPointer(window));
     double x = 0.0, y = 0.0;
     glfwGetCursorPos(window, &x, &y);
     app->camera.onMouseButton(button, action, x, y);
 }
 
-void CEngine::cursorPosCallBack(GLFWwindow* window, double xPos, double yPos) {
+void CEngine::cursorPosCallback(GLFWwindow* window, double xPos, double yPos) {
     auto* app = static_cast<CEngine*>(glfwGetWindowUserPointer(window));
     app->camera.onCursorMove(xPos, yPos);
 }
 
-void CEngine::scrollCallBack(GLFWwindow* window, double xOffset, double yOffset) {
+void CEngine::scrollCallback(GLFWwindow* window, double xOffset, double yOffset) {
     auto* app = static_cast<CEngine*>(glfwGetWindowUserPointer(window));
     app->camera.Zoom(yOffset);
 }

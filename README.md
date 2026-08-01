@@ -8,6 +8,7 @@
 > - [x] Instanced Rendering
 > - [x] Separate Image and Sampler
 > - [ ] Dynamic Uniform Buffer
+> - [ ] Frustum Culling
 > - [ ] Multithreaded command buffer generation
 > - [x] Shader-reflection automatically generates descriptorset
 > - [x] Normal Texture

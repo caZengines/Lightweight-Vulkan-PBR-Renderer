@@ -1,9 +1,8 @@
 #include "c_engine.hpp"
 #include "context.hpp"
 #include "descriptor_manager.hpp"
-#include "generic/renderobject.hpp"
-#include "generic/vertex.hpp"
 #include "render_context.hpp"
+#include "vma_allocator.hpp"
 #include <cstddef>
 #include <random>
 #include <memory>
@@ -22,9 +21,9 @@ void CEngine::initWindow() {
     window = glfwCreateWindow(WIDTH, HEIGHT, "C' Vulkan", nullptr, nullptr);
     glfwSetWindowUserPointer(window, this);
     glfwSetFramebufferSizeCallback(window, glfwFramebufferResizeCallback);
-    glfwSetMouseButtonCallback(window, mouseButtonCallBack);
-    glfwSetCursorPosCallback(window, cursorPosCallBack);
-    glfwSetScrollCallback(window, scrollCallBack);
+    glfwSetMouseButtonCallback(window, mouseButtonCallback);
+    glfwSetCursorPosCallback(window, cursorPosCallback);
+    glfwSetScrollCallback(window, scrollCallback);
 }
 void CEngine::glfwFramebufferResizeCallback(GLFWwindow* window, int width, int height) {
     auto app                = static_cast<CEngine*>(glfwGetWindowUserPointer(window));
@@ -38,6 +37,7 @@ void CEngine::initVulkan() {
     deviceInfo.enableValidationLayers_= enableValidationLayers;
     deviceInfo.window_ = window;
     vulkanDevice_.init(deviceInfo);
+    vmaContext_ = std::make_unique<VmaContext>(*vulkanDevice_.physicalDevice, *vulkanDevice_.device, *vulkanDevice_.instance);
     ResourceFactory::init(vulkanDevice_.physicalDevice, vulkanDevice_.device);
     Context::Config cfg;
     cfg.window_                 = window;
@@ -99,6 +99,7 @@ void CEngine::createDescriptorSetPool() {
  void CEngine::initRenderer(){
      RenderContext RCT = vulkanDevice_.renderContext();
      renderer = std::make_unique<Renderer>(RCT,
+         vmaContext_->getAllocator(),
          descriptorSetLayout->getLayoutHandles(),
          *descriptorPool->getDescriptorPool(),
          camera,
@@ -118,17 +119,17 @@ void CEngine::createCommandPools() {
 void CEngine::initAssetManager() {
     //assetManage.loadTexture(TEXTURE_PATH, vk::Format::eR8G8B8A8Srgb, vk::Filter::eLinear, *graphicsCommandPool);
     //assetManage.loadTexture(NORMAL_PATH, vk::Format::eR8G8B8A8Unorm, vk::Filter::eNearest, *graphicsCommandPool);
-    assetManage.loadTexture(ROCK_TEXTURE_PATH, vk::Format::eR8G8B8A8Srgb, vk::Filter::eLinear, *graphicsCommandPool);
-    assetManage.loadTexture(MARS_PATH, vk::Format::eR8G8B8A8Srgb, vk::Filter::eLinear, *graphicsCommandPool);
+    assetManage.loadTexture(ROCK_TEXTURE_PATH, vmaContext_->getAllocator(), vk::Format::eR8G8B8A8Srgb, vk::Filter::eLinear, *graphicsCommandPool);
+    assetManage.loadTexture(MARS_PATH, vmaContext_->getAllocator(), vk::Format::eR8G8B8A8Srgb, vk::Filter::eLinear, *graphicsCommandPool);
 
     // --- Pre-create 1×1 fallback textures (always available, no file dependency) ---
     defaultAlbedoTexture_ = std::make_shared<Texture>(
-        Texture::createDefaultAlbedo(*graphicsCommandPool));
+        Texture::createDefaultAlbedo(vmaContext_->getAllocator(), *graphicsCommandPool));
     defaultNormalTexture_ = std::make_shared<Texture>(
-        Texture::createDefaultNormal(*graphicsCommandPool));
+        Texture::createDefaultNormal(vmaContext_->getAllocator(), *graphicsCommandPool));
 
-    assetManage.loadMesh(ROCK_PATH, *transientCommandPool);
-    assetManage.loadMesh(PLANET_PATH, *transientCommandPool);
+    assetManage.loadMesh(ROCK_PATH, vmaContext_->getAllocator(), *transientCommandPool);
+    assetManage.loadMesh(PLANET_PATH, vmaContext_->getAllocator(), *transientCommandPool);
 }
 
 void CEngine::createSamplers() {
@@ -166,7 +167,7 @@ void CEngine::initScene() {
     marsmodel = glm::translate(marsmodel, glm::vec3(0.0f, -3.0f, 0.0f));
     marsmodel = glm::scale(marsmodel, glm::vec3(2.0f, 2.0f, 2.0f));
     instances[0].model = marsmodel;
-    mars->setInstances(instances, *transientCommandPool);
+    mars->setInstances(vmaContext_->getAllocator(), instances, *transientCommandPool);
     mars->initMaterialDescriptor(RCT, descriptorSetLayout->getLayoutHandles()[1], *descriptorPool);
     scene_.addObject(std::move(mars));
 
@@ -207,7 +208,7 @@ void CEngine::initScene() {
 
         rocks[i].model = model_;
     }
-    rock->setInstances(rocks, *transientCommandPool);
+    rock->setInstances(vmaContext_->getAllocator(), rocks, *transientCommandPool);
     rock->initMaterialDescriptor(RCT, descriptorSetLayout->getLayoutHandles()[1], *descriptorPool);
     scene_.addObject(std::move(rock));
 }

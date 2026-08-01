@@ -3,7 +3,7 @@
 #include "extern/tiny_obj_loader.h"
 #include "generic/vertex.hpp"
 
-Mesh::Mesh(const std::string modelPath, CommandPool& commandPool) {
+Mesh::Mesh(const std::string modelPath, VmaAllocator* alloc, CommandPool& commandPool) {
     tinyobj::attrib_t                attrib;
     std::vector<tinyobj::shape_t>    shapes;
     std::vector<tinyobj::material_t> materials;
@@ -25,12 +25,17 @@ Mesh::Mesh(const std::string modelPath, CommandPool& commandPool) {
                 attrib.texcoords[2 * index.texcoord_index + 0],
                 1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
             };
-            vertex.setNormal({
-                attrib.normals[3 * index.normal_index + 0],
-                attrib.normals[3 * index.normal_index + 1],
-                attrib.normals[3 * index.normal_index + 2]
-                }
-            );
+            if(!attrib.normals.empty() && index.normal_index >= 0){
+                vertex.setNormal({
+                    attrib.normals[3 * index.normal_index + 0],
+                    attrib.normals[3 * index.normal_index + 1],
+                    attrib.normals[3 * index.normal_index + 2]
+                    }
+                );
+            }
+            else {
+                vertex.setNormal({0.0f, 0.0f, 0.0f});
+            }
             auto [it, inserted] = uniqueVertices.insert({vertex, static_cast<uint32_t>(vertices.size())});
             if(inserted){
                 vertices.emplace_back(vertex);
@@ -72,12 +77,10 @@ Mesh::Mesh(const std::string modelPath, CommandPool& commandPool) {
     Buffer<Vertex>::CreateInfo vertexBufferInfo{};
     vertexBufferInfo.size = sizeof(vertices[0]) * vertices.size();
     vertexBufferInfo.usage = vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst;
-    vertexBufferInfo.memProperties = vk::MemoryPropertyFlagBits::eDeviceLocal;
-    vertexBuffer = std::make_unique<Buffer<Vertex>>(vertices, vertexBufferInfo, commandPool);
+    vertexBuffer = std::make_unique<Buffer<Vertex>>(alloc, vertices, vertexBufferInfo, commandPool);
 
     Buffer<uint32_t>::CreateInfo indicesBufferInfo{};
     indicesBufferInfo.size = sizeof(indices[0]) * indices.size();
     indicesBufferInfo.usage = vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst;
-    indicesBufferInfo.memProperties = vk::MemoryPropertyFlagBits::eDeviceLocal;
-    indicesBuffer = std::make_unique<Buffer<uint32_t>>(indices, indicesBufferInfo, commandPool);
+    indicesBuffer = std::make_unique<Buffer<uint32_t>>(alloc, indices, indicesBufferInfo, commandPool);
 }

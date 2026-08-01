@@ -1,4 +1,5 @@
 #include "camera.hpp"
+#include "vma_allocator.hpp"
 #include "generic/scene.hpp"
 #include "vulkandevice.hpp"
 #include "context.hpp"
@@ -35,6 +36,7 @@ class CEngine final {
         Camera                                   camera{};
         VulkanDevice                             vulkanDevice_{};
         vk::raii::Context                        ct;
+        std::unique_ptr<VmaContext>              vmaContext_          = nullptr;
         std::unique_ptr<Context>                 context              = nullptr;
 
         std::unique_ptr<CommandPool>             graphicsCommandPool  = nullptr;
@@ -66,10 +68,10 @@ class CEngine final {
         void initVulkan();
         void cleanup();
 
-        static void mouseButtonCallBack(GLFWwindow* window, int button, int action, int /*mods*/);
-        static void cursorPosCallBack(GLFWwindow* window, double xPos, double yPos);
+        static void mouseButtonCallback(GLFWwindow* window, int button, int action, int /*mods*/);
+        static void cursorPosCallback(GLFWwindow* window, double xPos, double yPos);
         static void glfwFramebufferResizeCallback(GLFWwindow* window, int width, int height);
-        static void scrollCallBack(GLFWwindow* window, double xOffset, double yOffset);
+        static void scrollCallback(GLFWwindow* window, double xOffset, double yOffset);
 
         void createCommandPools();
         void initAssetManager();

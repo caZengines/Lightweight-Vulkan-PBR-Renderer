@@ -5,17 +5,18 @@
 #include <stdexcept>
 
 void AssetManager::loadTexture(const std::string& path,
+                               VmaAllocator* alloc,
                                vk::Format format, 
                                vk::Filter filter,
                                CommandPool& cmdPool)
 {
     std::shared_ptr<Texture> texture_ = 
-            std::make_shared<Texture>(Texture::createTexture(path, format, filter, cmdPool));
+            std::make_shared<Texture>(Texture::createTexture(path, alloc, format, filter, cmdPool));
     textureCache_.insert({path, std::move(texture_)});
 }
 
-void AssetManager::loadMesh(const std::string& path, CommandPool& cmdPool) {
-    std::shared_ptr<Mesh> mesh_ = std::make_shared<Mesh>(path, cmdPool);
+void AssetManager::loadMesh(const std::string& path, VmaAllocator* alloc, CommandPool& cmdPool) {
+    std::shared_ptr<Mesh> mesh_ = std::make_shared<Mesh>(path, alloc, cmdPool);
     std::cout <<"Number of " <<path <<" vertices: " <<mesh_->getVertices().size() <<"\n";
     meshCache_.insert({path, std::move(mesh_)});
 }

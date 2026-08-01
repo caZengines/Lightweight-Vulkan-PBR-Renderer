@@ -1,6 +1,7 @@
 #include "renderer/renderer.hpp"
 #include "render_context.hpp"
-#include "resourcefactory.hpp"
+#include "vma_allocator.hpp"
+#include "vulkan/vulkan.hpp"
 #include <cstddef>
 #include <chrono>
 #include <iostream>
@@ -11,15 +12,16 @@
 #include <vulkan/vulkan_raii.hpp>
 
 Renderer::Renderer(RenderContext& rct,
-                      const std::vector<vk::DescriptorSetLayout>& dsls,
-                      const vk::DescriptorPool& pool,
-                      Camera& camera,
-                      CommandPool& commandPool,
-                      vk::raii::SurfaceKHR& surface,
-                      GLFWwindow* window)
-    : rct_(rct), descriptorSetLayouts_(dsls), descriptorPool_(pool), camera_(camera), graphicsCommandPool(commandPool), surface_(surface), window_(window)
+                   VmaAllocator* alloc,
+                   const std::vector<vk::DescriptorSetLayout>& dsls,
+                   const vk::DescriptorPool& pool,
+                   Camera& camera,
+                   CommandPool& commandPool,
+                   vk::raii::SurfaceKHR& surface,
+                   GLFWwindow* window)
+    : rct_(rct), allocator_(alloc), descriptorSetLayouts_(dsls), descriptorPool_(pool), camera_(camera), graphicsCommandPool(commandPool), surface_(surface), window_(window)
 {
-    swapchainInfo = std::make_unique<Swapchain>(rct_, surface, window_);
+    swapchainInfo = std::make_unique<Swapchain>(rct_, allocator_, surface, window_);
     perframeDescriptorSet_ = std::make_unique<PerFrameDescriptorSet>(rct_, descriptorPool_, descriptorSetLayouts_[0]);
     createGraphicsPipeline();
     createUniformBuffers();
@@ -33,19 +35,16 @@ void Renderer::createGraphicsPipeline() {
 }
 
 void Renderer::createUniformBuffers() {
-    auto& factory = ResourceFactory::get();
 
     for(size_t i = 0 ; i < MAX_FRAMES_IN_FLIGHT; ++i){
         vk::DeviceSize BufferSize = sizeof(UniformBufferObject);
-        auto [buffer, bufferMem] = 
-                factory.createBuffer(
-                    BufferSize,
-                    vk::BufferUsageFlagBits::eUniformBuffer,
-                    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
-        );
-        uniformBuffers.emplace_back(std::move(buffer));
-        uniformBuffersMemory.emplace_back(std::move(bufferMem));
-        uniformBuffersMapped.emplace_back(uniformBuffersMemory.back().mapMemory(0, BufferSize));
+        vk::BufferCreateInfo bufferCI{};
+        bufferCI.setSize(BufferSize).setUsage(vk::BufferUsageFlagBits::eUniformBuffer)
+                .setSharingMode(vk::SharingMode::eExclusive);
+        VmaAllocationCreateInfo allocCI{};
+        allocCI.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+        allocCI.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+        uniformBuffers_.emplace_back(VmaBuffer(allocator_, static_cast<const VkBufferCreateInfo&>(bufferCI), allocCI));
     }
 }
 
@@ -188,7 +187,7 @@ void Renderer::recordCommandBuffer(uint32_t ImageIndex, const std::vector<DrawBa
         vk::ImageAspectFlagBits::eColor
     );
     transition_image_layout(
-        *swapchainInfo->getcolorImage(),
+        swapchainInfo->getcolorImage(),
         vk::ImageLayout::eUndefined,
         vk::ImageLayout::eColorAttachmentOptimal,
         {},
@@ -198,7 +197,7 @@ void Renderer::recordCommandBuffer(uint32_t ImageIndex, const std::vector<DrawBa
         vk::ImageAspectFlagBits::eColor
     );
     transition_image_layout(
-        *swapchainInfo->getDepthImage(),
+        swapchainInfo->getDepthImage(),
         vk::ImageLayout::eUndefined,
         vk::ImageLayout::eDepthAttachmentOptimal,
         {},
@@ -303,7 +302,7 @@ void Renderer::updateUniformBuffer(uint32_t currentImage) {
     ubo.light.color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
     ubo.light.intensity = 10.0f;
 
-    memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
+    memcpy(uniformBuffers_[currentImage].mappedData(), &ubo, sizeof(ubo));
 }
 void Renderer::updateCamera() {
     static auto  startTime = std::chrono::high_resolution_clock::now();
@@ -333,7 +332,7 @@ void Renderer::updateCamera() {
 
 void Renderer::updateDescriptorSet(uint32_t currentImage) {
     vk::DescriptorBufferInfo bufferInfo{};
-    bufferInfo.setBuffer(uniformBuffers[currentImage])
+    bufferInfo.setBuffer(uniformBuffers_[currentImage].getHandle())
               .setOffset(0)
               .setRange(sizeof(UniformBufferObject));
 
@@ -346,7 +345,7 @@ void Renderer::updateDescriptorSet(uint32_t currentImage) {
 }
 
 void Renderer::transition_image_layout(
-                             vk::Image               image,
+                             VkImage                 image,
                              vk::ImageLayout         old_layout,
                              vk::ImageLayout         new_layout,
                              vk::AccessFlags2        src_access_mask,

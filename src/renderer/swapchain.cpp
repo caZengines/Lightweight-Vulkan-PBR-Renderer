@@ -1,4 +1,6 @@
 #include "resourcefactory.hpp"
+#include "vma_allocator.hpp"
+#include "vulkan/vulkan.hpp"
 #include "renderer/swapchain.hpp"
 #include <algorithm>
 #include <cassert>
@@ -7,12 +9,12 @@
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
 
-Swapchain::Swapchain(RenderContext& rct, vk::raii::SurfaceKHR& surface, GLFWwindow* window)
-    : rct_(rct)
+Swapchain::Swapchain(RenderContext& rct, VmaAllocator* alloc, vk::raii::SurfaceKHR& surface, GLFWwindow* window)
+    : rct_(rct), allocator_(alloc)
 {
     createSwapChain(surface, window);
     createImageViews();
-    createColorAndDepthResources(rct_.msaaSamples);
+    createColorAndDepthResources(allocator_, rct_.msaaSamples);
 }
 
 void Swapchain::createSwapChain(vk::raii::SurfaceKHR& surface, GLFWwindow* window) {
@@ -62,31 +64,47 @@ void Swapchain::createImageViews() {
     auto& factory = ResourceFactory::get();
     Image_.ImageViews.reserve(Image_.images.size());
     for (auto const& image : Image_.images) {
-        Image_.ImageViews.emplace_back(
-            factory.createImageView(image, surfaceformat.format, vk::ImageAspectFlagBits::eColor, 1));
+        vk::ImageViewCreateInfo viewInfo{};
+        viewInfo.setImage(image)
+                .setFormat(surfaceformat.format)
+                .setViewType(vk::ImageViewType::e2D)
+                .setSubresourceRange({vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1});
+        Image_.ImageViews.emplace_back(vk::raii::ImageView(rct_.device, viewInfo));
     }
 }
 
-void Swapchain::createColorAndDepthResources(vk::SampleCountFlagBits msaaSamples) {
+void Swapchain::createColorAndDepthResources(VmaAllocator* alloc, vk::SampleCountFlagBits msaaSamples) {
     auto& factory = ResourceFactory::get();
     //create ColorResource
     vk::Format colorFormat = Swapchain::getSurfaceFormat().format;
-    std::tie(colorImage, colorImageMemory) = 
-                factory.createImage(
-                    Swapchain::getExtent().width, Swapchain::getExtent().height, 1, msaaSamples, colorFormat,
-                    vk::ImageTiling::eOptimal,
-                    vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment,
-                    vk::MemoryPropertyFlagBits::eDeviceLocal
-                );
-    colorImageView = factory.createImageView(colorImage, colorFormat, vk::ImageAspectFlagBits::eColor, 1);
+    vk::ImageCreateInfo colorCI{};
+    colorCI.setExtent({Swapchain::getExtent().width, Swapchain::getExtent().width, 1})
+           .setFormat(colorFormat)
+           .setMipLevels(1).setSamples(msaaSamples)
+           .setTiling(vk::ImageTiling::eOptimal)
+           .setUsage(vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment)
+           .setImageType(vk::ImageType::e2D)
+           .setArrayLayers(1);
+    VmaAllocationCreateInfo allocCI{};
+    allocCI.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    colorImage_ = VmaImage(alloc, static_cast<const VkImageCreateInfo&>(colorCI), allocCI);
+    colorImageView = factory.createImageView(colorImage_, colorFormat, vk::ImageAspectFlagBits::eColor, 1);
     //create DepthResource
     vk::Format depthFormat = factory.findSupportedFormat(
             {vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint},
             vk::ImageTiling::eOptimal,
             vk::FormatFeatureFlagBits::eDepthStencilAttachment
     );
-    std::tie(depthImage, depthImageMemory) = factory.createImage(Swapchain::getExtent().width, Swapchain::getExtent().height, 1, msaaSamples, depthFormat, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal);
-    depthImageView = factory.createImageView(depthImage, depthFormat, vk::ImageAspectFlagBits::eDepth, 1);
+    vk::ImageCreateInfo depthCI{};
+    depthCI.setExtent({Swapchain::getExtent().width, Swapchain::getExtent().width, 1})
+           .setFormat(depthFormat)
+           .setMipLevels(1).setSamples(msaaSamples)
+           .setTiling(vk::ImageTiling::eOptimal)
+           .setUsage(vk::ImageUsageFlagBits::eDepthStencilAttachment)
+           .setImageType(vk::ImageType::e2D)
+           .setArrayLayers(1);
+    depthImage_ = VmaImage(alloc, static_cast<const VkImageCreateInfo&>(depthCI), allocCI);
+    depthImageView = factory.createImageView(depthImage_, depthFormat, vk::ImageAspectFlagBits::eDepth, 1);
 }
 
 void Swapchain::recreateSwapChain(vk::raii::SurfaceKHR& surface, GLFWwindow* window) {
@@ -102,7 +120,7 @@ void Swapchain::recreateSwapChain(vk::raii::SurfaceKHR& surface, GLFWwindow* win
     cleanupSwapChain();
     createSwapChain(surface, window);
     createImageViews();
-    createColorAndDepthResources(rct_.msaaSamples);
+    createColorAndDepthResources(allocator_, rct_.msaaSamples);
 }
 
 void Swapchain::cleanupSwapChain() {

@@ -6,7 +6,7 @@
 #include "render_context.hpp"
 #include "pipeline_layout.hpp"
 #include "camera.hpp"
-#include "vulkan/vulkan.hpp"
+#include "vma_allocator.hpp"
 #include <vector>
 #include <memory>
 
@@ -40,6 +40,7 @@ class Renderer final {
     bool     framebufferResized = false;
 
     explicit Renderer(RenderContext& rct,
+                      VmaAllocator* alloc,
                       const std::vector<vk::DescriptorSetLayout>& dsls,
                       const vk::DescriptorPool& pool,
                       Camera& camera,
@@ -57,6 +58,7 @@ class Renderer final {
         GLFWwindow*                              window_;
         vk::raii::SurfaceKHR&                    surface_;
         RenderContext                            rct_;
+        VmaAllocator*                            allocator_             = nullptr;
         std::vector<vk::DescriptorSetLayout>     descriptorSetLayouts_;
         vk::DescriptorPool                       descriptorPool_;
         Camera&                                  camera_;
@@ -65,9 +67,7 @@ class Renderer final {
         std::unique_ptr<Pipeline>                graphicsPipeline       = nullptr;
         std::unique_ptr<PerFrameDescriptorSet>   perframeDescriptorSet_ = nullptr;
 
-        std::vector<vk::raii::DeviceMemory>      uniformBuffersMemory;
-        std::vector<vk::raii::Buffer>            uniformBuffers;
-        std::vector<void *>                      uniformBuffersMapped;
+        std::vector<VmaBuffer>                   uniformBuffers_;
 
         std::vector<vk::raii::CommandBuffer>     graphicsCommandBuffers;
 
@@ -96,7 +96,7 @@ class Renderer final {
         void updateDescriptorSet(uint32_t);
         void recordCommandBuffer(uint32_t ImageIndex, const std::vector<DrawBatch>& batches);
         void transition_image_layout(
-                                 vk::Image               image,
+                                 VkImage                 image,
                                  vk::ImageLayout         old_layout,
                                  vk::ImageLayout         new_layout,
                                  vk::AccessFlags2        src_access_mask,

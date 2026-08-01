@@ -60,7 +60,9 @@ add_executable(
 )
 add_dependencies(main CompileShaders)
 
-target_compile_definitions(main PUBLIC SPIRV_REFLECT_USE_SYSTEM_SPIRV_H)
+target_compile_definitions(main 
+    PUBLIC SPIRV_REFLECT_USE_SYSTEM_SPIRV_H
+)
 
 set_target_properties(main PROPERTIES 
     RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin
