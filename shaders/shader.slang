@@ -36,7 +36,7 @@ struct UniformBuffer {
 struct VertexOutput {
     float4 pos : SV_Position;
     float2 fragTexCoord;
-    float3 fragWorldNormal;
+    float3 fragTangentNormal;
     float3 fragTangentLightDir;
     float3 fragTangentViewDir;
     float3 worldPos;
@@ -62,7 +62,6 @@ VertexOutput vertMain(VertexInput Input, InstanceData instance) {
 
     float3 worldLightDir = ubo.light.position.xyz - worldPosition.xyz;
     float3 worldViewDir = ubo.cameraPos.xyz - worldPosition.xyz;
-    float3 fragWorldNormal = N;
     //Transfer World Space to Tangent Space
     Output.fragTangentLightDir = float3(
         dot(worldLightDir, T),
@@ -71,9 +70,10 @@ VertexOutput vertMain(VertexInput Input, InstanceData instance) {
     );
     Output.fragTangentViewDir = float3(
         dot(worldViewDir, T),
-        dot(worldViewDir, B), 
+        dot(worldViewDir, B),
         dot(worldViewDir, N)
     );
+    Output.fragTangentNormal = float3(0, 0, 1);
     
     return Output;
 }
@@ -105,7 +105,7 @@ float4 fragMain(VertexOutput inVert) : SV_Target {
         tn.g = 1.0 - tn.g;
         N = normalize(tn);
     } else {
-        N = normalize(inVert.fragWorldNormal);
+        N = normalize(inVert.fragTangentNormal);
     }
 
     float3 L = normalize(inVert.fragTangentLightDir);
