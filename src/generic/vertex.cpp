@@ -8,18 +8,11 @@ void Vertex::setNormal(const glm::vec3& n){
     normal[3] = 0;
 }
 
-void Vertex::setTangent(const glm::vec3& deltaPos1_, const glm::vec3& deltaPos2_, const glm::vec2& deltaUV1_, const glm::vec2& deltaUV2_, const glm::vec3& n){
-    float r = 1.0f / (deltaUV1_.x * deltaUV2_.y - deltaUV1_.y * deltaUV2_.x);
-    glm::vec3 tan = (deltaPos1_ * deltaUV2_.y - deltaPos2_ * deltaUV1_.y) * r;
-    tan = glm::normalize(tan - n * glm::dot(tan, n));
-
-    glm::vec3 bitan = (deltaPos2_ * deltaUV1_.x - deltaPos1_ * deltaUV2_.x) * r;
-    int8_t handedness = (glm::dot(glm::cross(n, tan), bitan) >= 0.0f) ? 1 : -1;
-
-    tangent[0] = static_cast<int8_t>(glm::round(glm::clamp(tan.x, -1.0f, 1.0f) * 127.0f));
-    tangent[1] = static_cast<int8_t>(glm::round(glm::clamp(tan.y, -1.0f, 1.0f) * 127.0f));
-    tangent[2] = static_cast<int8_t>(glm::round(glm::clamp(tan.z, -1.0f, 1.0f) * 127.0f));
-    tangent[3] = static_cast<int8_t>(handedness * 127);
+void Vertex::setTangent(const glm::vec3& tangent_, const float& handedness_){
+    tangent[0] = static_cast<int8_t>(glm::round(glm::clamp(tangent_.x, -1.0f, 1.0f) * 127.0f));
+    tangent[1] = static_cast<int8_t>(glm::round(glm::clamp(tangent_.y, -1.0f, 1.0f) * 127.0f));
+    tangent[2] = static_cast<int8_t>(glm::round(glm::clamp(tangent_.z, -1.0f, 1.0f) * 127.0f));
+    tangent[3] = static_cast<int8_t>(handedness_ * 127);
 }
 
 vk::VertexInputBindingDescription Vertex::getBindingDescription() {

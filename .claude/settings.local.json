@@ -4,7 +4,20 @@
       "Bash(spirv-cross --entry fragMain --stage frag /c/Users/mcbbs/Desktop/Vulkan_Development/shaders/slang.spv)",
       "Bash(grep -n \"struct.*ImageMemoryBarrier \" \"c:/VulkanSDK/1.4.341.1/Include/vulkan/vulkan_structs.hpp\" | head -5)",
       "Read(//c/VulkanSDK/1.4.341.1/Include/vulkan/**)",
-      "Bash(grep -n \"struct.*ImageSubresourceRange\\\\b\" \"c:/VulkanSDK/1.4.341.1/Include/vulkan/vulkan_structs.hpp\" | head -5)"
+      "Bash(grep -n \"struct.*ImageSubresourceRange\\\\b\" \"c:/VulkanSDK/1.4.341.1/Include/vulkan/vulkan_structs.hpp\" | head -5)",
+      "mcp__vulkan-spec__get-vulkan-topic",
+      "Bash(python3 *)",
+      "mcp__vulkan-spec__search-vulkan-docs"
     ]
+  },
+  "enableAllProjectMcpServers": true,
+  "mcpServers": {
+    "vulkan-spec": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "C:/Users/Public/mcp-servers/mcp-Vulkan/vulkan/build/index.js"
+      ]
+    }
   }
 }

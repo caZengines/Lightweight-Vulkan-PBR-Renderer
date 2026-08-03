@@ -44,7 +44,7 @@ class VmaBuffer {
         }
         return *this;
     }
-
+    
     const VkBuffer& getHandle() const { return buffer_; } 
 
     void* map();

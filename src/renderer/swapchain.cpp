@@ -78,7 +78,7 @@ void Swapchain::createColorAndDepthResources(VmaAllocator* alloc, vk::SampleCoun
     //create ColorResource
     vk::Format colorFormat = Swapchain::getSurfaceFormat().format;
     vk::ImageCreateInfo colorCI{};
-    colorCI.setExtent({Swapchain::getExtent().width, Swapchain::getExtent().width, 1})
+    colorCI.setExtent({Swapchain::getExtent().width, Swapchain::getExtent().height, 1})
            .setFormat(colorFormat)
            .setMipLevels(1).setSamples(msaaSamples)
            .setTiling(vk::ImageTiling::eOptimal)
@@ -96,7 +96,7 @@ void Swapchain::createColorAndDepthResources(VmaAllocator* alloc, vk::SampleCoun
             vk::FormatFeatureFlagBits::eDepthStencilAttachment
     );
     vk::ImageCreateInfo depthCI{};
-    depthCI.setExtent({Swapchain::getExtent().width, Swapchain::getExtent().width, 1})
+    depthCI.setExtent({Swapchain::getExtent().width, Swapchain::getExtent().height, 1})
            .setFormat(depthFormat)
            .setMipLevels(1).setSamples(msaaSamples)
            .setTiling(vk::ImageTiling::eOptimal)

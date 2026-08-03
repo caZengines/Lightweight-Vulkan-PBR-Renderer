@@ -14,20 +14,22 @@ struct Vertex {
     int8_t tangent[4];
 
     void setNormal(const glm::vec3& n);
-    void setTangent(const glm::vec3& deltaPos1_, const glm::vec3& deltaPos2_, const glm::vec2& deltaUV1_, const glm::vec2& deltaUV2_, const glm::vec3& n);
+    void setTangent(const glm::vec3& tangent_, const float& handedness_);
 
     static vk::VertexInputBindingDescription getBindingDescription();
     static std::array<vk::VertexInputAttributeDescription, 4> getAttributeDescription();
 
     bool operator==(const Vertex& other) const {
-        return pos == other.pos && texCoord == other.texCoord && normal[0] == other.normal[0] && normal[1] == other.normal[1] && normal[2] == other.normal[2]
-            && tangent[0] == other.tangent[0] && tangent[1] == other.tangent[1] && tangent[2] == other.tangent[2];
+        return pos == other.pos && texCoord == other.texCoord && normal[0] == other.normal[0] && normal[1] == other.normal[1] && normal[2] == other.normal[2];
     }
 };
 namespace std{
     template<> struct hash<Vertex>{
-        size_t operator()(Vertex const& vertex) const {
-            return (((hash<glm::vec3>()(vertex.pos) ^ (hash<uint8_t>()(vertex.normal[0]) << 1)) >> 1) ^ (hash<glm::vec2>()(vertex.texCoord) << 1));
+        size_t operator()(Vertex const& v) const {
+            size_t h1 = std::hash<glm::vec3>{}(v.pos);
+            size_t h2 = std::hash<glm::vec2>{}(v.texCoord);
+            size_t h3 = std::hash<uint8_t>{}(v.normal[0]) ^ (std::hash<uint8_t>{}(v.normal[1]) << 8) ^ (std::hash<uint8_t>{}(v.normal[2]) << 16);
+            return h1 ^ (h2 << 1) ^ (h3 << 2);
         }
     };
 }

@@ -1,8 +1,8 @@
 # **Vulkan**
 
- This project is used to implement some features mentioned or not mentioned in the [Vulkan tutorial](https://docs.vulkan.org/tutorial/latest/00_Introduction.html).
+ This project is a lightweight Vulkan-based PBR renderer. At present, this project is still in the early stage of framework construction. Graphic interactive interfaces will be implemented in the future.
 
- such as:
+The following are partially implemented or unimplemented functions:
 >
 > - [x] Push Constant
 > - [x] Instanced Rendering

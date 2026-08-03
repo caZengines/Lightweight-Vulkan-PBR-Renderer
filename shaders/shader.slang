@@ -36,7 +36,7 @@ struct UniformBuffer {
 struct VertexOutput {
     float4 pos : SV_Position;
     float2 fragTexCoord;
-    float3 fragNorCoord;
+    float3 fragWorldNormal;
     float3 fragTangentLightDir;
     float3 fragTangentViewDir;
     float3 worldPos;
@@ -52,7 +52,6 @@ VertexOutput vertMain(VertexInput Input, InstanceData instance) {
 
     Output.pos = mul(ubo.proj, mul(ubo.view, worldPosition));
     Output.fragTexCoord = Input.inTexCoord;
-    Output.fragNorCoord = Input.inNormal;
     Output.worldPos = worldPosition.xyz;
 
     //create TBN Matrix
@@ -63,6 +62,7 @@ VertexOutput vertMain(VertexInput Input, InstanceData instance) {
 
     float3 worldLightDir = ubo.light.position.xyz - worldPosition.xyz;
     float3 worldViewDir = ubo.cameraPos.xyz - worldPosition.xyz;
+    float3 fragWorldNormal = N;
     //Transfer World Space to Tangent Space
     Output.fragTangentLightDir = float3(
         dot(worldLightDir, T),
@@ -105,7 +105,7 @@ float4 fragMain(VertexOutput inVert) : SV_Target {
         tn.g = 1.0 - tn.g;
         N = normalize(tn);
     } else {
-        N = normalize(inVert.fragNorCoord);
+        N = normalize(inVert.fragWorldNormal);
     }
 
     float3 L = normalize(inVert.fragTangentLightDir);
