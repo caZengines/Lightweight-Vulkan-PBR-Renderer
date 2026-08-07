@@ -6,17 +6,17 @@ void VulkanDevice::init(const CreateInfo& info){
     info_ = info;
     createInstance();
     pickPhysicalDevice();
+    //checkFeatureSupport();
     createLogicalDevice();
 }
 
 void VulkanDevice::createInstance(){
-    vk::raii::Context ct;
-    vk::ApplicationInfo appInfo;
-    appInfo.setPApplicationName("Hello Triangle")
+    vk::ApplicationInfo appIF;
+    appIF.setPApplicationName("Render Engine")
            .setApplicationVersion(VK_MAKE_VERSION(1, 0, 0))
            .setPEngineName("No Engine")
            .setEngineVersion(VK_MAKE_VERSION(1, 0, 0))
-           .setApiVersion(vk::ApiVersion14);
+           .setApiVersion(vk::ApiVersion13);
     //get required layers
     std::vector<const char*> RequiredLayers;
     if(info_.enableValidationLayers_){
@@ -46,13 +46,13 @@ void VulkanDevice::createInstance(){
     }
                                                               
     vk::InstanceCreateInfo createInfo{};
-    createInfo.setPApplicationInfo(&appInfo)
+    createInfo.setPApplicationInfo(&appIF)
                       .setEnabledLayerCount(static_cast<uint32_t>(RequiredLayers.size()))
                       .setPpEnabledLayerNames(RequiredLayers.data())
                       .setEnabledExtensionCount(static_cast<uint32_t>(RequiredExtensions.size()))
                       .setPpEnabledExtensionNames(RequiredExtensions.data());
 
-    instance = vk::raii::Instance(ct, createInfo);
+    instance = vk::raii::Instance(context_, createInfo);
 }
 std::vector<const char*> VulkanDevice::GetRequiredExtension(){
     uint32_t glfwExtensionsCount = 0;
@@ -82,7 +82,13 @@ void VulkanDevice::pickPhysicalDevice(){
     }
     if(!candidates.empty() && candidates.rbegin()-> first > 0) {
         physicalDevice = candidates.rbegin()-> second;
-        if(info_.enableValidationLayers_) std::cout << "GPU Information: " << physicalDevice.getProperties().deviceName << std::endl;
+        if(info_.enableValidationLayers_){
+            vk::PhysicalDeviceProperties deviceProperties = physicalDevice.getProperties();
+            std::cout << "GPU Information: " << deviceProperties.deviceName << std::endl;
+            std::cout << "API Version: " << VK_VERSION_MAJOR(deviceProperties.apiVersion) << "."
+		              << VK_VERSION_MINOR(deviceProperties.apiVersion) << "."
+		              << VK_VERSION_PATCH(deviceProperties.apiVersion) << std::endl;
+        }
         setSampleCount();
     }
     else{
@@ -109,16 +115,8 @@ bool VulkanDevice::isDeviceSuitable(vk::raii::PhysicalDevice const &physicalDevi
                                                            { return strcmp(availableDeviceExtension.extensionName, requiredDeviceExtension) == 0; });
                             });
 
-    // Check if the physicalDevice supports the required features (dynamic rendering and extended dynamic state)
-    auto features =
-        physicalDevice.template getFeatures2<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan13Features, vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>();
-    bool supportsRequiredFeatures = features.template get<vk::PhysicalDeviceFeatures2>().features.samplerAnisotropy &&
-                                    features.template get<vk::PhysicalDeviceVulkan13Features>().dynamicRendering &&
-                                    features.template get<vk::PhysicalDeviceVulkan13Features>().synchronization2 &&
-                                    features.template get<vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>().extendedDynamicState;
-
     // Return true if the physicalDevice meets all the criteria
-    return supportsVulkan1_3 && supportsGraphics && supportsAllRequiredExtensions && supportsRequiredFeatures;
+    return supportsVulkan1_3 && supportsGraphics && supportsAllRequiredExtensions;
 }
 
 void VulkanDevice::createLogicalDevice(){
@@ -142,22 +140,6 @@ void VulkanDevice::createLogicalDevice(){
     }
     if(transferQueueIndex == ~0) throw std::runtime_error("Could not find a queue for transfer and present -> terminating");
 
-    //enabledPhysicalDeviceFeatures
-    vk::StructureChain<vk::PhysicalDeviceFeatures2,
-                       vk::PhysicalDeviceVulkan13Features,
-                       vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT,
-                       vk::PhysicalDeviceShaderDrawParametersFeatures,
-                       vk::PhysicalDeviceTimelineSemaphoreFeaturesKHR> featureChain;
-    auto& deviceFeatures2 = featureChain.get<vk::PhysicalDeviceFeatures2>();
-    deviceFeatures2.features.setFillModeNonSolid(true);
-    deviceFeatures2.features.setGeometryShader(false);
-    deviceFeatures2.features.setSamplerAnisotropy(true);
-
-    featureChain.get<vk::PhysicalDeviceVulkan13Features>().setDynamicRendering(true);
-    featureChain.get<vk::PhysicalDeviceVulkan13Features>().setSynchronization2(true);
-    featureChain.get<vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>().setExtendedDynamicState(true);
-    featureChain.get<vk::PhysicalDeviceShaderDrawParametersFeatures>().setShaderDrawParameters(true);
-    featureChain.get<vk::PhysicalDeviceTimelineSemaphoreFeaturesKHR>().setTimelineSemaphore(true);
     //Create graphic & transfer queue
     std::vector<const char *> requiredDeviceExtension = {vk::KHRSwapchainExtensionName};
     std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
@@ -171,20 +153,53 @@ void VulkanDevice::createLogicalDevice(){
     transferQueueCreateInfo.setQueueFamilyIndex(transferQueueIndex)
                            .setQueueCount(1)
                            .setPQueuePriorities(&queuePriority);
-        queueCreateInfos.emplace_back(transferQueueCreateInfo);
+    queueCreateInfos.emplace_back(transferQueueCreateInfo);
+    //enabledPhysicalDeviceFeatures
+    vk::StructureChain<vk::PhysicalDeviceFeatures2,
+                    vk::PhysicalDeviceVulkan13Features,
+                    vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT,
+                    vk::PhysicalDeviceShaderDrawParametersFeatures,
+                    vk::PhysicalDeviceTimelineSemaphoreFeaturesKHR> featureChain;
+    auto& deviceFeatures2 = featureChain.get<vk::PhysicalDeviceFeatures2>();
+    deviceFeatures2.features.setFillModeNonSolid(true);
+    deviceFeatures2.features.setGeometryShader(false);
+    deviceFeatures2.features.setSamplerAnisotropy(true);
+
+    featureChain.get<vk::PhysicalDeviceVulkan13Features>().setDynamicRendering(true);
+    featureChain.get<vk::PhysicalDeviceVulkan13Features>().setSynchronization2(true);
+    featureChain.get<vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>().setExtendedDynamicState(true);
+    featureChain.get<vk::PhysicalDeviceShaderDrawParametersFeatures>().setShaderDrawParameters(true);
+    featureChain.get<vk::PhysicalDeviceTimelineSemaphoreFeaturesKHR>().setTimelineSemaphore(true);
 
     vk::DeviceCreateInfo deviceCreateInfo{};
     deviceCreateInfo.setPNext(&featureChain.get<vk::PhysicalDeviceFeatures2>())
                     .setQueueCreateInfos(queueCreateInfos)
                     .setEnabledExtensionCount(static_cast<uint32_t>(requiredDeviceExtension.size()))
                     .setPpEnabledExtensionNames(requiredDeviceExtension.data());
-
     device = vk::raii::Device(physicalDevice, deviceCreateInfo);
 
     graphicsQueue = vk::raii::Queue(device, graphicsQueueIndex, 0);
 
     transferQueue = vk::raii::Queue(device, transferQueueIndex, 0);
 }
+
+// void VulkanDevice::checkFeatureSupport(){  *This function will be used in future.*
+//     // Define the KHR roadmap 2022 profile
+//     appInfo.profile = {
+//         VP_KHR_ROADMAP_2022_NAME,
+//         VP_KHR_ROADMAP_2022_SPEC_VERSION
+//     };
+//     VkBool32 supported = false;
+//     VkResult result = vpGetPhysicalDeviceProfileSupport(*instance, *physicalDevice, &appInfo.profile, &supported);
+//     if (result == VK_SUCCESS && supported == VK_TRUE){
+// 		appInfo.profileSupported = true;
+// 		std::cout << "Using KHR roadmap 2022 profile" << std::endl;
+// 	}
+//     else {
+//         appInfo.profileSupported = false;
+// 		std::cout << "Falling back to traditional rendering (profile not supported)" << std::endl;
+//     }
+// }
 
 void VulkanDevice::setSampleCount(){
     vk::PhysicalDeviceProperties physicalDeviceProperties = physicalDevice.getProperties();

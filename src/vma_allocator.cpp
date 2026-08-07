@@ -6,7 +6,7 @@ VmaContext::VmaContext(vk::PhysicalDevice pd, vk::Device device, vk::Instance in
     allocInfo.physicalDevice = pd;
     allocInfo.device         = device;
     allocInfo.instance       = instance;
-    allocInfo.vulkanApiVersion = VK_API_VERSION_1_4;
+    allocInfo.vulkanApiVersion = VK_API_VERSION_1_3;
     vmaCreateAllocator(&allocInfo, &vmaAllocator_);
 }
 VmaContext::~VmaContext() {

@@ -298,7 +298,7 @@ void Renderer::updateUniformBuffer(uint32_t currentImage) {
     ubo.proj[1][1] *= -1;
 
     ubo.camPos = glm::vec4(eyePos, 1);
-    ubo.light.pos = glm::vec4(37.0f, 18.0f, -30.0f, 1);
+    ubo.light.pos = glm::vec4(4.0f, 20.0f, -25.0f, 1);
     ubo.light.color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
     ubo.light.intensity = 10.0f;
 

@@ -21,6 +21,7 @@ class VulkanDevice {
 
         void init(const CreateInfo& info);
 
+        vk::raii::Context           context_;
         vk::raii::Instance          instance       = nullptr;
         vk::raii::PhysicalDevice    physicalDevice = nullptr;
         vk::raii::Device            device         = nullptr;
@@ -40,6 +41,7 @@ class VulkanDevice {
         void createInstance();
         void pickPhysicalDevice();
         bool isDeviceSuitable(vk::raii::PhysicalDevice const &physicalDevice);
+        //void checkFeatureSupport();
         void createLogicalDevice();
         void setSampleCount();
 

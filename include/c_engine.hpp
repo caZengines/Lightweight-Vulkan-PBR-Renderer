@@ -22,6 +22,7 @@ constexpr bool enableValidationLayers = false;
 constexpr bool enableValidationLayers = true;
 #endif
 
+//C++ destroys members in reverse declaration order.
 class CEngine final {
     public:
         explicit CEngine();
@@ -46,6 +47,12 @@ class CEngine final {
         std::unique_ptr<Sampler>                 albedoSampler        = nullptr;
         std::unique_ptr<Sampler>                 normalSampler        = nullptr;
 
+        std::unique_ptr<DescriptorSetLayout>     descriptorSetLayout  = nullptr;
+        // Must be declared before any member that holds vk::raii::DescriptorSet
+        // (Materials, PerFrameDescriptorSet via Renderer) so the pool outlives
+        // its allocated sets.
+        std::unique_ptr<DescriptorPool>          descriptorPool       = nullptr;
+
         std::shared_ptr<Material>                MarsMaterial         = nullptr;
         std::shared_ptr<Material>                rockMaterial         = nullptr;
         std::vector<InstanceData>                instanceDatas;
@@ -55,9 +62,6 @@ class CEngine final {
         std::shared_ptr<Texture>                 defaultNormalTexture_  = nullptr;
 
         Scene                                    scene_{};
-
-        std::unique_ptr<DescriptorSetLayout>     descriptorSetLayout  = nullptr;
-        std::unique_ptr<DescriptorPool>          descriptorPool       = nullptr;
 
         std::unique_ptr<Renderer>                renderer             = nullptr;
         

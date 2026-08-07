@@ -95,7 +95,7 @@ void Pipeline::createGraphicsPipeline(const std::vector<vk::DescriptorSetLayout>
                  .setLogicOp(vk::LogicOp::eCopy)
                  .setAttachmentCount(1)
                  .setPAttachments(&blendAttachment);
-    //push constant — 4-byte bitmask for render flags
+    //push constant: 4-byte bitmask for render flags
     vk::PushConstantRange pushConstantRange{};
     pushConstantRange.setStageFlags(vk::ShaderStageFlagBits::eFragment)
                      .setOffset(0)

@@ -10,7 +10,13 @@ class Mesh{
         Mesh(const Mesh&) = delete;
         Mesh& operator=(const Mesh&) = delete;
 
-        explicit Mesh(const std::string modelPath, VmaAllocator* alloc, CommandPool& commandPool);
+        // Format-agnostic: deduplicates vertices, computes tangents, uploads to GPU
+        Mesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices,
+             VmaAllocator* alloc, CommandPool& commandPool);
+
+        //Default OBJ-specific loading, without specified format
+        static std::unique_ptr<Mesh> fromObj(const std::string& modelPath,
+                                             VmaAllocator* alloc, CommandPool& commandPool);
 
         const std::vector<Vertex>& getVertices() const { return vertices_; }
         const std::vector<uint32_t>& getIndices() const { return indices_; }
@@ -19,10 +25,9 @@ class Mesh{
         const VkBuffer& getIndexBuffer()  const { return indicesBuffer->getBuffer(); }
 
     private:
-        std::unordered_map<Vertex, uint32_t>     uniqueVertices_{};
         std::vector<Vertex>                      vertices_;
         std::vector<uint32_t>                    indices_;
-        
+
         std::unique_ptr<Buffer<Vertex>>          vertexBuffer = nullptr;
         std::unique_ptr<Buffer<uint32_t>>        indicesBuffer = nullptr;
 };

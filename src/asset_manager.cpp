@@ -16,7 +16,7 @@ void AssetManager::loadTexture(const std::string& path,
 }
 
 void AssetManager::loadMesh(const std::string& path, VmaAllocator* alloc, CommandPool& cmdPool) {
-    std::shared_ptr<Mesh> mesh_ = std::make_shared<Mesh>(path, alloc, cmdPool);
+    std::shared_ptr<Mesh> mesh_ = Mesh::fromObj(path, alloc, cmdPool);
     std::cout <<"Number of " <<path <<" vertices: " <<mesh_->getVertices().size() <<"\n";
     meshCache_.insert({path, std::move(mesh_)});
 }

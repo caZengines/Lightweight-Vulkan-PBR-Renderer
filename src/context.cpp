@@ -19,8 +19,12 @@ void Context::setupDebugMessenger() {
                                   vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation |
                                   vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance)
                 .setPfnUserCallback(&debugCallback);
-
-    debugMessenger = instance_.createDebugUtilsMessengerEXT( createInfo );
+    
+    try {
+        debugMessenger = instance_.createDebugUtilsMessengerEXT( createInfo );
+    } catch(vk::SystemError &err) {
+        std::cout << "Debug messenger not available. Validation layers may not be enabled." << std::endl;
+    }
 }
 VKAPI_ATTR vk::Bool32 VKAPI_CALL Context::debugCallback(
     vk::DebugUtilsMessageSeverityFlagBitsEXT Severity,

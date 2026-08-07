@@ -1,0 +1,24 @@
+---
+CompileFlags:
+  Add:
+    # Force the MinGW triple everywhere: headers without a compile command
+    # fall back to clangd's default MSVC target, which breaks mingw-w64
+    # headers (e.g. __MINGW_ATTRIB_NORETURN undefined in stdlib.h).
+    - "-target"
+    - "x86_64-w64-windows-gnu"
+    # Order matters: mirrors g++ -v include search order. libstdc++ uses
+    # #include_next from cmath/cstdlib, which only searches directories AFTER
+    # the one containing the current file, so ucrt64/include must come after
+    # the c++ header dirs.
+    - "-isystem"
+    - "C:/msys64/ucrt64/include/c++/15.2.0"
+    - "-isystem"
+    - "C:/msys64/ucrt64/include/c++/15.2.0/x86_64-w64-mingw32"
+    - "-isystem"
+    - "C:/msys64/ucrt64/include/c++/15.2.0/backward"
+    - "-isystem"
+    - "C:/msys64/ucrt64/lib/gcc/x86_64-w64-mingw32/15.2.0/include"
+    - "-isystem"
+    - "C:/msys64/ucrt64/include"
+    - "-isystem"
+    - "C:/msys64/ucrt64/lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed"
