@@ -9,10 +9,10 @@
 #include <vulkan/vulkan_raii.hpp>
 
 
-//It should be noticed that the Texture class needs Manually declare creation
+// It should be noticed that the Texture class needs Manually declare creation
 class Texture{
     public:
-        //Ban copying, allowed movement
+        // Ban copying, allowed movement
         Texture(const Texture&) = delete;
         Texture& operator=(const Texture&) = delete;
         Texture(Texture&& other) noexcept = default;

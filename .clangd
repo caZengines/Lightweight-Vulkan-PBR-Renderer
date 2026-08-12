@@ -22,3 +22,11 @@ CompileFlags:
     - "C:/msys64/ucrt64/include"
     - "-isystem"
     - "C:/msys64/ucrt64/lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed"
+
+Diagnostics:
+  Suppress:
+    # mingw-w64's xmmintrin.h defines _mm_getcsr, which clang registers as a
+    # TARGET_HEADER_BUILTIN -> spurious "definition of builtin function"
+    # error when parsing stb_image.h's emmintrin.h include. GCC accepts the
+    # definition, so this is a clang-only false positive.
+    - builtin_definition

@@ -22,7 +22,7 @@ constexpr bool enableValidationLayers = false;
 constexpr bool enableValidationLayers = true;
 #endif
 
-//C++ destroys members in reverse declaration order.
+// C++ destroys members in reverse declaration order.
 class CEngine final {
     public:
         explicit CEngine();

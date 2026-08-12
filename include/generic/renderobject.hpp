@@ -9,7 +9,7 @@
 
 class RenderObject {
     public:
-        //Ban copy
+        // Ban copy
         RenderObject (const RenderObject&) = delete;
         RenderObject& operator=(const RenderObject&) = delete;
 

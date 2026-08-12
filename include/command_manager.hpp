@@ -6,7 +6,7 @@
 
 class CommandPool {
     public:
-        //Ban copying
+        // Ban copying
         CommandPool (const CommandPool&) = delete;
         CommandPool& operator=(const CommandPool&) = delete;
 

@@ -4,17 +4,19 @@
 #include "command_manager.hpp"
 #include <string>
 
+// Mesh accepts raw vector without the need for deduplication.
 class Mesh{
     public:
-        //Ban copying
+        // Ban copying
         Mesh(const Mesh&) = delete;
         Mesh& operator=(const Mesh&) = delete;
 
-        // Format-agnostic: deduplicates vertices, computes tangents, uploads to GPU
+        // Format-agnostic: deduplicates vertices, generates smooth normals if missing,
+        // computes tangents, uploads to GPU
         Mesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices,
              VmaAllocator* alloc, CommandPool& commandPool);
 
-        //Default OBJ-specific loading, without specified format
+        // Default OBJ-specific loading, without specified format
         static std::unique_ptr<Mesh> fromObj(const std::string& modelPath,
                                              VmaAllocator* alloc, CommandPool& commandPool);
 

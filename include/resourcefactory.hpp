@@ -8,7 +8,7 @@
 
 class ResourceFactory{
     public:
-        //Ban copying and movement
+        // Ban copying and movement
         ResourceFactory(const ResourceFactory&) = delete;
         ResourceFactory& operator=(const ResourceFactory&) = delete;
 

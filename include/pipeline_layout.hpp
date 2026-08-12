@@ -5,7 +5,7 @@
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
 
-//Pipeline provides a public interface for reading files and returning a vector of variable type: uint8_t
+// Pipeline provides a public interface for reading files and returning a vector of variable type: uint8_t
 class Pipeline {
 public:
     Pipeline(RenderContext& rct, const std::vector<vk::DescriptorSetLayout>& dsls, vk::Format colorFormat);

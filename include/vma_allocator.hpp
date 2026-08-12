@@ -27,7 +27,7 @@ class VmaBuffer {
               const VmaAllocationCreateInfo& allocCI);
     ~VmaBuffer() { destroy(); }
 
-    //Ban copying
+    // Ban copying
     VmaBuffer(const VmaBuffer&) = delete;
     VmaBuffer& operator=(const VmaBuffer&) = delete;
 
@@ -48,7 +48,7 @@ class VmaBuffer {
     const VkBuffer& getHandle() const { return buffer_; } 
 
     void* map();
-    void unmap();
+    void  unmap();
 
     /// For MAPPED_BIT allocations — returns the persistently-mapped pointer
     /// without incrementing the internal map counter.
@@ -71,7 +71,7 @@ class VmaImage {
                  const VmaAllocationCreateInfo& allocCI);
         ~VmaImage() { destroy(); }
 
-        //Ban copying
+        // Ban copying
         VmaImage(const VmaImage&) = delete;
         VmaImage& operator=(const VmaImage&) = delete;
 

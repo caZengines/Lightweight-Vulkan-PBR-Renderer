@@ -5,17 +5,17 @@
 struct DrawBatch {
     std::shared_ptr<const Mesh>     mesh;
     std::shared_ptr<Material>       material;
-    VkBuffer                        instanceBuffer;  //Buffer pointing to RenderObject
+    VkBuffer                        instanceBuffer;  // Buffer pointing to RenderObject
     uint32_t                        instanceCount;
     uint32_t                        firstInstance;   // used for indirect draw
 };
 
 class Scene {
 public:
-    //em, just as its name implies
+    // em, just as its name implies
     void addObject(std::shared_ptr<RenderObject> object) { objects_.emplace_back(object); batchesDirty_ = true; }
-    //just as its name implies also
-    //void removeObject(size_t index);
+    // just as its name implies also
+    // void removeObject(size_t index);
 
     const std::vector<DrawBatch> getDrawBatches();
 

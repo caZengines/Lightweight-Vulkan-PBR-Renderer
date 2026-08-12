@@ -18,8 +18,8 @@ struct ReflectBinding {
     vk::DescriptorType      descriptorType;
     uint32_t                count;
     vk::ShaderStageFlags    stageFlags;
-    std::string             name; //EntryPoint Name 
-    uint32_t                blockSize; //Only valid for UBO/SSBO
+    std::string             name; // EntryPoint Name 
+    uint32_t                blockSize; // Only valid for UBO/SSBO
 
     ReflectBinding& setBinding(uint32_t binding_) { binding = binding_; return *this; }
     ReflectBinding& setDescriptorSet(uint32_t set_) { set = set_; return *this; }
@@ -30,7 +30,7 @@ struct ReflectBinding {
     ReflectBinding& setBlockSize(uint32_t bs_) { blockSize = bs_; return *this; }
 };
 
-//Auto create DescriptorSetLayout by SPRIV-Reflect
+// Auto create DescriptorSetLayout by SPRIV-Reflect
 class DescriptorSetLayout {
     public:
         // Default upper bound for per-object (Set 1+) descriptor sets.
@@ -41,10 +41,10 @@ class DescriptorSetLayout {
         ~DescriptorSetLayout() = default;
 
         const std::vector<vk::raii::DescriptorSetLayout>& getDescriptorSetLayouts() const { return descriptorSetLayouts_; }
-        //The binding information saved by describorSetLayouts is in units of each Set in the shader
+        // The binding information saved by describorSetLayouts is in units of each Set in the shader
         const std::vector<vk::DescriptorSetLayout>& getLayoutHandles() const { return layoutHandles_; }
 
-        //const ReflectBinding* getBinding(const std::string& name) const;
+        // Const ReflectBinding* getBinding(const std::string& name) const;
         const std::vector<ReflectBinding>& getBindings() const { return bindings_; }
         const int& getPoolMaxSets() const { return poolMaxSets; }
         const int& getSetCount() const { return setCount; }
@@ -71,7 +71,7 @@ class DescriptorSetLayout {
 
 class DescriptorPool {
     public:
-        //Ban copying
+        // Ban copying
         DescriptorPool(const DescriptorPool&) = delete;
         DescriptorPool& operator=(const DescriptorPool&) = delete;
 
@@ -90,7 +90,7 @@ class DescriptorPool {
 
 class DescriptorSet {
     public:
-        //Ban copying
+        // Ban copying
         DescriptorSet(const DescriptorSet&) = delete;
         DescriptorSet& operator=(const DescriptorSet&) = delete;
 
@@ -107,7 +107,7 @@ class DescriptorSet {
 
 class PerFrameDescriptorSet {
     public:
-        //Ban copying
+        // Ban copying
         PerFrameDescriptorSet(const PerFrameDescriptorSet&) = delete;
         PerFrameDescriptorSet& operator=(const PerFrameDescriptorSet&) = delete;
 

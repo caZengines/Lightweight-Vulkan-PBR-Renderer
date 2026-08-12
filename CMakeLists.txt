@@ -22,6 +22,7 @@ endif()
 
 find_package(Vulkan REQUIRED)
 find_package(glfw3 REQUIRED)
+find_package(KTX REQUIRED)
 find_package(glm OPTIONAL)
 find_program(SLANGC_COMPILER slangc REQUIRED)
 
@@ -58,6 +59,10 @@ add_executable(
     main
     ${SRC_LIST}
 )
+# KTX::ktx propagates -D_DEBUG in Debug builds, which triggers spirv_reflect.c's
+# _CRTDBG_MAP_ALLOC mapping (calloc -> _calloc_dbg). MinGW's UCRT has no such
+# symbols, so undefine _DEBUG for this file only.
+set_source_files_properties(src/extern/spirv_reflect.c PROPERTIES COMPILE_OPTIONS "-U_DEBUG")
 add_dependencies(main CompileShaders)
 
 target_compile_definitions(main 
@@ -73,6 +78,7 @@ target_link_libraries(
     main
     PRIVATE
     Vulkan::Vulkan
+    KTX::ktx
     glfw
 )
 
