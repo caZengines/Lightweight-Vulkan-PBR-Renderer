@@ -12,7 +12,7 @@ Mesh::Mesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices,
     std::vector<uint32_t> dedupedIndices;
     deduped.reserve(vertices.size());
     dedupedIndices.reserve(indices.size());
-    for (uint32_t index : indices) {
+    for (const uint32_t& index : indices) {
         auto [it, inserted] = uniqueVertices.insert({vertices[index], static_cast<uint32_t>(deduped.size())});
         if (inserted) {
             deduped.emplace_back(vertices[index]);
@@ -22,12 +22,40 @@ Mesh::Mesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices,
     vertices_ = std::move(deduped);
     indices_  = std::move(dedupedIndices);
 
-    bool hasNormals   = false;
-    bool hasTexCoords = false;
+    bool hasNormals     = false;
+    bool hasTexCoords   = false;
+    bool missingNormals = false;
     for (const Vertex& v : vertices_) {
-        if ((v.normal[0] | v.normal[1] | v.normal[2]) != 0) hasNormals = true;
-        if (v.texCoord.x != 0.0f || v.texCoord.y != 0.0f)   hasTexCoords = true;
-        if (hasNormals && hasTexCoords) break;
+        if ((v.normal[0] | v.normal[1] | v.normal[2]) != 0) {
+            hasNormals = true;
+        } else {
+            missingNormals = true;
+        }
+        if (v.texCoord.x != 0.0f || v.texCoord.y != 0.0f) hasTexCoords = true;
+    }
+
+    // Models without normal data (or with partially missing normals) get smooth,
+    // area-weighted normals generated from the deduplicated index list.
+    if (missingNormals) {
+        std::vector<glm::vec3> accum(vertices_.size());
+        for (size_t f = 0; f + 2 < indices_.size(); f += 3) {
+            uint32_t i0 = indices_[f + 0];
+            uint32_t i1 = indices_[f + 1];
+            uint32_t i2 = indices_[f + 2];
+
+            glm::vec3 faceNormal = glm::cross(vertices_[i1].pos - vertices_[i0].pos,
+                                              vertices_[i2].pos - vertices_[i0].pos);
+            if (glm::dot(faceNormal, faceNormal) < 1e-12f) continue; // degenerate face
+            accum[i0] += faceNormal;
+            accum[i1] += faceNormal;
+            accum[i2] += faceNormal;
+        }
+        for (size_t i = 0, size = vertices_.size(); i < size; ++i) {
+            if ((vertices_[i].normal[0] | vertices_[i].normal[1] | vertices_[i].normal[2]) != 0) continue;
+            if (glm::dot(accum[i], accum[i]) < 1e-12f) continue; // fully degenerate vertex, leave zero
+            vertices_[i].setNormal(glm::normalize(accum[i]));
+            hasNormals = true;
+        }
     }
 
     if (hasNormals && hasTexCoords) {
@@ -62,12 +90,23 @@ Mesh::Mesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices,
             }
         }
         for (size_t i = 0, size = vertices_.size(); i < size; ++i) {
-            if (weightSum[i] < 1e-6f) continue;
+            if (weightSum[i] < 1e-6f) {
+                // Degenerate UVs: fall back to an arbitrary tangent so the
+                // shader never sees a zero-length tangent basis.
+                vertices_[i].setTangent({1.0f, 0.0f, 0.0f}, 1.0f);
+                continue;
+            }
 
             // Normal is stored SNORM-quantized; decode it back for the tangent basis
-            glm::vec3 n = glm::normalize(glm::vec3(vertices_[i].normal[0],
-                                                   vertices_[i].normal[1],
-                                                   vertices_[i].normal[2]) / 127.0f);
+            glm::vec3 decoded = glm::vec3(vertices_[i].normal[0],
+                                          vertices_[i].normal[1],
+                                          vertices_[i].normal[2]) / 127.0f;
+            float normalLen = glm::length(decoded);
+            if (normalLen < 1e-6f) {
+                vertices_[i].setTangent({1.0f, 0.0f, 0.0f}, 1.0f);
+                continue;
+            }
+            glm::vec3 n = decoded / normalLen;
             glm::vec3 t = tanAccum[i] / weightSum[i];
             glm::vec3 b = bitAccum[i] / weightSum[i];
 
@@ -78,7 +117,6 @@ Mesh::Mesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices,
         }
     } else {
         for (auto& vertex : vertices_) {
-            vertex.setNormal({0.0f, 0.0f, 0.0f});
             vertex.setTangent({1.0f, 0.0f, 0.0f}, 1.0f);
         }
     }
@@ -102,13 +140,15 @@ std::unique_ptr<Mesh> Mesh::fromObj(const std::string& modelPath,
     std::string                      err;
     if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &err, modelPath.c_str()))
     {
-        throw std::runtime_error(err);
+        throw std::runtime_error(err.empty() ? "Failed to load OBJ: " + modelPath : err);
     }
     std::vector<Vertex>   vertices;
     std::vector<uint32_t> indices;
-    vertices.reserve(attrib.vertices.size() / 3);
-    indices.reserve(attrib.vertices.size());
-    bool enableNormal = !attrib.normals.empty();
+    size_t cornerCount = 0;
+    for (const auto& shape : shapes) cornerCount += shape.mesh.indices.size();
+    vertices.reserve(cornerCount);
+    indices.reserve(cornerCount);
+    const bool hasFileNormals = !attrib.normals.empty();
     for (const auto& shape : shapes) {
         for (const auto& index : shape.mesh.indices) {
             Vertex vertex{};
@@ -125,13 +165,14 @@ std::unique_ptr<Mesh> Mesh::fromObj(const std::string& modelPath,
             } else {
                 vertex.texCoord = {0.0f, 0.0f};
             }
-            if (enableNormal) {
+            if (hasFileNormals && index.normal_index >= 0) {
                 vertex.setNormal(glm::vec3(
                     attrib.normals[3 * index.normal_index + 0],
                     attrib.normals[3 * index.normal_index + 1],
                     attrib.normals[3 * index.normal_index + 2]
                 ));
             } else {
+                // Missing normals are generated as smooth normals in the Mesh constructor
                 vertex.setNormal({0.0f, 0.0f, 0.0f});
             }
             vertices.emplace_back(vertex);

@@ -4,6 +4,7 @@
 #include "vulkan/vulkan.hpp"
 #include <cmath>
 
+#include <ktx.h>
 #define STB_IMAGE_IMPLEMENTATION
 #include "extern/stb_image.h"
 

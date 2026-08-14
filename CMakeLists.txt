@@ -63,6 +63,9 @@ add_executable(
 # _CRTDBG_MAP_ALLOC mapping (calloc -> _calloc_dbg). MinGW's UCRT has no such
 # symbols, so undefine _DEBUG for this file only.
 set_source_files_properties(src/extern/spirv_reflect.c PROPERTIES COMPILE_OPTIONS "-U_DEBUG")
+# tiny_gltf_v3.c is compiled as its own translation unit; the filesystem feature
+# must be enabled there for tg3_parse_file (and external .bin buffers) to work.
+set_source_files_properties(src/extern/tiny_gltf_v3.c PROPERTIES COMPILE_DEFINITIONS "TINYGLTF3_ENABLE_FS")
 add_dependencies(main CompileShaders)
 
 target_compile_definitions(main 

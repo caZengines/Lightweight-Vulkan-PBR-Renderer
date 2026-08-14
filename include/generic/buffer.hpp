@@ -1,13 +1,11 @@
 #pragma once
 #include "command_manager.hpp"
 #include "vma_allocator.hpp"
-#include "vulkan/vulkan.hpp"
 #include <vector>
 
 #define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
-#include <vulkan/vulkan.hpp>
 
 template<typename T> class Buffer{
     public:

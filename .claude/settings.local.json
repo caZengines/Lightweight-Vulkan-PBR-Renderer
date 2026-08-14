@@ -17,7 +17,11 @@
       "Read(//c/msys64/ucrt64/include/glm/**)",
       "Read(//c/msys64/ucrt64/lib/cmake/**)",
       "Bash(\"/c/Users/mcbbs/AppData/Roaming/Code/User/globalStorage/llvm-vs-code-extensions.vscode-clangd/install/22.1.6/clangd_22.1.6/bin/clangd.exe\" --check=include/c_engine.hpp --compile-commands-dir=cmake-build-debug --query-driver=C:/msys64/ucrt64/bin/g++.exe)",
-      "Bash(echo \"EXIT: $?\")"
+      "Bash(echo \"EXIT: $?\")",
+      "Read(//c/msys64/ucrt64/lib/gcc/x86_64-w64-mingw32/15.2.0/include/**)",
+      "Read(//c/Users/mcbbs/AppData/Roaming/Code/User/globalStorage/llvm-vs-code-extensions.vscode-clangd/install/22.1.6/clangd_22.1.6/lib/clang/22/include//**)",
+      "WebSearch",
+      "Bash(python *)"
     ]
   },
   "enableAllProjectMcpServers": true,

@@ -13,7 +13,7 @@ VmaContext::~VmaContext() {
     vmaDestroyAllocator(vmaAllocator_); 
 }
 
-//VmaBuffer
+// VmaBuffer
 VmaBuffer::VmaBuffer(VmaAllocator* alloc, const VkBufferCreateInfo& bufferCI, 
                      const VmaAllocationCreateInfo& allocCI)
     : allocator_(alloc)
@@ -42,7 +42,7 @@ void VmaBuffer::destroy() {
     }
 }
 
-//VmaImage
+// VmaImage
 VmaImage::VmaImage(VmaAllocator* alloc, const VkImageCreateInfo& imageCI,
                    const VmaAllocationCreateInfo& allocCI)
     : allocator_(alloc)
