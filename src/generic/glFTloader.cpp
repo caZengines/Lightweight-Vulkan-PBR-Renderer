@@ -6,7 +6,11 @@
 #include <cstdint>
 #include <cstring>
 #include <iostream>
+#include <limits>
+#include <optional>
 #include <stdexcept>
+#include <string>
+#include <vector>
 
 // =============================================================================
 // glTF 2.0 model loading through the tinygltf v3 C API.
@@ -18,11 +22,13 @@
 //   * TRIANGLES / TRIANGLE_STRIP / TRIANGLE_FAN primitives (strips and fans
 //     are expanded to a triangle list); point/line modes are skipped
 //   * unsigned byte/short/int index accessors, or none (non-indexed)
+//   * sparse accessors, including sparse-only accessors whose base data is
+//     implicitly zero-filled
 //
-// Not supported yet: sparse accessors, Draco compression, morph targets,
-// materials/textures, node transforms (warned and skipped/filled with
-// defaults). Missing normals are regenerated as smooth normals and tangents
-// are computed by the Mesh constructor.
+// Not supported yet: Draco compression, morph targets, materials/textures,
+// node transforms (warned and skipped/filled with defaults). Missing normals
+// are regenerated as smooth normals and tangents are computed by the Mesh
+// constructor.
 // =============================================================================
 
 namespace {
@@ -47,66 +53,277 @@ int32_t findAttribute(const tg3_primitive* primitive, const char* name) {
     return -1;
 }
 
-// Bounds-checked pointer to the element at the given index inside an accessor.
-const uint8_t* accessorElementPtr(const tg3_accessor& accessor,
-                                  const tg3_buffer_view& view,
-                                  const tg3_buffer& buffer,
-                                  uint64_t index) {
-    const int32_t componentSize  = tg3_component_size(accessor.component_type);
-    const int32_t componentCount = tg3_num_components(accessor.type);
-    const int32_t stride         = tg3_accessor_byte_stride(&accessor, &view);
-    if (componentSize <= 0 || componentCount <= 0 || stride <= 0) {
-        throw std::runtime_error("glTF: accessor with unsupported component type or type");
+bool checkedAdd(uint64_t a, uint64_t b, uint64_t& out) {
+    if (a > std::numeric_limits<uint64_t>::max() - b) {
+        return false;
     }
-    if (index >= accessor.count) {
-        throw std::runtime_error("glTF: accessor element index out of range");
-    }
-    const uint64_t elementSize =
-        static_cast<uint64_t>(componentSize) * static_cast<uint64_t>(componentCount);
-    const uint64_t offset =
-        view.byte_offset + accessor.byte_offset + index * static_cast<uint64_t>(stride);
-    if (offset + elementSize > view.byte_offset + view.byte_length ||
-        offset + elementSize > buffer.data.count) {
-        throw std::runtime_error("glTF: accessor data exceeds its buffer view / buffer");
-    }
-    return buffer.data.data + offset;
+    out = a + b;
+    return true;
 }
 
-// Attribute accessors we can read: FLOAT / DOUBLE, or normalized integer types.
-bool attributeReadable(const tg3_accessor& accessor) {
-    switch (accessor.component_type) {
-        case TG3_COMPONENT_TYPE_FLOAT:
-        case TG3_COMPONENT_TYPE_DOUBLE:
-            return true;
-        case TG3_COMPONENT_TYPE_BYTE:
-        case TG3_COMPONENT_TYPE_UNSIGNED_BYTE:
-        case TG3_COMPONENT_TYPE_SHORT:
-        case TG3_COMPONENT_TYPE_UNSIGNED_SHORT:
-            return accessor.normalized != 0;
-        default:
-            return false;
+bool checkedMul(uint64_t a, uint64_t b, uint64_t& out) {
+    if (a != 0 && b > std::numeric_limits<uint64_t>::max() / a) {
+        return false;
     }
+    out = a * b;
+    return true;
+}
+
+uint64_t accessorElementSize(const tg3_accessor& accessor) {
+    const int32_t componentSize  = tg3_component_size(accessor.component_type);
+    const int32_t componentCount = tg3_num_components(accessor.type);
+    if (componentSize <= 0 || componentCount <= 0) {
+        throw std::runtime_error("glTF: accessor with unsupported component type or type");
+    }
+    return static_cast<uint64_t>(componentSize) * static_cast<uint64_t>(componentCount);
+}
+
+// Describes how to read one accessor. The base data (when present) is
+// validated once, so per-element reads are just pointer arithmetic. Sparse
+// substitutions are stored separately and resolved during sequential reads.
+struct AccessorData {
+    const tg3_accessor*      accessor = nullptr;
+    const tg3_buffer_view*   baseView = nullptr;
+    const tg3_buffer*        baseBuffer = nullptr;
+    int32_t                  componentSize = 0;
+    int32_t                  componentCount = 0;
+    uint64_t                 elementSize = 0;
+    uint64_t                 baseStride = 0;
+
+    struct SparseSubstitution {
+        uint64_t        targetIndex;
+        const uint8_t*  valueData;
+    };
+    std::vector<SparseSubstitution> sparseSubstitutions;
+    mutable size_t                  sparseCursor = 0;
+
+    uint64_t count() const { return accessor ? accessor->count : 0; }
+};
+
+// Verify that [offset_in_view, offset_in_view + byte_length) lies inside both
+// the buffer view and the underlying buffer.
+void checkBufferViewRange(const tg3_buffer_view& view,
+                          const tg3_buffer& buffer,
+                          uint64_t offsetInView,
+                          uint64_t byteLength,
+                          const char* what) {
+    if (offsetInView > view.byte_length || byteLength > view.byte_length - offsetInView) {
+        throw std::runtime_error(std::string("glTF: ") + what +
+                                 " exceeds its buffer view");
+    }
+    uint64_t bufferBegin = 0;
+    uint64_t bufferEnd = 0;
+    if (!checkedAdd(view.byte_offset, offsetInView, bufferBegin) ||
+        !checkedAdd(bufferBegin, byteLength, bufferEnd)) {
+        throw std::runtime_error(std::string("glTF: ") + what + " buffer range overflows");
+    }
+    if (bufferEnd > buffer.data.count ||
+        (byteLength > 0 && buffer.data.data == nullptr)) {
+        throw std::runtime_error(std::string("glTF: ") + what +
+                                 " exceeds its buffer");
+    }
+}
+
+const tg3_buffer_view& getBufferView(const tg3_model& model, int32_t index) {
+    if (index < 0 || static_cast<uint32_t>(index) >= model.buffer_views_count) {
+        throw std::runtime_error("glTF: accessor buffer view index out of range");
+    }
+    return model.buffer_views[index];
+}
+
+const tg3_buffer& getBuffer(const tg3_model& model, const tg3_buffer_view& view) {
+    if (view.buffer < 0 || static_cast<uint32_t>(view.buffer) >= model.buffers_count) {
+        throw std::runtime_error("glTF: buffer view references an invalid buffer");
+    }
+    return model.buffers[view.buffer];
+}
+
+// Collect sparse substitutions and validate the sparse index/value streams.
+// glTF requires sparse indices to be strictly increasing, so we both validate
+// that property and exploit it later with a single monotonic cursor.
+void prepareSparseAccessor(const tg3_model& model, AccessorData& data) {
+    const tg3_accessor& accessor = *data.accessor;
+    const tg3_accessor_sparse& sparse = accessor.sparse;
+    if (!sparse.is_sparse || sparse.count == 0) {
+        return;
+    }
+    if (sparse.count < 0 || static_cast<uint64_t>(sparse.count) > accessor.count) {
+        throw std::runtime_error("glTF: sparse accessor count is invalid");
+    }
+
+    const uint64_t sparseCount = static_cast<uint64_t>(sparse.count);
+    if (sparseCount > static_cast<uint64_t>(data.sparseSubstitutions.max_size())) {
+        throw std::runtime_error("glTF: sparse accessor is too large");
+    }
+
+    // --- Sparse indices ---
+    const tg3_buffer_view& indexView = getBufferView(model, sparse.indices.buffer_view);
+    const tg3_buffer& indexBuffer = getBuffer(model, indexView);
+    if (indexView.byte_stride != 0) {
+        throw std::runtime_error("glTF: sparse index buffer view must be tightly packed");
+    }
+    const int32_t indexSize = tg3_component_size(sparse.indices.component_type);
+    if (indexSize <= 0 ||
+        (sparse.indices.component_type != TG3_COMPONENT_TYPE_UNSIGNED_BYTE &&
+         sparse.indices.component_type != TG3_COMPONENT_TYPE_UNSIGNED_SHORT &&
+         sparse.indices.component_type != TG3_COMPONENT_TYPE_UNSIGNED_INT)) {
+        throw std::runtime_error("glTF: unsupported sparse index component type");
+    }
+    uint64_t indexBytes = 0;
+    if (!checkedMul(sparseCount, static_cast<uint64_t>(indexSize), indexBytes)) {
+        throw std::runtime_error("glTF: sparse index byte range overflows");
+    }
+    checkBufferViewRange(indexView, indexBuffer, sparse.indices.byte_offset,
+                         indexBytes, "sparse accessor indices");
+
+    // --- Sparse values (tightly packed, same component layout as the accessor) ---
+    const tg3_buffer_view& valueView = getBufferView(model, sparse.values.buffer_view);
+    const tg3_buffer& valueBuffer = getBuffer(model, valueView);
+    if (valueView.byte_stride != 0) {
+        throw std::runtime_error("glTF: sparse value buffer view must be tightly packed");
+    }
+    uint64_t valueBytes = 0;
+    if (!checkedMul(sparseCount, data.elementSize, valueBytes)) {
+        throw std::runtime_error("glTF: sparse value byte range overflows");
+    }
+    checkBufferViewRange(valueView, valueBuffer, sparse.values.byte_offset,
+                         valueBytes, "sparse accessor values");
+
+    const uint8_t* indexData =
+        indexBuffer.data.data + indexView.byte_offset + sparse.indices.byte_offset;
+    const uint8_t* valueData =
+        valueBuffer.data.data + valueView.byte_offset + sparse.values.byte_offset;
+
+    data.sparseSubstitutions.reserve(static_cast<size_t>(sparseCount));
+    uint64_t previousIndex = 0;
+    bool hasPrevious = false;
+    for (uint64_t i = 0; i < sparseCount; ++i) {
+        uint64_t targetIndex = 0;
+        const uint8_t* indexPtr = indexData + i * static_cast<uint64_t>(indexSize);
+        switch (sparse.indices.component_type) {
+            case TG3_COMPONENT_TYPE_UNSIGNED_BYTE:
+                targetIndex = *indexPtr;
+                break;
+            case TG3_COMPONENT_TYPE_UNSIGNED_SHORT: {
+                uint16_t value;
+                std::memcpy(&value, indexPtr, sizeof(value));
+                targetIndex = value;
+                break;
+            }
+            case TG3_COMPONENT_TYPE_UNSIGNED_INT: {
+                uint32_t value;
+                std::memcpy(&value, indexPtr, sizeof(value));
+                targetIndex = value;
+                break;
+            }
+            default:
+                break;
+        }
+        if (targetIndex >= accessor.count) {
+            throw std::runtime_error("glTF: sparse accessor index is out of range");
+        }
+        if (hasPrevious && targetIndex <= previousIndex) {
+            throw std::runtime_error("glTF: sparse accessor indices must be strictly increasing");
+        }
+        previousIndex = targetIndex;
+        hasPrevious = true;
+        data.sparseSubstitutions.push_back(
+            {targetIndex, valueData + i * data.elementSize});
+    }
+}
+
+AccessorData prepareAccessor(const tg3_model& model, int32_t accessorIndex) {
+    if (accessorIndex < 0 || static_cast<uint32_t>(accessorIndex) >= model.accessors_count) {
+        throw std::runtime_error("glTF: primitive references an invalid accessor");
+    }
+
+    AccessorData data;
+    data.accessor = &model.accessors[accessorIndex];
+    data.componentSize = tg3_component_size(data.accessor->component_type);
+    data.componentCount = tg3_num_components(data.accessor->type);
+    data.elementSize = accessorElementSize(*data.accessor);
+
+    if (data.accessor->buffer_view >= 0) {
+        data.baseView = &getBufferView(model, data.accessor->buffer_view);
+        data.baseBuffer = &getBuffer(model, *data.baseView);
+        const int32_t stride =
+            tg3_accessor_byte_stride(data.accessor, data.baseView);
+        if (stride <= 0 || static_cast<uint64_t>(stride) < data.elementSize) {
+            throw std::runtime_error("glTF: accessor has an invalid byte stride");
+        }
+        data.baseStride = static_cast<uint64_t>(stride);
+
+        // Validate the complete base range once instead of checking every
+        // element while copying vertices.
+        uint64_t baseSpan = 0;
+        if (data.accessor->count > 0) {
+            uint64_t lastElementOffset = 0;
+            if (!checkedMul(data.accessor->count - 1u, data.baseStride,
+                            lastElementOffset) ||
+                !checkedAdd(lastElementOffset, data.elementSize, baseSpan)) {
+                throw std::runtime_error("glTF: accessor byte range overflows");
+            }
+        }
+        checkBufferViewRange(*data.baseView, *data.baseBuffer,
+                             data.accessor->byte_offset, baseSpan,
+                             "accessor");
+    } else {
+        // A missing base buffer view is valid for sparse accessors; base
+        // elements are zero. readAttributeElement/readIndexElement treat a
+        // null element pointer as a zero value.
+        data.baseStride = data.elementSize;
+    }
+
+    prepareSparseAccessor(model, data);
+    return data;
+}
+
+// Return the source bytes for one accessor element. A null pointer means the
+// element belongs to a zero-filled (buffer-view-less) base and no sparse
+// substitution applies.
+const uint8_t* accessorElementPtr(const AccessorData& data, uint64_t index) {
+    if (index >= data.count()) {
+        throw std::runtime_error("glTF: accessor element index out of range");
+    }
+
+    if (!data.sparseSubstitutions.empty()) {
+        while (data.sparseCursor < data.sparseSubstitutions.size() &&
+               data.sparseSubstitutions[data.sparseCursor].targetIndex < index) {
+            ++data.sparseCursor;
+        }
+        if (data.sparseCursor < data.sparseSubstitutions.size() &&
+            data.sparseSubstitutions[data.sparseCursor].targetIndex == index) {
+            return data.sparseSubstitutions[data.sparseCursor].valueData;
+        }
+    }
+
+    if (!data.baseView || !data.baseBuffer) {
+        return nullptr;
+    }
+    return data.baseBuffer->data.data + data.baseView->byte_offset +
+           data.accessor->byte_offset + index * data.baseStride;
 }
 
 // Read one attribute element as a float4. The accessor must have been
 // accepted by attributeReadable().
-glm::vec4 readAttributeElement(const tg3_accessor& accessor,
-                               const tg3_buffer_view& view,
-                               const tg3_buffer& buffer,
-                               uint64_t index) {
-    const uint8_t* ptr = accessorElementPtr(accessor, view, buffer, index);
-    const int32_t components = tg3_num_components(accessor.type);
+glm::vec4 readAttributeElement(const AccessorData& data, uint64_t index) {
+    const tg3_accessor& accessor = *data.accessor;
+    const uint8_t* ptr = accessorElementPtr(data, index);
+    if (!ptr) {
+        return glm::vec4(0.0f);
+    }
+
     glm::vec4 result(0.0f);
     switch (accessor.component_type) {
         case TG3_COMPONENT_TYPE_FLOAT:
-            for (int32_t c = 0; c < components; ++c) {
+            for (int32_t c = 0; c < data.componentCount; ++c) {
                 float value;
                 std::memcpy(&value, ptr + c * sizeof(float), sizeof(value));
                 result[c] = value;
             }
             break;
         case TG3_COMPONENT_TYPE_DOUBLE:
-            for (int32_t c = 0; c < components; ++c) {
+            for (int32_t c = 0; c < data.componentCount; ++c) {
                 double value;
                 std::memcpy(&value, ptr + c * sizeof(double), sizeof(value));
                 result[c] = static_cast<float>(value);
@@ -116,7 +333,7 @@ glm::vec4 readAttributeElement(const tg3_accessor& accessor,
         case TG3_COMPONENT_TYPE_UNSIGNED_BYTE:
         case TG3_COMPONENT_TYPE_SHORT:
         case TG3_COMPONENT_TYPE_UNSIGNED_SHORT:
-            for (int32_t c = 0; c < components; ++c) {
+            for (int32_t c = 0; c < data.componentCount; ++c) {
                 switch (accessor.component_type) {
                     case TG3_COMPONENT_TYPE_BYTE: {
                         int8_t value;
@@ -151,11 +368,12 @@ glm::vec4 readAttributeElement(const tg3_accessor& accessor,
 }
 
 // Read one index element as uint32_t.
-uint32_t readIndexElement(const tg3_accessor& accessor,
-                          const tg3_buffer_view& view,
-                          const tg3_buffer& buffer,
-                          uint64_t index) {
-    const uint8_t* ptr = accessorElementPtr(accessor, view, buffer, index);
+uint32_t readIndexElement(const AccessorData& data, uint64_t index) {
+    const tg3_accessor& accessor = *data.accessor;
+    const uint8_t* ptr = accessorElementPtr(data, index);
+    if (!ptr) {
+        return 0;  // Zero-filled accessor without a base buffer view.
+    }
     switch (accessor.component_type) {
         case TG3_COMPONENT_TYPE_UNSIGNED_BYTE:
             return *ptr;
@@ -175,6 +393,120 @@ uint32_t readIndexElement(const tg3_accessor& accessor,
     }
 }
 
+// Attribute accessors we can read: FLOAT / DOUBLE, or normalized integer types.
+bool attributeReadable(const tg3_accessor& accessor) {
+    switch (accessor.component_type) {
+        case TG3_COMPONENT_TYPE_FLOAT:
+        case TG3_COMPONENT_TYPE_DOUBLE:
+            return true;
+        case TG3_COMPONENT_TYPE_BYTE:
+        case TG3_COMPONENT_TYPE_UNSIGNED_BYTE:
+        case TG3_COMPONENT_TYPE_SHORT:
+        case TG3_COMPONENT_TYPE_UNSIGNED_SHORT:
+            return accessor.normalized != 0;
+        default:
+            return false;
+    }
+}
+
+template <typename T>
+void reserveAdditional(std::vector<T>& target, uint64_t additional) {
+    const uint64_t maxSize = static_cast<uint64_t>(target.max_size());
+    const uint64_t currentSize = static_cast<uint64_t>(target.size());
+    if (additional > maxSize || currentSize > maxSize - additional) {
+        throw std::runtime_error("glTF: geometry is too large");
+    }
+    target.reserve(static_cast<size_t>(currentSize + additional));
+}
+
+bool indexComponentReadable(const tg3_accessor& accessor) {
+    switch (accessor.component_type) {
+        case TG3_COMPONENT_TYPE_UNSIGNED_BYTE:
+        case TG3_COMPONENT_TYPE_UNSIGNED_SHORT:
+        case TG3_COMPONENT_TYPE_UNSIGNED_INT:
+            return true;
+        default:
+            return false;
+    }
+}
+
+// Append triangle-list indices directly to outIndices. This expands triangle
+// strips/fans on the fly and avoids the temporary localIndices/triangleIndices
+// vectors used by the previous implementation.
+
+void appendPrimitiveIndices(const AccessorData* indexData,
+                            uint64_t indexCount,
+                            uint64_t vertexCount,
+                            int32_t mode,
+                            uint32_t baseVertex,
+                            std::vector<uint32_t>& outIndices) {
+    if (mode != TG3_MODE_TRIANGLES && indexCount < 3) {
+        return;
+    }
+    auto readLocal = [&](uint64_t i) -> uint32_t {
+        if (indexData) {
+            const uint32_t index = readIndexElement(*indexData, i);
+            if (index >= vertexCount) {
+                throw std::runtime_error("glTF: primitive index out of range");
+            }
+            return index;
+        }
+        if (i >= vertexCount || i > UINT32_MAX) {
+            throw std::runtime_error("glTF: primitive index out of range");
+        }
+        return static_cast<uint32_t>(i);
+    };
+
+    switch (mode) {
+        case TG3_MODE_TRIANGLES:
+            reserveAdditional(outIndices, indexCount);
+            for (uint64_t i = 0; i < indexCount; ++i) {
+                outIndices.emplace_back(baseVertex + readLocal(i));
+            }
+            break;
+
+        case TG3_MODE_TRIANGLE_STRIP: {
+            uint64_t triangleCount = 0;
+            if (!checkedMul(indexCount - 2u, 3u, triangleCount)) {
+                throw std::runtime_error("glTF: expanded triangle count overflows");
+            }
+            reserveAdditional(outIndices, triangleCount);
+            uint32_t a = readLocal(0);
+            uint32_t b = readLocal(1);
+            for (uint64_t i = 2; i < indexCount; ++i) {
+                const uint32_t c = readLocal(i);
+                outIndices.emplace_back(baseVertex + a);
+                outIndices.emplace_back(baseVertex + ((i & 1u) ? c : b));
+                outIndices.emplace_back(baseVertex + ((i & 1u) ? b : c));
+                a = b;
+                b = c;
+            }
+            break;
+        }
+
+        case TG3_MODE_TRIANGLE_FAN: {
+            uint64_t triangleCount = 0;
+            if (!checkedMul(indexCount - 2u, 3u, triangleCount)) {
+                throw std::runtime_error("glTF: expanded triangle count overflows");
+            }
+            reserveAdditional(outIndices, triangleCount);
+            const uint32_t first = readLocal(0);
+            uint32_t previous = readLocal(1);
+            for (uint64_t i = 2; i < indexCount; ++i) {
+                const uint32_t current = readLocal(i);
+                outIndices.emplace_back(baseVertex + first);
+                outIndices.emplace_back(baseVertex + previous);
+                outIndices.emplace_back(baseVertex + current);
+                previous = current;
+            }
+            break;
+        }
+
+        default:
+            throw std::runtime_error("glTF: unsupported primitive mode");
+    }
+}
+
 // Load one primitive, appending its vertices and (triangle-list) indices to
 // the output containers.
 void loadPrimitive(const tg3_model& model,
@@ -188,139 +520,96 @@ void loadPrimitive(const tg3_model& model,
         return;
     }
     const tg3_accessor& positionAccessor = model.accessors[positionIndex];
-    if (positionAccessor.buffer_view < 0 || positionAccessor.sparse.is_sparse ||
-        positionAccessor.type != TG3_TYPE_VEC3 || !attributeReadable(positionAccessor) ||
-        positionAccessor.count == 0) {
-        std::cerr << "[glTF] warning: unsupported POSITION accessor (sparse or non-float), primitive skipped"
+    if (positionAccessor.type != TG3_TYPE_VEC3 ||
+        !attributeReadable(positionAccessor) || positionAccessor.count == 0) {
+        std::cerr << "[glTF] warning: unsupported POSITION accessor, primitive skipped"
                   << std::endl;
         return;
     }
-    const uint64_t vertexCount = positionAccessor.count;
-    const tg3_buffer_view& positionView = model.buffer_views[positionAccessor.buffer_view];
-    const tg3_buffer& positionBuffer = model.buffers[positionView.buffer];
+    const AccessorData positionData = prepareAccessor(model, positionIndex);
+    const uint64_t vertexCount = positionData.count();
 
     // --- Optional attributes (NORMAL / TEXCOORD_0) ---
-    const tg3_accessor*    normalAccessor = nullptr;
-    const tg3_buffer_view* normalView     = nullptr;
-    const tg3_buffer*      normalBuffer   = nullptr;
-    const tg3_accessor*    uvAccessor     = nullptr;
-    const tg3_buffer_view* uvView         = nullptr;
-    const tg3_buffer*      uvBuffer       = nullptr;
-
+    std::optional<AccessorData> normalData;
     const int32_t normalIndex = findAttribute(&primitive, "NORMAL");
     if (normalIndex >= 0) {
         const tg3_accessor& accessor = model.accessors[normalIndex];
-        if (accessor.buffer_view < 0 || accessor.sparse.is_sparse ||
-            accessor.type != TG3_TYPE_VEC3 || accessor.count < vertexCount ||
+        if (accessor.type != TG3_TYPE_VEC3 || accessor.count < vertexCount ||
             !attributeReadable(accessor)) {
             std::cerr << "[glTF] warning: unsupported NORMAL accessor; smooth normals will be generated"
                       << std::endl;
         } else {
-            normalAccessor = &accessor;
-            normalView     = &model.buffer_views[accessor.buffer_view];
-            normalBuffer   = &model.buffers[normalView->buffer];
+            normalData.emplace(prepareAccessor(model, normalIndex));
         }
     }
 
+    std::optional<AccessorData> uvData;
     const int32_t uvIndex = findAttribute(&primitive, "TEXCOORD_0");
     if (uvIndex >= 0) {
         const tg3_accessor& accessor = model.accessors[uvIndex];
-        if (accessor.buffer_view < 0 || accessor.sparse.is_sparse ||
-            accessor.type != TG3_TYPE_VEC2 || accessor.count < vertexCount ||
+        if (accessor.type != TG3_TYPE_VEC2 || accessor.count < vertexCount ||
             !attributeReadable(accessor)) {
             std::cerr << "[glTF] warning: unsupported TEXCOORD_0 accessor; UVs default to (0,0)"
                       << std::endl;
         } else {
-            uvAccessor = &accessor;
-            uvView     = &model.buffer_views[accessor.buffer_view];
-            uvBuffer   = &model.buffers[uvView->buffer];
+            uvData.emplace(prepareAccessor(model, uvIndex));
         }
+    }
+
+    // --- Primitive mode validation ---
+    const int32_t mode = primitive.mode < 0 ? TG3_MODE_TRIANGLES : primitive.mode;
+    if (mode != TG3_MODE_TRIANGLES && mode != TG3_MODE_TRIANGLE_STRIP &&
+        mode != TG3_MODE_TRIANGLE_FAN) {
+        std::cerr << "[glTF] warning: non-triangle primitive mode " << mode << " skipped"
+                  << std::endl;
+        return;
     }
 
     // --- Indices ---
-    std::vector<uint32_t> localIndices;
+    std::optional<AccessorData> indexData;
+    uint64_t indexCount = vertexCount;  // Non-indexed primitive.
     if (primitive.indices >= 0) {
         const tg3_accessor& indexAccessor = model.accessors[primitive.indices];
-        if (indexAccessor.buffer_view < 0 || indexAccessor.sparse.is_sparse ||
-            indexAccessor.type != TG3_TYPE_SCALAR) {
-            std::cerr << "[glTF] warning: unsupported index accessor, primitive skipped" << std::endl;
-            return;
-        }
-        const tg3_buffer_view& indexView = model.buffer_views[indexAccessor.buffer_view];
-        const tg3_buffer& indexBuffer = model.buffers[indexView.buffer];
-        localIndices.reserve(indexAccessor.count);
-        for (uint64_t i = 0; i < indexAccessor.count; ++i) {
-            const uint32_t index = readIndexElement(indexAccessor, indexView, indexBuffer, i);
-            if (index >= vertexCount) {
-                throw std::runtime_error("glTF: primitive index out of range");
-            }
-            localIndices.emplace_back(index);
-        }
-    } else {
-        // Non-indexed primitive: synthesize sequential indices.
-        localIndices.reserve(vertexCount);
-        for (uint64_t i = 0; i < vertexCount; ++i) {
-            localIndices.emplace_back(static_cast<uint32_t>(i));
-        }
-    }
-
-    // --- Primitive mode: expand strips/fans to a plain triangle list ---
-    const int32_t mode = primitive.mode < 0 ? TG3_MODE_TRIANGLES : primitive.mode;
-    std::vector<uint32_t> triangleIndices;
-    switch (mode) {
-        case TG3_MODE_TRIANGLES:
-            triangleIndices.swap(localIndices);
-            break;
-        case TG3_MODE_TRIANGLE_STRIP:
-            triangleIndices.reserve((localIndices.size() - 2) * 3);
-            for (uint64_t i = 2; i < localIndices.size(); ++i) {
-                const uint32_t a = localIndices[i - 2];
-                const uint32_t b = localIndices[i - 1];
-                const uint32_t c = localIndices[i];
-                triangleIndices.emplace_back(a);
-                triangleIndices.emplace_back((i & 1u) ? c : b);
-                triangleIndices.emplace_back((i & 1u) ? b : c);
-            }
-            break;
-        case TG3_MODE_TRIANGLE_FAN:
-            triangleIndices.reserve((localIndices.size() - 2) * 3);
-            for (uint64_t i = 2; i < localIndices.size(); ++i) {
-                triangleIndices.emplace_back(localIndices[0]);
-                triangleIndices.emplace_back(localIndices[i - 1]);
-                triangleIndices.emplace_back(localIndices[i]);
-            }
-            break;
-        default:
-            std::cerr << "[glTF] warning: non-triangle primitive mode " << mode << " skipped"
+        if (indexAccessor.type != TG3_TYPE_SCALAR ||
+            !indexComponentReadable(indexAccessor)) {
+            std::cerr << "[glTF] warning: unsupported index accessor, primitive skipped"
                       << std::endl;
             return;
+        }
+        indexData.emplace(prepareAccessor(model, primitive.indices));
+        indexCount = indexData->count();
     }
-    if (triangleIndices.empty()) return;
+    if (indexCount == 0) {
+        return;
+    }
+    if (mode != TG3_MODE_TRIANGLES && indexCount < 3) {
+        return;  // Not enough indices for a strip/fan triangle.
+    }
 
     // --- Fill interleaved vertices ---
     if (outVertices.size() + vertexCount > UINT32_MAX) {
         throw std::runtime_error("glTF: model exceeds uint32 vertex indexing");
     }
     const uint32_t baseVertex = static_cast<uint32_t>(outVertices.size());
-    outVertices.reserve(outVertices.size() + vertexCount);
+    reserveAdditional(outVertices, vertexCount);
     for (uint64_t i = 0; i < vertexCount; ++i) {
-        Vertex vertex{}; 
-        vertex.pos = glm::vec3(readAttributeElement(positionAccessor, positionView, positionBuffer, i));
-        if (uvAccessor) {
-            vertex.texCoord = glm::vec2(readAttributeElement(*uvAccessor, *uvView, *uvBuffer, i));
+        Vertex vertex{};
+        vertex.pos = glm::vec3(readAttributeElement(positionData, i));
+        if (uvData) {
+            vertex.texCoord = glm::vec2(readAttributeElement(*uvData, i));
         } else {
             vertex.texCoord = glm::vec2(0.0f);
         }
-        if (normalAccessor) {
-            vertex.setNormal(glm::vec3(readAttributeElement(*normalAccessor, *normalView, *normalBuffer, i)));
+        if (normalData) {
+            vertex.setNormal(glm::vec3(readAttributeElement(*normalData, i)));
         } else {
             vertex.setNormal(glm::vec3(0.0f));  // Mesh regenerates smooth normals
         }
         outVertices.emplace_back(vertex);
     }
-    for (const uint32_t local : triangleIndices) {
-        outIndices.emplace_back(baseVertex + local);
-    }
+
+    appendPrimitiveIndices(indexData ? &*indexData : nullptr, indexCount,
+                           vertexCount, mode, baseVertex, outIndices);
 }
 
 }  // namespace
@@ -333,7 +622,9 @@ std::unique_ptr<glTFModel> glTFModel::fromglTF(const std::string& modelPath,
 
     tg3_parse_options options;
     tg3_parse_options_init(&options);
-    options.images_as_is = 1;  // geometry-only loader: never decode images
+    options.images_as_is = 1;       // geometry-only loader: never decode images
+    options.skip_extras_values = 1; // geometry-only loader: don't materialize extras/extension values
+    options.parse_float32 = 1;      // glTF geometry values are single-precision; faster JSON parsing
 
     const tg3_error_code result = tg3_parse_file(model.get(), errors.get(),
                                                  modelPath.c_str(),

@@ -5,8 +5,9 @@
 #include <string>
 
 // glTF 2.0 model loaded from a .gltf / .glb file.
-// Loads triangle geometry (POSITION, TEXCOORD_0, NORMAL); missing normals are
-// regenerated as smooth normals and tangents are computed by Mesh.
+// Loads triangle geometry (POSITION, TEXCOORD_0, NORMAL), including sparse
+// accessors; missing normals are regenerated as smooth normals and tangents
+// are computed by Mesh.
 class glTFModel {
     public:
         //ban copying

@@ -19,3 +19,6 @@ CMakeUserPresets.json
 .ninja_log
 .cluade
 AGENTS.md
+
+# Local cache & golden-frame artifacts (not part of the repo)
+.cache/
