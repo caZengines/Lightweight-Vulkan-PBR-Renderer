@@ -1,33 +1,38 @@
 #include "c_engine.hpp"
 #include "context.hpp"
 #include "descriptor_manager.hpp"
+#include "platform/log.hpp"
 #include "render_context.hpp"
 #include "vma_allocator.hpp"
+#include <chrono>
 #include <cstddef>
 #include <random>
 #include <memory>
 
 CEngine::CEngine(){
+    platform::LogLocator::initialize();   // default console logging provider
     initWindow();
     initVulkan();
 }
 
 void CEngine::initWindow() {
-    glfwInit();
+    platform::WindowConfig config;
+    config.width     = 1920;
+    config.height    = 1080;
+    config.title     = "C' Vulkan";
+    config.resizable = true;
+    window = std::make_unique<platform::Window>(config);
 
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-
-    window = glfwCreateWindow(WIDTH, HEIGHT, "C' Vulkan", nullptr, nullptr);
-    glfwSetWindowUserPointer(window, this);
-    glfwSetFramebufferSizeCallback(window, glfwFramebufferResizeCallback);
-    glfwSetMouseButtonCallback(window, mouseButtonCallback);
-    glfwSetCursorPosCallback(window, cursorPosCallback);
-    glfwSetScrollCallback(window, scrollCallback);
-}
-void CEngine::glfwFramebufferResizeCallback(GLFWwindow* window, int width, int height) {
-    auto app                = static_cast<CEngine*>(glfwGetWindowUserPointer(window));
-    app->renderer->framebufferResized = true;
+    // Event hooks — replaces the old static GLFW callbacks.
+    window->onFramebufferResize = [this](uint32_t /*width*/, uint32_t /*height*/) {
+        if (renderer) renderer->framebufferResized = true;
+    };
+    window->onMouseButton = [this](platform::ButtonAction action, platform::MouseButton button, double x, double y) {
+        camera.onMouseButton(button, action, x, y);
+    };
+    window->onCursorPos = [this](double x, double y) {
+        camera.onCursorMove(x, y);
+    };
 }
 
 void CEngine::initVulkan() {
@@ -35,16 +40,15 @@ void CEngine::initVulkan() {
     deviceInfo.requiredDeviceExtensions_ = requiredDeviceExtensions;
     deviceInfo.appName = "No Engine";
     deviceInfo.enableValidationLayers_= enableValidationLayers;
-    deviceInfo.window_ = window;
+    deviceInfo.instanceExtensions_ = window->requiredInstanceExtensions();
     vulkanDevice_.init(deviceInfo);
     vmaContext_ = std::make_unique<VmaContext>(*vulkanDevice_.physicalDevice, *vulkanDevice_.device, *vulkanDevice_.instance);
     ResourceFactory::init(vulkanDevice_.physicalDevice, vulkanDevice_.device);
     Context::Config cfg;
-    cfg.window_                 = window;
     cfg.enableValidationLayers_ = enableValidationLayers;
     cfg.validationLayers_       = validationLayers;
     cfg.msaaSamples_            = vulkanDevice_.msaaSamples;
-    context = std::make_unique<Context>(cfg, vulkanDevice_.physicalDevice, vulkanDevice_.device, vulkanDevice_.instance);
+    context = std::make_unique<Context>(cfg, vulkanDevice_.physicalDevice, vulkanDevice_.device, vulkanDevice_.instance, *window);
     createCommandPools();
     initAssetManager();
     createSamplers();
@@ -57,18 +61,40 @@ void CEngine::initVulkan() {
 
 void CEngine::run() {
     const auto& batches = scene_.getDrawBatches();
-    while(!glfwWindowShouldClose(window)) {
-        glfwPollEvents();
+    auto lastTime = std::chrono::high_resolution_clock::now();
+    while(!window->shouldClose()) {
+        window->pollEvents();
+        input.poll(*window);
+
+        const auto now = std::chrono::high_resolution_clock::now();
+        const float deltaTime = std::chrono::duration<float>(now - lastTime).count();
+        lastTime = now;
+
+        updateCamera(deltaTime);
         renderer->drawFrame(batches);
     }
     vulkanDevice_.device.waitIdle();
 }
 
-void CEngine::cleanup() {
-    renderer->cleanup();
+void CEngine::updateCamera(float deltaTime) {
+    // WASD / Space / LShift movement — moved out of Renderer::updateCamera,
+    // now driven by the platform::Input facade instead of raw glfwGetKey.
+    if (input.isKeyDown(platform::Key::W))        camera.moveHorizontal(1.0f, 0.0f, deltaTime);
+    if (input.isKeyDown(platform::Key::A))        camera.moveHorizontal(0.0f, -1.0f, deltaTime);
+    if (input.isKeyDown(platform::Key::S))        camera.moveHorizontal(-1.0f, 0.0f, deltaTime);
+    if (input.isKeyDown(platform::Key::D))        camera.moveHorizontal(0.0f, 1.0f, deltaTime);
+    if (input.isKeyDown(platform::Key::Space))    camera.moveVertical(1.0f, deltaTime);
+    if (input.isKeyDown(platform::Key::LeftShift)) camera.moveVertical(-1.0f, deltaTime);
 
-    glfwDestroyWindow(window);
-    glfwTerminate();
+    const double scroll = input.scrollDelta();
+    if (scroll != 0.0) camera.Zoom(scroll);
+}
+
+void CEngine::cleanup() {
+    if (renderer) {
+        renderer->cleanup();
+    }
+    window.reset();   // destroys the GLFW window and terminates GLFW
 }
 
 void CEngine::createMaterials() {
@@ -105,7 +131,7 @@ void CEngine::createDescriptorSetPool() {
          camera,
          *graphicsCommandPool,
          context->surface,
-         window);
+         *window);
  }
 
 void CEngine::createCommandPools() {

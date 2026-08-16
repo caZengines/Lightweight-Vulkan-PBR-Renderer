@@ -1,11 +1,11 @@
 #include "generic/glTFloader.hpp"
 
 #include "extern/tiny_gltf_v3.h"
+#include "platform/log.hpp"
 
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
-#include <iostream>
 #include <limits>
 #include <optional>
 #include <stdexcept>
@@ -516,14 +516,15 @@ void loadPrimitive(const tg3_model& model,
     // --- POSITION (mandatory) ---
     const int32_t positionIndex = findAttribute(&primitive, "POSITION");
     if (positionIndex < 0) {
-        std::cerr << "[glTF] warning: primitive without POSITION skipped" << std::endl;
+        platform::LogLocator::get().write(platform::LogLevel::Warning,
+            "[glTF] warning: primitive without POSITION skipped");
         return;
     }
     const tg3_accessor& positionAccessor = model.accessors[positionIndex];
     if (positionAccessor.type != TG3_TYPE_VEC3 ||
         !attributeReadable(positionAccessor) || positionAccessor.count == 0) {
-        std::cerr << "[glTF] warning: unsupported POSITION accessor, primitive skipped"
-                  << std::endl;
+        platform::LogLocator::get().write(platform::LogLevel::Warning,
+            "[glTF] warning: unsupported POSITION accessor, primitive skipped");
         return;
     }
     const AccessorData positionData = prepareAccessor(model, positionIndex);
@@ -536,8 +537,8 @@ void loadPrimitive(const tg3_model& model,
         const tg3_accessor& accessor = model.accessors[normalIndex];
         if (accessor.type != TG3_TYPE_VEC3 || accessor.count < vertexCount ||
             !attributeReadable(accessor)) {
-            std::cerr << "[glTF] warning: unsupported NORMAL accessor; smooth normals will be generated"
-                      << std::endl;
+            platform::LogLocator::get().write(platform::LogLevel::Warning,
+                "[glTF] warning: unsupported NORMAL accessor; smooth normals will be generated");
         } else {
             normalData.emplace(prepareAccessor(model, normalIndex));
         }
@@ -549,8 +550,8 @@ void loadPrimitive(const tg3_model& model,
         const tg3_accessor& accessor = model.accessors[uvIndex];
         if (accessor.type != TG3_TYPE_VEC2 || accessor.count < vertexCount ||
             !attributeReadable(accessor)) {
-            std::cerr << "[glTF] warning: unsupported TEXCOORD_0 accessor; UVs default to (0,0)"
-                      << std::endl;
+            platform::LogLocator::get().write(platform::LogLevel::Warning,
+                "[glTF] warning: unsupported TEXCOORD_0 accessor; UVs default to (0,0)");
         } else {
             uvData.emplace(prepareAccessor(model, uvIndex));
         }
@@ -560,8 +561,8 @@ void loadPrimitive(const tg3_model& model,
     const int32_t mode = primitive.mode < 0 ? TG3_MODE_TRIANGLES : primitive.mode;
     if (mode != TG3_MODE_TRIANGLES && mode != TG3_MODE_TRIANGLE_STRIP &&
         mode != TG3_MODE_TRIANGLE_FAN) {
-        std::cerr << "[glTF] warning: non-triangle primitive mode " << mode << " skipped"
-                  << std::endl;
+        platform::LogLocator::get().write(platform::LogLevel::Warning,
+            "[glTF] warning: non-triangle primitive mode " + std::to_string(mode) + " skipped");
         return;
     }
 
@@ -572,8 +573,8 @@ void loadPrimitive(const tg3_model& model,
         const tg3_accessor& indexAccessor = model.accessors[primitive.indices];
         if (indexAccessor.type != TG3_TYPE_SCALAR ||
             !indexComponentReadable(indexAccessor)) {
-            std::cerr << "[glTF] warning: unsupported index accessor, primitive skipped"
-                      << std::endl;
+            platform::LogLocator::get().write(platform::LogLevel::Warning,
+                "[glTF] warning: unsupported index accessor, primitive skipped");
             return;
         }
         indexData.emplace(prepareAccessor(model, primitive.indices));
@@ -634,10 +635,11 @@ std::unique_ptr<glTFModel> glTFModel::fromglTF(const std::string& modelPath,
     // Dump diagnostics; error strings are arena-owned and valid until model free.
     for (uint32_t i = 0; i < errors.count(); ++i) {
         const tg3_error_entry& entry = *errors.entry(i);
-        std::cerr << "[glTF] " << severityName(entry.severity)
-                  << " (" << static_cast<int>(entry.code) << ")";
-        if (entry.json_path) std::cerr << " at " << entry.json_path;
-        std::cerr << ": " << (entry.message ? entry.message : "(no message)") << std::endl;
+        std::string diagnostic = "[glTF] " + std::string(severityName(entry.severity)) +
+                                 " (" + std::to_string(static_cast<int>(entry.code)) + ")";
+        if (entry.json_path) diagnostic += std::string(" at ") + entry.json_path;
+        diagnostic += std::string(": ") + (entry.message ? entry.message : "(no message)");
+        platform::LogLocator::get().write(platform::LogLevel::Warning, diagnostic);
     }
 
     if (result != TG3_OK || errors.has_error()) {

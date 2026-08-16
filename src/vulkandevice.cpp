@@ -1,6 +1,7 @@
 #include "vulkandevice.hpp"
-#include <iostream>
+#include "platform/log.hpp"
 #include <map>
+#include <string>
 
 void VulkanDevice::init(const CreateInfo& info){
     info_ = info;
@@ -55,10 +56,9 @@ void VulkanDevice::createInstance(){
     instance = vk::raii::Instance(context_, createInfo);
 }
 std::vector<const char*> VulkanDevice::GetRequiredExtension(){
-    uint32_t glfwExtensionsCount = 0;
-    auto glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionsCount);
-    
-    std::vector extensions(glfwExtensions, glfwExtensions + glfwExtensionsCount);
+    // Instance extensions come from the platform layer (window system),
+    // not from GLFW directly.
+    std::vector extensions = info_.instanceExtensions_;
     if(info_.enableValidationLayers_){
         extensions.push_back(vk::EXTDebugUtilsExtensionName);
     }
@@ -84,10 +84,12 @@ void VulkanDevice::pickPhysicalDevice(){
         physicalDevice = candidates.rbegin()-> second;
         if(info_.enableValidationLayers_){
             vk::PhysicalDeviceProperties deviceProperties = physicalDevice.getProperties();
-            std::cout << "GPU Information: " << deviceProperties.deviceName << std::endl;
-            std::cout << "API Version: " << VK_VERSION_MAJOR(deviceProperties.apiVersion) << "."
-		              << VK_VERSION_MINOR(deviceProperties.apiVersion) << "."
-		              << VK_VERSION_PATCH(deviceProperties.apiVersion) << std::endl;
+            platform::LogLocator::get().write(platform::LogLevel::Info,
+                std::string("GPU Information: ") + deviceProperties.deviceName.data());
+            std::string apiVersion = std::to_string(VK_VERSION_MAJOR(deviceProperties.apiVersion)) + "." +
+                                     std::to_string(VK_VERSION_MINOR(deviceProperties.apiVersion)) + "." +
+                                     std::to_string(VK_VERSION_PATCH(deviceProperties.apiVersion));
+            platform::LogLocator::get().write(platform::LogLevel::Info, "API Version: " + apiVersion);
         }
         setSampleCount();
     }
@@ -220,12 +222,13 @@ void VulkanDevice::setSampleCount(){
             usableSampleCounts.emplace(count, flag);
         }
     }
-    std::cout << "Select MSAA Sample count: ";
+    std::string msaaCounts;
     for (const auto& [count, flag] : usableSampleCounts) {
-        std::cout << count << ' ';
+        msaaCounts += std::to_string(count) + " ";
     }
+    platform::LogLocator::get().write(platform::LogLevel::Info, "Select MSAA Sample count: " + msaaCounts);
     msaaSamples = vk::SampleCountFlagBits::e4;
-    std::cout << "\nAnti-Aliasing Mode: MSAA X" << 4 << '\n';
+    platform::LogLocator::get().write(platform::LogLevel::Info, "Anti-Aliasing Mode: MSAA X4");
     // std::cout << '\n';
     // while (true) {
     //     int idx = 0;

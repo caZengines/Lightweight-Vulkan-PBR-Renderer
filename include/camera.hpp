@@ -5,8 +5,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/constants.hpp>
 
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
+#include "platform/input.hpp"   // MouseButton / ButtonAction (no GLFW types)
 
 class Camera {
 public:
@@ -14,7 +13,7 @@ public:
            float polar     = glm::radians(45.0f),
            double distance = 32.0f);
 
-    void onMouseButton(int button, int action, double cursorX, double cursorY);
+    void onMouseButton(platform::MouseButton button, platform::ButtonAction action, double cursorX, double cursorY);
     void onCursorMove(double xPos, double yPos);
 
     glm::mat4 viewMatrix() const;
@@ -49,7 +48,7 @@ private:
 
     glm::vec3 target_{0.0f, 0.0f, 0.0f};
 
-    //mouse 
+    //mouse
     bool   leftPressed = false;
     double lastX       = 0.0;
     double lastY       = 0.0;

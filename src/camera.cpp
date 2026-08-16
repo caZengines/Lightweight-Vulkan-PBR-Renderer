@@ -1,20 +1,18 @@
-#include "c_engine.hpp"
 #include "camera.hpp"
 
-#include <GLFW/glfw3.h>
 #include <algorithm>
 
 Camera::Camera(float azimuth, float polar, double distance)
     : azimuth(azimuth), polar(polar), distance(distance) {}
 
-void Camera::onMouseButton(int button, int action, double cursorX, double cursorY) {
-    if (button != GLFW_MOUSE_BUTTON_LEFT) return;
+void Camera::onMouseButton(platform::MouseButton button, platform::ButtonAction action, double cursorX, double cursorY) {
+    if (button != platform::MouseButton::Left) return;
 
-    if (action == GLFW_PRESS) {
+    if (action == platform::ButtonAction::Press) {
         leftPressed = true;
         lastX       = cursorX;
         lastY       = cursorY;
-    } else if (action == GLFW_RELEASE) {
+    } else if (action == platform::ButtonAction::Release) {
         leftPressed = false;
     }
 }
@@ -71,22 +69,4 @@ void Camera::clampPolar() {
 void Camera::Zoom(double yOff) {
     distance -= yOff * 0.5f;
     distance = std::clamp(distance, kMinDistance, kMaxDistance);
-}
-
-
-void CEngine::mouseButtonCallback(GLFWwindow* window, int button, int action, int /*mods*/) {
-    auto* app = static_cast<CEngine*>(glfwGetWindowUserPointer(window));
-    double x = 0.0, y = 0.0;
-    glfwGetCursorPos(window, &x, &y);
-    app->camera.onMouseButton(button, action, x, y);
-}
-
-void CEngine::cursorPosCallback(GLFWwindow* window, double xPos, double yPos) {
-    auto* app = static_cast<CEngine*>(glfwGetWindowUserPointer(window));
-    app->camera.onCursorMove(xPos, yPos);
-}
-
-void CEngine::scrollCallback(GLFWwindow* window, double xOffset, double yOffset) {
-    auto* app = static_cast<CEngine*>(glfwGetWindowUserPointer(window));
-    app->camera.Zoom(yOffset);
 }

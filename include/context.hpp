@@ -1,13 +1,12 @@
 #pragma once
+#include <string>
 #include <vector>
 
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_raii.hpp>
 
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
-
+#include "platform/window.hpp"
 #include "render_context.hpp"
 
 inline const std::string MODEL_PATH = "../models/container.obj";
@@ -24,13 +23,12 @@ class Context {
         vk::raii::SurfaceKHR                     surface              = nullptr;
 
         struct Config {
-            GLFWwindow*               window_                  = nullptr;
             bool                      enableValidationLayers_  = true;
             std::vector<const char*>  validationLayers_        = {};
             vk::SampleCountFlagBits   msaaSamples_             = vk::SampleCountFlagBits::e1;
         };
 
-       explicit Context(const Config& cfg, vk::raii::PhysicalDevice& physicalDevice, vk::raii::Device& device, vk::raii::Instance& instance);
+       explicit Context(const Config& cfg, vk::raii::PhysicalDevice& physicalDevice, vk::raii::Device& device, vk::raii::Instance& instance, platform::Window& window);
         ~Context() = default;
 
     private:
@@ -39,6 +37,7 @@ class Context {
         vk::raii::PhysicalDevice&                physicalDevice_;
         vk::raii::Device&                        device_;
         vk::raii::Instance&                      instance_;
+        platform::Window&                        window_;
         
         static VKAPI_ATTR vk::Bool32 VKAPI_CALL debugCallback(
             vk::DebugUtilsMessageSeverityFlagBitsEXT Severity,

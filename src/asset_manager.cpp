@@ -1,6 +1,6 @@
 #include "asset_manager.hpp"
 #include "generic/texture.hpp"
-#include <iostream>
+#include "platform/log.hpp"
 #include <memory>
 #include <stdexcept>
 
@@ -17,7 +17,8 @@ void AssetManager::loadTexture(const std::string& path,
 
 void AssetManager::loadMesh(const std::string& path, VmaAllocator* alloc, CommandPool& cmdPool) {
     std::shared_ptr<Mesh> mesh_ = Mesh::fromObj(path, alloc, cmdPool);
-    std::cout <<"Number of " <<path <<" vertices: " <<mesh_->getVertices().size() <<"\n";
+    platform::LogLocator::get().write(platform::LogLevel::Info,
+        "Number of " + path + " vertices: " + std::to_string(mesh_->getVertices().size()));
     meshCache_.insert({path, std::move(mesh_)});
 }
 

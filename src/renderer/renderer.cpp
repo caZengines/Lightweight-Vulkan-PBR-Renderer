@@ -1,10 +1,9 @@
 #include "renderer/renderer.hpp"
+#include "platform/log.hpp"
 #include "render_context.hpp"
 #include "vma_allocator.hpp"
 #include "vulkan/vulkan.hpp"
 #include <cstddef>
-#include <chrono>
-#include <iostream>
 #include <memory>
 
 #define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
@@ -18,8 +17,8 @@ Renderer::Renderer(RenderContext& rct,
                    Camera& camera,
                    CommandPool& commandPool,
                    vk::raii::SurfaceKHR& surface,
-                   GLFWwindow* window)
-    : rct_(rct), allocator_(alloc), descriptorSetLayouts_(dsls), descriptorPool_(pool), camera_(camera), graphicsCommandPool(commandPool), surface_(surface), window_(window)
+                   platform::Window& window)
+    : window_(window), surface_(surface), rct_(rct), allocator_(alloc), descriptorSetLayouts_(dsls), descriptorPool_(pool), camera_(camera), graphicsCommandPool(commandPool)
 {
     swapchainInfo = std::make_unique<Swapchain>(rct_, allocator_, surface, window_);
     perframeDescriptorSet_ = std::make_unique<PerFrameDescriptorSet>(rct_, descriptorPool_, descriptorSetLayouts_[0]);
@@ -149,10 +148,8 @@ void Renderer::drawFrame(const std::vector<DrawBatch>& batches) {
 
     if(frameCount % 600 == 0){
         glm::vec3 pos = camera_.position();
-        std::cout << "\rcamera position: (" 
-        << std::fixed << std::setprecision(2) 
-        << pos.x << ", " << pos.y << ", " << pos.z << ")    ";
-        std::cout.flush();
+        platform::LogLocator::get().write(platform::LogLevel::Info,
+            "camera position: (" + std::to_string(pos.x) + ", " + std::to_string(pos.y) + ", " + std::to_string(pos.z) + ")");
     }
     const vk::PresentInfoKHR presentInfoKHR = [this, &imageIndex]() {
         vk::PresentInfoKHR info;
@@ -288,7 +285,6 @@ void Renderer::recordCommandBuffer(uint32_t ImageIndex, const std::vector<DrawBa
 }
 
 void Renderer::updateUniformBuffer(uint32_t currentImage) {
-    updateCamera();
     glm::vec3 eyePos = camera_.position();
 
     UniformBufferObject ubo{};
@@ -304,32 +300,6 @@ void Renderer::updateUniformBuffer(uint32_t currentImage) {
 
     memcpy(uniformBuffers_[currentImage].mappedData(), &ubo, sizeof(ubo));
 }
-void Renderer::updateCamera() {
-    static auto  startTime = std::chrono::high_resolution_clock::now();
-    const  auto  currentTime = std::chrono::high_resolution_clock::now();
-    const  float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-    startTime = currentTime;
-
-    if(glfwGetKey(window_, GLFW_KEY_W)){
-        camera_.moveHorizontal(1.0f, 0.0f, time);
-    }
-    if(glfwGetKey(window_, GLFW_KEY_A)){
-        camera_.moveHorizontal(0.0f, -1.0f, time);
-    }
-    if(glfwGetKey(window_, GLFW_KEY_S)){
-        camera_.moveHorizontal(-1.0f, 0.0f, time);
-    }
-    if(glfwGetKey(window_, GLFW_KEY_D)){
-        camera_.moveHorizontal(0.0f, 1.0f, time);
-    }
-    if(glfwGetKey(window_, GLFW_KEY_SPACE)){
-        camera_.moveVertical(1.0f, time);
-    }
-    if(glfwGetKey(window_, GLFW_KEY_LEFT_SHIFT)){
-        camera_.moveVertical(-1.0f, time);
-    }
-}
-
 void Renderer::updateDescriptorSet(uint32_t currentImage) {
     vk::DescriptorBufferInfo bufferInfo{};
     bufferInfo.setBuffer(uniformBuffers_[currentImage].getHandle())

@@ -1,19 +1,18 @@
 #pragma once
 #include <vector>
+#include "platform/window.hpp"
 #include "render_context.hpp"
 
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
 #include "vma_allocator.hpp"
 
 
 
 class Swapchain final {
 public:
-    explicit Swapchain(RenderContext& rct, VmaAllocator* alloc, vk::raii::SurfaceKHR& surface, GLFWwindow* window);
-    void recreateSwapChain(vk::raii::SurfaceKHR& surface, GLFWwindow* window);
+    explicit Swapchain(RenderContext& rct, VmaAllocator* alloc, vk::raii::SurfaceKHR& surface, platform::Window& window);
+    void recreateSwapChain(vk::raii::SurfaceKHR& surface, platform::Window& window);
     void cleanupSwapChain();
 
     ~Swapchain() = default;
@@ -45,12 +44,12 @@ private:
     VmaImage                             depthImage_;
     vk::raii::ImageView                  depthImageView   = nullptr;
 
-    static vk::Extent2D         chooseExtent(vk::SurfaceCapabilitiesKHR const&, GLFWwindow*);
+    static vk::Extent2D         chooseExtent(vk::SurfaceCapabilitiesKHR const&, platform::Window&);
     static uint32_t             chooseMinImageCount(vk::SurfaceCapabilitiesKHR const&);
     static vk::SurfaceFormatKHR chooseFormat(const std::vector<vk::SurfaceFormatKHR>&);
     static vk::PresentModeKHR   choosePresentMode(std::vector<vk::PresentModeKHR> const&);
 
-    void createSwapChain(vk::raii::SurfaceKHR& surface, GLFWwindow* window);
+    void createSwapChain(vk::raii::SurfaceKHR& surface, platform::Window& window);
     void createImageViews();
     void createColorAndDepthResources(VmaAllocator* alloc, vk::SampleCountFlagBits msaaSamples);
 };

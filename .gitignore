@@ -22,3 +22,4 @@ AGENTS.md
 
 # Local cache & golden-frame artifacts (not part of the repo)
 .cache/
+.dsh-vision-router/

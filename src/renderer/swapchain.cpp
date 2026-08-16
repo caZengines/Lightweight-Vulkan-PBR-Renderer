@@ -9,7 +9,7 @@
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
 
-Swapchain::Swapchain(RenderContext& rct, VmaAllocator* alloc, vk::raii::SurfaceKHR& surface, GLFWwindow* window)
+Swapchain::Swapchain(RenderContext& rct, VmaAllocator* alloc, vk::raii::SurfaceKHR& surface, platform::Window& window)
     : rct_(rct), allocator_(alloc)
 {
     createSwapChain(surface, window);
@@ -17,7 +17,7 @@ Swapchain::Swapchain(RenderContext& rct, VmaAllocator* alloc, vk::raii::SurfaceK
     createColorAndDepthResources(allocator_, rct_.msaaSamples);
 }
 
-void Swapchain::createSwapChain(vk::raii::SurfaceKHR& surface, GLFWwindow* window) {
+void Swapchain::createSwapChain(vk::raii::SurfaceKHR& surface, platform::Window& window) {
     vk::SurfaceCapabilitiesKHR caps = rct_.physicalDevice.getSurfaceCapabilitiesKHR(*surface);
     extent        = chooseExtent(caps, window);
     uint32_t minCount = chooseMinImageCount(caps);
@@ -47,12 +47,12 @@ void Swapchain::createSwapChain(vk::raii::SurfaceKHR& surface, GLFWwindow* windo
     Image_.images    = swapChain_.getImages();
 }
 
-vk::Extent2D Swapchain::chooseExtent(vk::SurfaceCapabilitiesKHR const& caps, GLFWwindow* window) {
+vk::Extent2D Swapchain::chooseExtent(vk::SurfaceCapabilitiesKHR const& caps, platform::Window& window) {
     if (caps.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
         return caps.currentExtent;
     }
-    int w = 0, h = 0;
-    glfwGetFramebufferSize(window, &w, &h);
+    int w = static_cast<int>(window.framebufferWidth());
+    int h = static_cast<int>(window.framebufferHeight());
     return {
         std::clamp<uint32_t>(w, caps.minImageExtent.width,  caps.maxImageExtent.width),
         std::clamp<uint32_t>(h, caps.minImageExtent.height, caps.maxImageExtent.height),
@@ -107,13 +107,14 @@ void Swapchain::createColorAndDepthResources(VmaAllocator* alloc, vk::SampleCoun
     depthImageView = factory.createImageView(depthImage_, depthFormat, vk::ImageAspectFlagBits::eDepth, 1);
 }
 
-void Swapchain::recreateSwapChain(vk::raii::SurfaceKHR& surface, GLFWwindow* window) {
+void Swapchain::recreateSwapChain(vk::raii::SurfaceKHR& surface, platform::Window& window) {
     //Minimize the current window detection
-    int w = 0, h = 0;
-    glfwGetFramebufferSize(window, &w, &h);
+    int w = static_cast<int>(window.framebufferWidth());
+    int h = static_cast<int>(window.framebufferHeight());
     while (w == 0 && h == 0) {
-        glfwGetFramebufferSize(window, &w, &h);
-        glfwWaitEvents();
+        window.waitEvents();
+        w = static_cast<int>(window.framebufferWidth());
+        h = static_cast<int>(window.framebufferHeight());
     }
     
     rct_.device.waitIdle();

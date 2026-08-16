@@ -7,6 +7,7 @@
 #include "pipeline_layout.hpp"
 #include "camera.hpp"
 #include "vma_allocator.hpp"
+#include "platform/window.hpp"
 #include <vector>
 #include <memory>
 
@@ -46,7 +47,7 @@ class Renderer final {
                       Camera& camera,
                       CommandPool& commandPool,
                       vk::raii::SurfaceKHR& surface,
-                      GLFWwindow* window);
+                      platform::Window& window);
     ~Renderer(){
         if(!cleaned_) cleanup();
     }
@@ -55,7 +56,7 @@ class Renderer final {
     void cleanup();
 
     private:
-        GLFWwindow*                              window_;
+        platform::Window&                        window_;
         vk::raii::SurfaceKHR&                    surface_;
         RenderContext                            rct_;
         VmaAllocator*                            allocator_             = nullptr;
@@ -92,7 +93,6 @@ class Renderer final {
         void destroySyncObjects();
 
         void updateUniformBuffer(uint32_t);
-        void updateCamera();
         void updateDescriptorSet(uint32_t);
         void recordCommandBuffer(uint32_t ImageIndex, const std::vector<DrawBatch>& batches);
         void transition_image_layout(
