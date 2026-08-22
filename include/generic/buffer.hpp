@@ -45,7 +45,7 @@ template<typename T> class Buffer{
         }
         ~Buffer() = default;
 
-        const VkBuffer& getBuffer() const { return vmaBuffer_.getHandle(); }
+        const VkBuffer getBuffer() const { return vmaBuffer_.getHandle(); }
 
     private:
         VmaBuffer                                vmaBuffer_;

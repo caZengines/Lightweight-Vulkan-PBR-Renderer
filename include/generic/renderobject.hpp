@@ -24,7 +24,7 @@ class RenderObject {
         const Mesh& getMesh() const { return *mesh_; }
         std::shared_ptr<const Mesh> getMeshShared() const { return mesh_; }
         std::shared_ptr<Material> getMaterialShared() const { return material_; }
-        const VkBuffer& getInstanceBuffer() const { return instanceBuffer_->getBuffer(); }
+        const VkBuffer getInstanceBuffer() const { return instanceBuffer_->getBuffer(); }
         uint32_t getInstanceCount() const { return static_cast<uint32_t>(instanceDatas_.size()); }
 
     private:

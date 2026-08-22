@@ -23,8 +23,8 @@ class Mesh{
         const std::vector<Vertex>& getVertices() const { return vertices_; }
         const std::vector<uint32_t>& getIndices() const { return indices_; }
 
-        const VkBuffer& getVertexBuffer() const { return vertexBuffer->getBuffer(); }
-        const VkBuffer& getIndexBuffer()  const { return indicesBuffer->getBuffer(); }
+        const VkBuffer getVertexBuffer() const { return vertexBuffer->getBuffer(); }
+        const VkBuffer getIndexBuffer()  const { return indicesBuffer->getBuffer(); }
 
     private:
         std::vector<Vertex>                      vertices_;

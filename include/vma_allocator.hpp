@@ -45,7 +45,7 @@ class VmaBuffer {
         return *this;
     }
     
-    const VkBuffer& getHandle() const { return buffer_; } 
+    const VkBuffer getHandle() const { return buffer_; } 
 
     void* map();
     void  unmap();
@@ -89,7 +89,7 @@ class VmaImage {
             return *this;
         }
 
-        const VkImage& getHandle() const { return image_; }
+        const VkImage getHandle() const { return image_; }
     private:
         VkImage       image_      = VK_NULL_HANDLE;
         VmaAllocation allocation_ = VK_NULL_HANDLE;

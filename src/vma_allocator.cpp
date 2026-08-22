@@ -18,7 +18,10 @@ VmaBuffer::VmaBuffer(VmaAllocator alloc, const VkBufferCreateInfo& bufferCI,
                      const VmaAllocationCreateInfo& allocCI)
     : allocator_(alloc)
 {
-    vmaCreateBuffer(allocator_, &bufferCI, &allocCI, &buffer_, &allocation_, nullptr);
+    VkResult result = vmaCreateBuffer(allocator_, &bufferCI, &allocCI, &buffer_, &allocation_, nullptr);
+    if(result != VK_SUCCESS) {
+        throw std::runtime_error("VmaBuffer creation failed");
+    }
 }
 
 void* VmaBuffer::map() {
@@ -47,7 +50,10 @@ VmaImage::VmaImage(VmaAllocator alloc, const VkImageCreateInfo& imageCI,
                    const VmaAllocationCreateInfo& allocCI)
     : allocator_(alloc)
 {
-    vmaCreateImage(allocator_, &imageCI, &allocCI, &image_, &allocation_, nullptr);
+    VkResult result = vmaCreateImage(allocator_, &imageCI, &allocCI, &image_, &allocation_, nullptr);
+    if(result != VK_SUCCESS) {
+        throw std::runtime_error("VmaImage creation failed");
+    }
 }
 
 void VmaImage::destroy() {

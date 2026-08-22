@@ -26,8 +26,8 @@ public:
     vk::SurfaceFormatKHR getSurfaceFormat()       const { return surfaceformat; }
     vk::raii::SwapchainKHR& swapChain()          { return swapChain_; }
 
-    const VkImage& getcolorImage() const { return colorImage_.getHandle(); }
-    const VkImage& getDepthImage() const { return depthImage_.getHandle(); }
+    const VkImage getcolorImage() const { return colorImage_.getHandle(); }
+    const VkImage getDepthImage() const { return depthImage_.getHandle(); }
 
     const vk::raii::ImageView& getColorImageView() const { return colorImageView; }
     const vk::raii::ImageView& getDepthImageView() const { return depthImageView; }
