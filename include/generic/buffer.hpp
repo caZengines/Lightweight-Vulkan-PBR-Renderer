@@ -19,7 +19,7 @@ template<typename T> class Buffer{
         //Ban copying
         Buffer<T>& operator=(const Buffer<T>&) = delete;
 
-        explicit Buffer(VmaAllocator* alloc, const std::vector<T>& data_,const CreateInfo& info, CommandPool& commandPool){
+        explicit Buffer(VmaAllocator alloc, const std::vector<T>& data_,const CreateInfo& info, CommandPool& commandPool){
             vk::BufferCreateInfo stagingInfo{};
             stagingInfo.setSize(info.size).setUsage(vk::BufferUsageFlagBits::eTransferSrc);
             VmaAllocationCreateInfo stagingCI{};

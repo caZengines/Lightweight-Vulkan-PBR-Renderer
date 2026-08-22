@@ -16,7 +16,7 @@ class RenderObject {
         explicit RenderObject(std::shared_ptr<const Mesh> mesh,
                               std::shared_ptr<Material> material);
 
-        void setInstances(VmaAllocator* alloc, const std::vector<InstanceData>& instances, CommandPool& cmdPool);
+        void setInstances(VmaAllocator alloc, const std::vector<InstanceData>& instances, CommandPool& cmdPool);
         void initMaterialDescriptor(RenderContext& rct,
                                     const vk::DescriptorSetLayout& layout,
                                     const DescriptorPool& pool);

@@ -12,7 +12,7 @@
 // Default 1×1 textures (CPU-generated, no file I/O)
 // ============================================================================
 
-Texture Texture::createDefaultTexture(VmaAllocator* alloc, const void* pixelDataRGBA8, vk::Format format, CommandPool& commandPool) {
+Texture Texture::createDefaultTexture(VmaAllocator alloc, const void* pixelDataRGBA8, vk::Format format, CommandPool& commandPool) {
     auto& factory = ResourceFactory::get();
     Texture tex;
     tex.mipLevels = 1;
@@ -58,13 +58,13 @@ Texture Texture::createDefaultTexture(VmaAllocator* alloc, const void* pixelData
     return tex;
 }
 
-Texture Texture::createDefaultAlbedo(VmaAllocator* alloc, CommandPool& commandPool) {
+Texture Texture::createDefaultAlbedo(VmaAllocator alloc, CommandPool& commandPool) {
     // 1×1 opaque white: (R=255, G=255, B=255, A=255)
     constexpr uint8_t kWhite[4] = {255, 255, 255, 255};
     return createDefaultTexture(alloc, kWhite, vk::Format::eR8G8B8A8Srgb, commandPool);
 }
 
-Texture Texture::createDefaultNormal(VmaAllocator* alloc, CommandPool& commandPool) {
+Texture Texture::createDefaultNormal(VmaAllocator alloc, CommandPool& commandPool) {
     // 1×1 flat tangent-space normal pointing straight up: (R=128, G=128, B=255, A=255)
     // Decoded: x = 128/255*2-1 = 0, y = 128/255*2-1 = 0, z = 255/255 = 1  →  (0,0,1)
     constexpr uint8_t kFlatNormal[4] = {128, 128, 255, 255};
@@ -75,7 +75,7 @@ Texture Texture::createDefaultNormal(VmaAllocator* alloc, CommandPool& commandPo
 // File-based texture loading
 // ============================================================================
 
-Texture Texture::createTexture(const std::string &filepath, VmaAllocator* alloc, vk::Format textureFormat, vk::Filter filter, CommandPool& commandPool){
+Texture Texture::createTexture(const std::string &filepath, VmaAllocator alloc, vk::Format textureFormat, vk::Filter filter, CommandPool& commandPool){
     auto& factory = ResourceFactory::get();
     Texture tex;
 

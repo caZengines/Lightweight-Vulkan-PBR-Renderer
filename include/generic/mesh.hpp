@@ -14,11 +14,11 @@ class Mesh{
         // Format-agnostic: deduplicates vertices, generates smooth normals if missing,
         // computes tangents, uploads to GPU
         Mesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices,
-             VmaAllocator* alloc, CommandPool& commandPool);
+             VmaAllocator alloc, CommandPool& commandPool);
 
         // Default OBJ-specific loading, without specified format
         static std::unique_ptr<Mesh> fromObj(const std::string& modelPath,
-                                             VmaAllocator* alloc, CommandPool& commandPool);
+                                             VmaAllocator alloc, CommandPool& commandPool);
 
         const std::vector<Vertex>& getVertices() const { return vertices_; }
         const std::vector<uint32_t>& getIndices() const { return indices_; }

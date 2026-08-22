@@ -5,7 +5,7 @@
 #include <stdexcept>
 
 void AssetManager::loadTexture(const std::string& path,
-                               VmaAllocator* alloc,
+                               VmaAllocator alloc,
                                vk::Format format, 
                                vk::Filter filter,
                                CommandPool& cmdPool)
@@ -15,7 +15,7 @@ void AssetManager::loadTexture(const std::string& path,
     textureCache_.insert({path, std::move(texture_)});
 }
 
-void AssetManager::loadMesh(const std::string& path, VmaAllocator* alloc, CommandPool& cmdPool) {
+void AssetManager::loadMesh(const std::string& path, VmaAllocator alloc, CommandPool& cmdPool) {
     std::shared_ptr<Mesh> mesh_ = Mesh::fromObj(path, alloc, cmdPool);
     platform::LogLocator::get().write(platform::LogLevel::Info,
         "Number of " + path + " vertices: " + std::to_string(mesh_->getVertices().size()));

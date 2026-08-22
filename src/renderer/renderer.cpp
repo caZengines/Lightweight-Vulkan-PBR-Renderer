@@ -2,7 +2,6 @@
 #include "platform/log.hpp"
 #include "render_context.hpp"
 #include "vma_allocator.hpp"
-#include "vulkan/vulkan.hpp"
 #include <cstddef>
 #include <memory>
 
@@ -11,7 +10,7 @@
 #include <vulkan/vulkan_raii.hpp>
 
 Renderer::Renderer(RenderContext& rct,
-                   VmaAllocator* alloc,
+                   VmaAllocator alloc,
                    const std::vector<vk::DescriptorSetLayout>& dsls,
                    const vk::DescriptorPool& pool,
                    Camera& camera,
@@ -20,7 +19,7 @@ Renderer::Renderer(RenderContext& rct,
                    platform::Window& window)
     : window_(window), surface_(surface), rct_(rct), allocator_(alloc), descriptorSetLayouts_(dsls), descriptorPool_(pool), camera_(camera), graphicsCommandPool(commandPool)
 {
-    swapchainInfo = std::make_unique<Swapchain>(rct_, allocator_, surface, window_);
+    swapchain_ = std::make_unique<Swapchain>(rct_, allocator_, surface, window_);
     perframeDescriptorSet_ = std::make_unique<PerFrameDescriptorSet>(rct_, descriptorPool_, descriptorSetLayouts_[0]);
     createGraphicsPipeline();
     createUniformBuffers();
@@ -29,7 +28,7 @@ Renderer::Renderer(RenderContext& rct,
 }
 
 void Renderer::createGraphicsPipeline() {
-    vk::Format                     format = swapchainInfo->getSurfaceFormat().format;
+    vk::Format                     format = swapchain_->getSurfaceFormat().format;
     graphicsPipeline = std::make_unique<Pipeline>(rct_, descriptorSetLayouts_, format);
 }
 
@@ -65,7 +64,7 @@ void Renderer::createSyncObjects() {
         inFlightFences.emplace_back(rct_.device, vk::FenceCreateInfo(vk::FenceCreateInfo().setFlags(vk::FenceCreateFlagBits::eSignaled)));
         presentCompleteSemaphores.emplace_back(rct_.device, vk::SemaphoreCreateInfo());
     }
-    for(int i = 0 ; i < swapchainInfo->Image_.images.size() ; ++i){
+    for(int i = 0 ; i < swapchain_->Image_.images.size() ; ++i){
         presentWaitSemaphores.emplace_back(rct_.device, vk::SemaphoreCreateInfo());
     }
 }
@@ -88,14 +87,14 @@ void Renderer::recreateAfterResize() {
     renderFinishedTimelineSemaphore = nullptr;
     inFlightFences.clear();
 
-    swapchainInfo->recreateSwapChain(surface_, window_);
+    swapchain_->recreateSwapChain(surface_, window_);
     createSyncObjects();
 }
 
 void Renderer::cleanup(){
     rct_.device.waitIdle();
     destroySyncObjects();
-    swapchainInfo->cleanupSwapChain();
+    swapchain_->cleanupSwapChain();
     cleaned_ = true;
 }
 
@@ -105,7 +104,7 @@ void Renderer::drawFrame(const std::vector<DrawBatch>& batches) {
         throw std::runtime_error("failed to wait for fence!");
     }
 
-    auto [result, imageIndex] = swapchainInfo->swapChain().acquireNextImage(UINT64_MAX, *presentCompleteSemaphores[frameIndex], nullptr);
+    auto [result, imageIndex] = swapchain_->swapChain().acquireNextImage(UINT64_MAX, *presentCompleteSemaphores[frameIndex], nullptr);
     if(result == vk::Result::eErrorOutOfDateKHR) {
         recreateAfterResize();
         return;
@@ -117,7 +116,7 @@ void Renderer::drawFrame(const std::vector<DrawBatch>& batches) {
     updateUniformBuffer(frameIndex);
     updateDescriptorSet(frameIndex);
 
-    //Only reset the fence if we are submitting work
+    // Only reset the fence if we are submitting work
     rct_.device.resetFences(*inFlightFences[frameIndex]);
     graphicsCommandBuffers[frameIndex].reset();
     recordCommandBuffer(imageIndex, batches);
@@ -133,7 +132,7 @@ void Renderer::drawFrame(const std::vector<DrawBatch>& batches) {
     timelineSubmitInfo.setSignalSemaphoreValueCount(2)
                               .setPSignalSemaphoreValues(signalValues.data());
 
-    //submitting the commandBuffer
+    // submitting the commandBuffer
     vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
     const vk::SubmitInfo submitInfo = [&]() {
       vk::SubmitInfo info;
@@ -154,7 +153,7 @@ void Renderer::drawFrame(const std::vector<DrawBatch>& batches) {
     const vk::PresentInfoKHR presentInfoKHR = [this, &imageIndex]() {
         vk::PresentInfoKHR info;
         info.setWaitSemaphores(*presentWaitSemaphores[imageIndex])
-            .setSwapchains(*swapchainInfo->swapChain())
+            .setSwapchains(*swapchain_->swapChain())
             .setImageIndices(imageIndex);
         return info;
     }();
@@ -174,7 +173,7 @@ void Renderer::recordCommandBuffer(uint32_t ImageIndex, const std::vector<DrawBa
 
     // Before starting rendering, transition the swapchain image to vk::ImageLayout::eColorAttachmentOptimal
     transition_image_layout(
-        swapchainInfo->Image_.images[ImageIndex],
+        swapchain_->Image_.images[ImageIndex],
         vk::ImageLayout::eUndefined,
         vk::ImageLayout::eColorAttachmentOptimal,
         {},                                                        //srcAccessMask(no need to wait for previous operation)
@@ -184,7 +183,7 @@ void Renderer::recordCommandBuffer(uint32_t ImageIndex, const std::vector<DrawBa
         vk::ImageAspectFlagBits::eColor
     );
     transition_image_layout(
-        swapchainInfo->getcolorImage(),
+        swapchain_->getcolorImage(),
         vk::ImageLayout::eUndefined,
         vk::ImageLayout::eColorAttachmentOptimal,
         {},
@@ -194,7 +193,7 @@ void Renderer::recordCommandBuffer(uint32_t ImageIndex, const std::vector<DrawBa
         vk::ImageAspectFlagBits::eColor
     );
     transition_image_layout(
-        swapchainInfo->getDepthImage(),
+        swapchain_->getDepthImage(),
         vk::ImageLayout::eUndefined,
         vk::ImageLayout::eDepthAttachmentOptimal,
         {},
@@ -206,37 +205,37 @@ void Renderer::recordCommandBuffer(uint32_t ImageIndex, const std::vector<DrawBa
     vk::ClearValue              clearColor = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
     vk::ClearValue              clearDepth = vk::ClearDepthStencilValue(1.0f, 0);
     vk::RenderingAttachmentInfo attachmentInfo;
-    attachmentInfo.setImageView(swapchainInfo->getColorImageView())
+    attachmentInfo.setImageView(swapchain_->getColorImageView())
                   .setImageLayout(vk::ImageLayout::eColorAttachmentOptimal)
-                  .setResolveImageView(swapchainInfo->Image_.ImageViews[ImageIndex])
+                  .setResolveImageView(swapchain_->Image_.ImageViews[ImageIndex])
                   .setResolveImageLayout(vk::ImageLayout::eColorAttachmentOptimal)
                   .setResolveMode(vk::ResolveModeFlagBits::eAverage)
                   .setLoadOp(vk::AttachmentLoadOp::eClear)
                   .setStoreOp(vk::AttachmentStoreOp::eDontCare)
                   .setClearValue(clearColor);
     vk::RenderingAttachmentInfo depthInfo;
-    depthInfo.setImageView(swapchainInfo->getDepthImageView())
+    depthInfo.setImageView(swapchain_->getDepthImageView())
              .setImageLayout(vk::ImageLayout::eDepthAttachmentOptimal)
              .setLoadOp(vk::AttachmentLoadOp::eClear)
              .setStoreOp(vk::AttachmentStoreOp::eDontCare)
              .setClearValue(clearDepth);
-    //renderingInfo
+    // renderingInfo
     vk::RenderingInfo renderingInfo;
     vk::Rect2D renderArea;
     renderArea.setOffset({0,0})
-              .setExtent(swapchainInfo->getExtent());
+              .setExtent(swapchain_->getExtent());
     renderingInfo.setRenderArea(renderArea)
                  .setLayerCount(1)
                  .setColorAttachments(attachmentInfo)
                  .setPDepthAttachment(&depthInfo);
 
-    //start rendering
+    // start rendering
     graphicsCommandBuffers[frameIndex].beginRendering(renderingInfo);
-        //binding the graphics pipeline
+        // binding the graphics pipeline
         graphicsCommandBuffers[frameIndex].bindPipeline(vk::PipelineBindPoint::eGraphics, *graphicsPipeline->binding());
-        //command buffer dynamic state
-        graphicsCommandBuffers[frameIndex].setViewport(0, vk::Viewport(0.0f, 0.0f, static_cast<float>(swapchainInfo->getExtent().width),static_cast<float>(swapchainInfo->getExtent().height), 0.0f, 1.0f));
-        graphicsCommandBuffers[frameIndex].setScissor(0, vk::Rect2D(vk::Offset2D(0,0), swapchainInfo->getExtent()));
+        // command buffer dynamic state
+        graphicsCommandBuffers[frameIndex].setViewport(0, vk::Viewport(0.0f, 0.0f, static_cast<float>(swapchain_->getExtent().width),static_cast<float>(swapchain_->getExtent().height), 0.0f, 1.0f));
+        graphicsCommandBuffers[frameIndex].setScissor(0, vk::Rect2D(vk::Offset2D(0,0), swapchain_->getExtent()));
         // Bind Set 0: per-frame UBO (shared by all draws)
         graphicsCommandBuffers[frameIndex].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *graphicsPipeline->getLayout(), 0, perframeDescriptorSet_->getHandles()[frameIndex], nullptr);
         // Draw each batch (mesh + material + instances)
@@ -267,11 +266,11 @@ void Renderer::recordCommandBuffer(uint32_t ImageIndex, const std::vector<DrawBa
                 batch.firstInstance
             );
         }
-    //end rendering
+    // end rendering
     graphicsCommandBuffers[frameIndex].endRendering();
     // After rendering, transition the swapchain image to vk::ImageLayout::ePresentSrcKHR
     transition_image_layout(
-        swapchainInfo->Image_.images[ImageIndex],
+        swapchain_->Image_.images[ImageIndex],
         vk::ImageLayout::eColorAttachmentOptimal,
         vk::ImageLayout::ePresentSrcKHR,
         vk::AccessFlagBits2::eColorAttachmentWrite,        // srcAccessMask
@@ -290,7 +289,7 @@ void Renderer::updateUniformBuffer(uint32_t currentImage) {
     UniformBufferObject ubo{};
     ubo.view = camera_.viewMatrix();
     ubo.proj =
-                glm::perspective(glm::radians(45.0f), static_cast<float>(swapchainInfo->getExtent().width) /static_cast<float>(swapchainInfo->getExtent().height) , 0.1f, 100.0f);
+                glm::perspective(glm::radians(45.0f), static_cast<float>(swapchain_->getExtent().width) /static_cast<float>(swapchain_->getExtent().height) , 0.1f, 100.0f);
     ubo.proj[1][1] *= -1;
 
     ubo.camPos = glm::vec4(eyePos, 1);

@@ -13,7 +13,7 @@ class VmaContext {
         VmaContext(VmaContext&&) = delete;
         VmaContext& operator=(VmaContext&&) = delete;
 
-        VmaAllocator* getAllocator() { return &vmaAllocator_; }
+        VmaAllocator getAllocator() { return vmaAllocator_; }
 
     private:
         VmaAllocator vmaAllocator_ = nullptr;
@@ -23,7 +23,7 @@ class VmaBuffer {
     public:
     VmaBuffer() = default;
 
-    VmaBuffer(VmaAllocator* alloc, const VkBufferCreateInfo& bufferCI, 
+    VmaBuffer(VmaAllocator alloc, const VkBufferCreateInfo& bufferCI, 
               const VmaAllocationCreateInfo& allocCI);
     ~VmaBuffer() { destroy(); }
 
@@ -58,7 +58,7 @@ class VmaBuffer {
     private:
         VkBuffer      buffer_     = VK_NULL_HANDLE;
         VmaAllocation allocation_ = VK_NULL_HANDLE;
-        VmaAllocator* allocator_  = nullptr;
+        VmaAllocator  allocator_  = nullptr;
 
         void destroy();
 };
@@ -67,7 +67,7 @@ class VmaImage {
     public:
         VmaImage() = default;
 
-        VmaImage(VmaAllocator* alloc, const VkImageCreateInfo& imageCI,
+        VmaImage(VmaAllocator alloc, const VkImageCreateInfo& imageCI,
                  const VmaAllocationCreateInfo& allocCI);
         ~VmaImage() { destroy(); }
 
@@ -93,7 +93,7 @@ class VmaImage {
     private:
         VkImage       image_      = VK_NULL_HANDLE;
         VmaAllocation allocation_ = VK_NULL_HANDLE;
-        VmaAllocator* allocator_  = nullptr;
+        VmaAllocator  allocator_  = nullptr;
 
         void destroy();
 };

@@ -7,12 +7,12 @@
 class AssetManager {
     public:
     void loadTexture(const std::string& path,
-                         VmaAllocator* alloc,
+                         VmaAllocator alloc,
                          vk::Format format,
                          vk::Filter filter,
                          CommandPool& cmdPool);
 
-    void loadMesh(const std::string& path, VmaAllocator* alloc, CommandPool& cmdPool);
+    void loadMesh(const std::string& path, VmaAllocator alloc, CommandPool& cmdPool);
 
     std::shared_ptr<const Texture> getTexture(const std::string& key) const;
     std::shared_ptr<const Mesh>    getMesh(const std::string& key) const;

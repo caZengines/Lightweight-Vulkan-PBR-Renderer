@@ -4,7 +4,7 @@
 RenderObject::RenderObject(std::shared_ptr<const Mesh> mesh, std::shared_ptr<Material> material)
     : mesh_(mesh), material_(material) {}
 
-void RenderObject::setInstances(VmaAllocator* alloc, const std::vector<InstanceData>& instances, CommandPool& cmdPool) {
+void RenderObject::setInstances(VmaAllocator alloc, const std::vector<InstanceData>& instances, CommandPool& cmdPool) {
     instanceDatas_ = instances;
     Buffer<InstanceData>::CreateInfo instanceInfo;
     instanceInfo.size = sizeof(InstanceData) * instanceDatas_.size();

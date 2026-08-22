@@ -41,7 +41,7 @@ class Renderer final {
     bool     framebufferResized = false;
 
     explicit Renderer(RenderContext& rct,
-                      VmaAllocator* alloc,
+                      VmaAllocator alloc,
                       const std::vector<vk::DescriptorSetLayout>& dsls,
                       const vk::DescriptorPool& pool,
                       Camera& camera,
@@ -59,12 +59,12 @@ class Renderer final {
         platform::Window&                        window_;
         vk::raii::SurfaceKHR&                    surface_;
         RenderContext                            rct_;
-        VmaAllocator*                            allocator_             = nullptr;
+        VmaAllocator                             allocator_             = nullptr;
         std::vector<vk::DescriptorSetLayout>     descriptorSetLayouts_;
         vk::DescriptorPool                       descriptorPool_;
         Camera&                                  camera_;
 
-        std::unique_ptr<Swapchain>               swapchainInfo          = nullptr;
+        std::unique_ptr<Swapchain>               swapchain_             = nullptr;
         std::unique_ptr<Pipeline>                graphicsPipeline       = nullptr;
         std::unique_ptr<PerFrameDescriptorSet>   perframeDescriptorSet_ = nullptr;
 

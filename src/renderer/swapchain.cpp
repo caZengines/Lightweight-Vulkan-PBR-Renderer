@@ -9,7 +9,7 @@
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
 
-Swapchain::Swapchain(RenderContext& rct, VmaAllocator* alloc, vk::raii::SurfaceKHR& surface, platform::Window& window)
+Swapchain::Swapchain(RenderContext& rct, VmaAllocator alloc, vk::raii::SurfaceKHR& surface, platform::Window& window)
     : rct_(rct), allocator_(alloc)
 {
     createSwapChain(surface, window);
@@ -73,7 +73,7 @@ void Swapchain::createImageViews() {
     }
 }
 
-void Swapchain::createColorAndDepthResources(VmaAllocator* alloc, vk::SampleCountFlagBits msaaSamples) {
+void Swapchain::createColorAndDepthResources(VmaAllocator alloc, vk::SampleCountFlagBits msaaSamples) {
     auto& factory = ResourceFactory::get();
     //create ColorResource
     vk::Format colorFormat = Swapchain::getSurfaceFormat().format;

@@ -14,45 +14,45 @@ VmaContext::~VmaContext() {
 }
 
 // VmaBuffer
-VmaBuffer::VmaBuffer(VmaAllocator* alloc, const VkBufferCreateInfo& bufferCI, 
+VmaBuffer::VmaBuffer(VmaAllocator alloc, const VkBufferCreateInfo& bufferCI, 
                      const VmaAllocationCreateInfo& allocCI)
     : allocator_(alloc)
 {
-    vmaCreateBuffer(*allocator_, &bufferCI, &allocCI, &buffer_, &allocation_, nullptr);
+    vmaCreateBuffer(allocator_, &bufferCI, &allocCI, &buffer_, &allocation_, nullptr);
 }
 
 void* VmaBuffer::map() {
     void* data;
-    vmaMapMemory(*allocator_, allocation_, &data);
+    vmaMapMemory(allocator_, allocation_, &data);
     return data;
 }
 void VmaBuffer::unmap() {
-    vmaUnmapMemory(*allocator_, allocation_);
+    vmaUnmapMemory(allocator_, allocation_);
 }
 void* VmaBuffer::mappedData() {
     VmaAllocationInfo info;
-    vmaGetAllocationInfo(*allocator_, allocation_, &info);
+    vmaGetAllocationInfo(allocator_, allocation_, &info);
     return info.pMappedData;
 }
 void VmaBuffer::destroy() {
     if(buffer_ != VK_NULL_HANDLE && allocator_) {
-        vmaDestroyBuffer(*allocator_, buffer_, allocation_);
+        vmaDestroyBuffer(allocator_, buffer_, allocation_);
         buffer_ = VK_NULL_HANDLE;
         allocation_ = VK_NULL_HANDLE;
     }
 }
 
 // VmaImage
-VmaImage::VmaImage(VmaAllocator* alloc, const VkImageCreateInfo& imageCI,
+VmaImage::VmaImage(VmaAllocator alloc, const VkImageCreateInfo& imageCI,
                    const VmaAllocationCreateInfo& allocCI)
     : allocator_(alloc)
 {
-    vmaCreateImage(*allocator_, &imageCI, &allocCI, &image_, &allocation_, nullptr);
+    vmaCreateImage(allocator_, &imageCI, &allocCI, &image_, &allocation_, nullptr);
 }
 
 void VmaImage::destroy() {
     if(image_ != VK_NULL_HANDLE && allocator_) {
-        vmaDestroyImage(*allocator_, image_, allocation_);
+        vmaDestroyImage(allocator_, image_, allocation_);
         image_ = VK_NULL_HANDLE;
         allocation_ = VK_NULL_HANDLE;
     }

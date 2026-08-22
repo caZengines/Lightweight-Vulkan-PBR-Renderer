@@ -18,12 +18,12 @@ class Texture{
         Texture(Texture&& other) noexcept = default;
         Texture& operator=(Texture&& other) noexcept = default;
 
-        static Texture createTexture(const std::string& filepath, VmaAllocator* alloc, vk::Format textureFormat, vk::Filter filter, CommandPool& commandPool);
+        static Texture createTexture(const std::string& filepath, VmaAllocator alloc, vk::Format textureFormat, vk::Filter filter, CommandPool& commandPool);
 
         // Create a 1×1 white texture – fallback when no albedo is provided.
-        static Texture createDefaultAlbedo(VmaAllocator* alloc, CommandPool& commandPool);
+        static Texture createDefaultAlbedo(VmaAllocator alloc, CommandPool& commandPool);
         // Create a 1×1 flat-normal texture (0,0,1 in tangent space) – fallback when no normal map is provided.
-        static Texture createDefaultNormal(VmaAllocator* alloc, CommandPool& commandPool);
+        static Texture createDefaultNormal(VmaAllocator alloc, CommandPool& commandPool);
 
         const vk::raii::ImageView& getTextureView() const { return textureImageView; }
 
@@ -31,7 +31,7 @@ class Texture{
         Texture() = default;
 
         // Shared implementation for 1×1 default textures.
-        static Texture createDefaultTexture(VmaAllocator* alloc, const void* pixelDataRGBA8, vk::Format format, CommandPool& commandPool);
+        static Texture createDefaultTexture(VmaAllocator alloc, const void* pixelDataRGBA8, vk::Format format, CommandPool& commandPool);
 
         VmaImage                                 vmaImage_;
         vk::raii::ImageView                      textureImageView     = nullptr;

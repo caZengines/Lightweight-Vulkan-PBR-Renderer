@@ -15,7 +15,7 @@ class glTFModel {
         glTFModel& operator=(const glTFModel&) = delete;
 
         static std::unique_ptr<glTFModel> fromglTF(const std::string& modelPath,
-                                                   VmaAllocator* alloc, CommandPool& commandPool);
+                                                   VmaAllocator alloc, CommandPool& commandPool);
 
         const Mesh& getMesh() const { return *mesh_; }
         std::shared_ptr<const Mesh> getMeshShared() const { return mesh_; }

@@ -73,7 +73,6 @@ class CEngine final {
         void cleanup();
 
         // Keyboard / scroll camera input — polled from platform::Input each frame
-        // (moved out of Renderer::updateCamera).
         void updateCamera(float deltaTime);
 
         void createCommandPools();

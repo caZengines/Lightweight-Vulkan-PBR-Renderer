@@ -1,10 +1,11 @@
 #include "generic/mesh.hpp"
+#include "vma_allocator.hpp"
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "extern/tiny_obj_loader.h"
 #include <unordered_map>
 
 Mesh::Mesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices,
-           VmaAllocator* alloc, CommandPool& commandPool) {
+           VmaAllocator alloc, CommandPool& commandPool) {
     // Deduplicate vertices by (pos, texcoord, normal)
     std::unordered_map<Vertex, uint32_t> uniqueVertices;
     uniqueVertices.reserve(vertices.size());
@@ -133,7 +134,7 @@ Mesh::Mesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices,
 }
 
 std::unique_ptr<Mesh> Mesh::fromObj(const std::string& modelPath,
-                                    VmaAllocator* alloc, CommandPool& commandPool) {
+                                    VmaAllocator alloc, CommandPool& commandPool) {
     tinyobj::attrib_t                attrib;
     std::vector<tinyobj::shape_t>    shapes;
     std::vector<tinyobj::material_t> materials;

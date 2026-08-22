@@ -616,7 +616,7 @@ void loadPrimitive(const tg3_model& model,
 }  // namespace
 
 std::unique_ptr<glTFModel> glTFModel::fromglTF(const std::string& modelPath,
-                                               VmaAllocator* alloc,
+                                               VmaAllocator alloc,
                                                CommandPool& commandPool) {
     tinygltf3::Model model;
     tinygltf3::ErrorStack errors;

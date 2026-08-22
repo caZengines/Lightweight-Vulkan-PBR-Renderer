@@ -11,7 +11,7 @@
 
 class Swapchain final {
 public:
-    explicit Swapchain(RenderContext& rct, VmaAllocator* alloc, vk::raii::SurfaceKHR& surface, platform::Window& window);
+    explicit Swapchain(RenderContext& rct, VmaAllocator alloc, vk::raii::SurfaceKHR& surface, platform::Window& window);
     void recreateSwapChain(vk::raii::SurfaceKHR& surface, platform::Window& window);
     void cleanupSwapChain();
 
@@ -37,7 +37,7 @@ private:
     vk::raii::SwapchainKHR               swapChain_       = nullptr;
     vk::SurfaceFormatKHR                 surfaceformat;
     vk::Extent2D                         extent;
-    VmaAllocator*                        allocator_       = nullptr;
+    VmaAllocator                         allocator_       = nullptr;
 
     VmaImage                             colorImage_;
     vk::raii::ImageView                  colorImageView   = nullptr;
@@ -51,5 +51,5 @@ private:
 
     void createSwapChain(vk::raii::SurfaceKHR& surface, platform::Window& window);
     void createImageViews();
-    void createColorAndDepthResources(VmaAllocator* alloc, vk::SampleCountFlagBits msaaSamples);
+    void createColorAndDepthResources(VmaAllocator alloc, vk::SampleCountFlagBits msaaSamples);
 };

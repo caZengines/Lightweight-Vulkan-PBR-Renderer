@@ -23,7 +23,7 @@ void CEngine::initWindow() {
     config.resizable = true;
     window = std::make_unique<platform::Window>(config);
 
-    // Event hooks — replaces the old static GLFW callbacks.
+    // Event hooks
     window->onFramebufferResize = [this](uint32_t /*width*/, uint32_t /*height*/) {
         if (renderer) renderer->framebufferResized = true;
     };
