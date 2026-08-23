@@ -1,7 +1,8 @@
 #pragma once
-#include "generic/texture.hpp"
 #include "generic/sampler.hpp"
 #include "render_context.hpp"
+#include "resource/resource_registry.hpp"
+#include <memory>
 
 
 // Push-constant render flags
@@ -24,8 +25,12 @@ constexpr RenderFlags operator&(RenderFlags lhs, RenderFlags rhs) {
 //It should be noticed that class::Material should not and cannot be copied
 class Material{
     public:
-        Material(const std::shared_ptr<const Texture>& albedo, const std::shared_ptr<const Texture>& normal,
-                 const Sampler& texSampler, const Sampler& norSampler);
+        // albedo/normal: asset handles from AssetLibrary. Empty (null) handles
+        // fall back to the registry's built-in default textures (Null Object
+        // semantics). Handles are kept so the textures stay loaded.
+        Material(const resource::AssetHandle& albedo, const resource::AssetHandle& normal,
+                 const Sampler& texSampler, const Sampler& norSampler,
+                 const resource::ResourceRegistry& registry);
 
         //ban copy
         Material(const Material&) = delete;
@@ -46,17 +51,19 @@ class Material{
         void     setFlags(RenderFlags f) { flags_ = f; }
 
     private:
-        std::shared_ptr<const Texture>          albedoTexture_;
-        std::shared_ptr<const Texture>          normalTexture_;
-        vk::Sampler                             texSamplerHandle_;
-        vk::Sampler                             norSamplerHandle_;
+        resource::AssetHandle                  albedoHandle_;
+        resource::AssetHandle                  normalHandle_;
+        const resource::TextureGPU*            albedoTexture_ = nullptr;  // registry-owned, kept alive by the handles
+        const resource::TextureGPU*            normalTexture_ = nullptr;
+        vk::Sampler                            texSamplerHandle_;
+        vk::Sampler                            norSamplerHandle_;
 
-        vk::DescriptorImageInfo                 imageInfo_{};
-        vk::DescriptorImageInfo                 normalInfo_{};
-        vk::DescriptorImageInfo                 albedoSamplerInfo_{};
-        vk::DescriptorImageInfo                 normalSamplerInfo_{};
+        vk::DescriptorImageInfo                imageInfo_{};
+        vk::DescriptorImageInfo                normalInfo_{};
+        vk::DescriptorImageInfo                albedoSamplerInfo_{};
+        vk::DescriptorImageInfo                normalSamplerInfo_{};
 
-        vk::raii::DescriptorSet                 descriptorSet_ = nullptr;
+        vk::raii::DescriptorSet                descriptorSet_ = nullptr;
 
         bool                                    descriptorSetCreated_ = false;
         RenderFlags                             flags_;  // computed in constructor

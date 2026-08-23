@@ -1,5 +1,6 @@
 #include "pipeline_layout.hpp"
 #include "generic/vertex.hpp"
+#include "platform/utils.hpp"
 
 #include <stdexcept>
 #include <fstream>
@@ -13,8 +14,8 @@ Pipeline::Pipeline(RenderContext& rct,const std::vector<vk::DescriptorSetLayout>
 
 void Pipeline::createGraphicsPipeline(const std::vector<vk::DescriptorSetLayout>& dsls, vk::Format colorFormat) {
     const auto properties = rct_.physicalDevice.getProperties();
-    // shader modules
-    auto code = readFile("../shaders/slang.spv");
+    // shader modules — absolute path resolved against the asset root (Phase 2)
+    auto code = readFile(platform::PlatformUtils::assetPath("shaders/slang.spv"));
     vk::raii::ShaderModule shaderModule = createShaderModule(code);
 
     vk::PipelineShaderStageCreateInfo vertStageInfo{};

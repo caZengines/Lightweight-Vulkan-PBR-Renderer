@@ -8,7 +8,8 @@ std::vector<DrawBatch> Scene::buildDrawBatches() const {
         if (obj->getInstanceCount() == 0) continue;
 
         DrawBatch batch{};
-        batch.mesh           =  obj->getMeshShared();
+        batch.mesh           =  obj->getMeshHandle();
+        batch.meshGPU        =  &obj->getMeshGPU();
         batch.material       =  obj->getMaterialShared();
         batch.instanceBuffer =  obj->getInstanceBuffer();
         batch.instanceCount  =  obj->getInstanceCount();

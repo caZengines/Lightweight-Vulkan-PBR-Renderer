@@ -1,16 +1,27 @@
 #include "generic/renderobject.hpp"
 #include "vma_allocator.hpp"
 
-RenderObject::RenderObject(std::shared_ptr<const Mesh> mesh, std::shared_ptr<Material> material)
-    : mesh_(mesh), material_(material) {}
+#include <stdexcept>
 
-void RenderObject::setInstances(VmaAllocator alloc, const std::vector<InstanceData>& instances, CommandPool& cmdPool) {
+RenderObject::RenderObject(const resource::AssetHandle& mesh,
+                           std::shared_ptr<Material> material,
+                           const resource::ResourceRegistry& registry)
+    : meshHandle_(mesh), material_(std::move(material))
+{
+    if (!mesh.valid()) {
+        throw std::runtime_error("RenderObject: null mesh handle (asset not loaded)");
+    }
+    meshGPU_ = &registry.mesh(mesh);
+}
+
+void RenderObject::setInstances(VmaAllocator alloc, const std::vector<InstanceData>& instances,
+                                resource::UploadQueue& queue) {
     instanceDatas_ = instances;
     Buffer<InstanceData>::CreateInfo instanceInfo;
     instanceInfo.size = sizeof(InstanceData) * instanceDatas_.size();
     instanceInfo.usage = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer;
 
-    instanceBuffer_ = std::make_unique<Buffer<InstanceData>>(alloc, instanceDatas_, instanceInfo, cmdPool);
+    instanceBuffer_ = std::make_unique<Buffer<InstanceData>>(alloc, instanceDatas_, instanceInfo, queue);
 }
 
 void RenderObject::initMaterialDescriptor(RenderContext& rct, const vk::DescriptorSetLayout& layout, const DescriptorPool& pool) {

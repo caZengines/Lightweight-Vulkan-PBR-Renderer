@@ -1,13 +1,15 @@
 #pragma once
 
 #include "generic/renderobject.hpp"
+#include "resource/resource_registry.hpp"
 
 struct DrawBatch {
-    std::shared_ptr<const Mesh>     mesh;
-    std::shared_ptr<Material>       material;
-    VkBuffer                        instanceBuffer;  // Buffer pointing to RenderObject
-    uint32_t                        instanceCount;
-    uint32_t                        firstInstance;   // used for indirect draw
+    resource::AssetHandle          mesh;            // keeps the GPU mesh alive while cached
+    const resource::MeshGPU*       meshGPU = nullptr;  // draw-time access
+    std::shared_ptr<Material>      material;
+    VkBuffer                       instanceBuffer;  // Buffer pointing to RenderObject
+    uint32_t                       instanceCount;
+    uint32_t                       firstInstance;   // used for indirect draw
 };
 
 class Scene {

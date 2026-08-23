@@ -3,6 +3,7 @@
 #include "descriptor_manager.hpp"
 #include "platform/log.hpp"
 #include "render_context.hpp"
+#include "resourcefactory.hpp"
 #include "vma_allocator.hpp"
 #include <chrono>
 #include <cstddef>
@@ -50,7 +51,7 @@ void CEngine::initVulkan() {
     cfg.msaaSamples_            = vulkanDevice_.msaaSamples;
     context = std::make_unique<Context>(cfg, vulkanDevice_.physicalDevice, vulkanDevice_.device, vulkanDevice_.instance, *window);
     createCommandPools();
-    initAssetManager();
+    initAssetLibrary();
     createSamplers();
     createMaterials();
     createDescriptorSetLayout();
@@ -97,19 +98,32 @@ void CEngine::cleanup() {
     window.reset();   // destroys the GLFW window and terminates GLFW
 }
 
+void CEngine::initAssetLibrary() {
+    // Phase 2: AssetLibrary assembly — UploadQueue wraps the transient pool's
+    // single-time submissions; ResourceRegistry owns the GPU assets and the
+    // built-in default textures; AssetLibrary caches by path with refcounting.
+    // (Kept inside the App 雏形 for now; Phase 5 moves this to app::App.)
+    uploadQueue_ = std::make_unique<resource::UploadQueue>(*transientCommandPool);
+    resourceRegistry_ = std::make_unique<resource::ResourceRegistry>(vmaContext_->getAllocator(), *uploadQueue_);
+    assetLibrary_ = std::make_unique<resource::AssetLibrary>(*resourceRegistry_);
+}
+
 void CEngine::createMaterials() {
-    auto albedo = assetManage.findTexture(MARS_PATH);
-    if (!albedo) albedo = defaultAlbedoTexture_;
-    MarsMaterial = std::make_shared<Material>(albedo, defaultNormalTexture_,
-                                              *albedoSampler,
-                                              *normalSampler);
-    rockMaterial = std::make_shared<Material>(assetManage.findTexture(ROCK_TEXTURE_PATH),defaultNormalTexture_,
-                                              *albedoSampler,
-                                              *normalSampler);
+    // Get-or-load textures; the returned handles are kept by the Materials
+    // (refcounted), so duplicate loads never re-upload.
+    auto rockAlbedo = assetLibrary_->loadImage(config_.rockTexturePath, vk::Format::eR8G8B8A8Srgb, vk::Filter::eLinear);
+    auto marsAlbedo = assetLibrary_->loadImage(config_.marsTexturePath, vk::Format::eR8G8B8A8Srgb, vk::Filter::eLinear);
+
+    // Empty (null) normal handle → Material falls back to the registry's
+    // built-in flat-normal texture (Null Object semantics).
+    MarsMaterial = std::make_shared<Material>(marsAlbedo, resource::AssetHandle{},
+                                              *albedoSampler, *normalSampler, *resourceRegistry_);
+    rockMaterial = std::make_shared<Material>(rockAlbedo, resource::AssetHandle{},
+                                              *albedoSampler, *normalSampler, *resourceRegistry_);
 }
 
 void CEngine::createDescriptorSetLayout() {
-    auto spvCode = Pipeline::readFile("../shaders/slang.spv");
+    auto spvCode = Pipeline::readFile(config_.shaderPath);
     RenderContext RCT = vulkanDevice_.renderContext();
     descriptorSetLayout = std::make_unique<DescriptorSetLayout>(RCT, spvCode);
 }
@@ -137,25 +151,14 @@ void CEngine::createDescriptorSetPool() {
 void CEngine::createCommandPools() {
     graphicsCommandPool  = std::make_unique<CommandPool>(vulkanDevice_.device, vulkanDevice_.graphicsQueueIndex, std::move(vulkanDevice_.graphicsQueue), vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
 
-    transientCommandPool = std::make_unique<CommandPool>(vulkanDevice_.device, vulkanDevice_.transferQueueIndex, std::move(vulkanDevice_.transferQueue),
+    // Transient pool = one-shot uploads (UploadQueue). It must live on the
+    // GRAPHICS queue family: mipmap generation records vkCmdBlitImage and
+    // fragment-stage barriers, which transfer-only families cannot execute
+    // (Phase 2: uploads moved here from the old per-frame graphics pool).
+    vk::raii::Queue transientQueue(vulkanDevice_.device.getQueue(vulkanDevice_.graphicsQueueIndex, 0));
+    transientCommandPool = std::make_unique<CommandPool>(vulkanDevice_.device, vulkanDevice_.graphicsQueueIndex, std::move(transientQueue),
                                               vk::CommandPoolCreateFlagBits::eResetCommandBuffer
                                                         | vk::CommandPoolCreateFlagBits::eTransient);
-}
-
-void CEngine::initAssetManager() {
-    //assetManage.loadTexture(TEXTURE_PATH, vk::Format::eR8G8B8A8Srgb, vk::Filter::eLinear, *graphicsCommandPool);
-    //assetManage.loadTexture(NORMAL_PATH, vk::Format::eR8G8B8A8Unorm, vk::Filter::eNearest, *graphicsCommandPool);
-    assetManage.loadTexture(ROCK_TEXTURE_PATH, vmaContext_->getAllocator(), vk::Format::eR8G8B8A8Srgb, vk::Filter::eLinear, *graphicsCommandPool);
-    assetManage.loadTexture(MARS_PATH, vmaContext_->getAllocator(), vk::Format::eR8G8B8A8Srgb, vk::Filter::eLinear, *graphicsCommandPool);
-
-    // --- Pre-create 1×1 fallback textures (always available, no file dependency) ---
-    defaultAlbedoTexture_ = std::make_shared<Texture>(
-        Texture::createDefaultAlbedo(vmaContext_->getAllocator(), *graphicsCommandPool));
-    defaultNormalTexture_ = std::make_shared<Texture>(
-        Texture::createDefaultNormal(vmaContext_->getAllocator(), *graphicsCommandPool));
-
-    assetManage.loadMesh(ROCK_PATH, vmaContext_->getAllocator(), *transientCommandPool);
-    assetManage.loadMesh(PLANET_PATH, vmaContext_->getAllocator(), *transientCommandPool);
 }
 
 void CEngine::createSamplers() {
@@ -187,17 +190,20 @@ void CEngine::createSamplers() {
 
 void CEngine::initScene() {
     RenderContext RCT = vulkanDevice_.renderContext();
-    std::shared_ptr<RenderObject> mars = std::make_shared<RenderObject>(assetManage.getMesh(PLANET_PATH), MarsMaterial);
+    // Get-or-load mesh handles; the RenderObjects keep them alive (refcounted).
+    auto marsMeshHandle = assetLibrary_->loadMesh(config_.planetPath);
+    std::shared_ptr<RenderObject> mars = std::make_shared<RenderObject>(marsMeshHandle, MarsMaterial, *resourceRegistry_);
     std::vector<InstanceData> instances(1);
     glm::mat4 marsmodel = glm::mat4(1.0f);
     marsmodel = glm::translate(marsmodel, glm::vec3(0.0f, -3.0f, 0.0f));
     marsmodel = glm::scale(marsmodel, glm::vec3(2.0f, 2.0f, 2.0f));
     instances[0].model = marsmodel;
-    mars->setInstances(vmaContext_->getAllocator(), instances, *transientCommandPool);
+    mars->setInstances(vmaContext_->getAllocator(), instances, *uploadQueue_);
     mars->initMaterialDescriptor(RCT, descriptorSetLayout->getLayoutHandles()[1], *descriptorPool);
     scene_.addObject(std::move(mars));
 
-    std::shared_ptr<RenderObject> rock = std::make_shared<RenderObject>(assetManage.getMesh(ROCK_PATH), rockMaterial);
+    auto rockMeshHandle = assetLibrary_->loadMesh(config_.rockPath);
+    std::shared_ptr<RenderObject> rock = std::make_shared<RenderObject>(rockMeshHandle, rockMaterial, *resourceRegistry_);
     unsigned int amount = 1000;
     float radius = 40.0;
     float offset = 2.5f;
@@ -234,7 +240,7 @@ void CEngine::initScene() {
 
         rocks[i].model = model_;
     }
-    rock->setInstances(vmaContext_->getAllocator(), rocks, *transientCommandPool);
+    rock->setInstances(vmaContext_->getAllocator(), rocks, *uploadQueue_);
     rock->initMaterialDescriptor(RCT, descriptorSetLayout->getLayoutHandles()[1], *descriptorPool);
     scene_.addObject(std::move(rock));
 }

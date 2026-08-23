@@ -1,28 +1,28 @@
-#include "generic/mesh.hpp"
-#include "vma_allocator.hpp"
-#define TINYOBJLOADER_IMPLEMENTATION
-#include "extern/tiny_obj_loader.h"
+#include "resource/mesh_data.hpp"
+
 #include <unordered_map>
 
-Mesh::Mesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices,
-           VmaAllocator alloc, CommandPool& commandPool) {
-    // Deduplicate vertices by (pos, texcoord, normal)
+namespace resource {
+
+void MeshData::postProcess() {
+    // --- Deduplicate vertices by (pos, texcoord, normal) ---
     std::unordered_map<Vertex, uint32_t> uniqueVertices;
-    uniqueVertices.reserve(vertices.size());
+    uniqueVertices.reserve(vertices_.size());
     std::vector<Vertex>   deduped;
     std::vector<uint32_t> dedupedIndices;
-    deduped.reserve(vertices.size());
-    dedupedIndices.reserve(indices.size());
-    for (const uint32_t& index : indices) {
-        auto [it, inserted] = uniqueVertices.insert({vertices[index], static_cast<uint32_t>(deduped.size())});
+    deduped.reserve(vertices_.size());
+    dedupedIndices.reserve(indices_.size());
+    for (const uint32_t& index : indices_) {
+        auto [it, inserted] = uniqueVertices.insert({vertices_[index], static_cast<uint32_t>(deduped.size())});
         if (inserted) {
-            deduped.emplace_back(vertices[index]);
+            deduped.emplace_back(vertices_[index]);
         }
         dedupedIndices.emplace_back(it->second);
     }
     vertices_ = std::move(deduped);
     indices_  = std::move(dedupedIndices);
 
+    // --- Normal generation ---
     bool hasNormals     = false;
     bool hasTexCoords   = false;
     bool missingNormals = false;
@@ -46,19 +46,20 @@ Mesh::Mesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices,
 
             glm::vec3 faceNormal = glm::cross(vertices_[i1].pos - vertices_[i0].pos,
                                               vertices_[i2].pos - vertices_[i0].pos);
-            if (glm::dot(faceNormal, faceNormal) < 1e-12f) continue; // degenerate face
+            if (glm::dot(faceNormal, faceNormal) < 1e-12f) continue;  // degenerate face
             accum[i0] += faceNormal;
             accum[i1] += faceNormal;
             accum[i2] += faceNormal;
         }
         for (size_t i = 0, size = vertices_.size(); i < size; ++i) {
             if ((vertices_[i].normal[0] | vertices_[i].normal[1] | vertices_[i].normal[2]) != 0) continue;
-            if (glm::dot(accum[i], accum[i]) < 1e-12f) continue; // fully degenerate vertex, leave zero
+            if (glm::dot(accum[i], accum[i]) < 1e-12f) continue;  // fully degenerate vertex, leave zero
             vertices_[i].setNormal(glm::normalize(accum[i]));
             hasNormals = true;
         }
     }
 
+    // --- Tangent generation ---
     if (hasNormals && hasTexCoords) {
         std::vector<glm::vec3> tanAccum(vertices_.size());
         std::vector<glm::vec3> bitAccum(vertices_.size());
@@ -70,8 +71,8 @@ Mesh::Mesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices,
 
             glm::vec3 deltaPos1 = vertices_[idx1].pos - vertices_[idx0].pos;
             glm::vec3 deltaPos2 = vertices_[idx2].pos - vertices_[idx0].pos;
-            glm::vec2 deltaUV1 = vertices_[idx1].texCoord - vertices_[idx0].texCoord;
-            glm::vec2 deltaUV2 = vertices_[idx2].texCoord - vertices_[idx0].texCoord;
+            glm::vec2 deltaUV1  = vertices_[idx1].texCoord - vertices_[idx0].texCoord;
+            glm::vec2 deltaUV2  = vertices_[idx2].texCoord - vertices_[idx0].texCoord;
             float denom = deltaUV1.x * deltaUV2.y - deltaUV1.y * deltaUV2.x;
             float area  = std::abs(denom);
             if (area > 1e-6f) {
@@ -121,64 +122,6 @@ Mesh::Mesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices,
             vertex.setTangent({1.0f, 0.0f, 0.0f}, 1.0f);
         }
     }
-
-    Buffer<Vertex>::CreateInfo vertexBufferInfo{};
-    vertexBufferInfo.size = sizeof(vertices_[0]) * vertices_.size();
-    vertexBufferInfo.usage = vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst;
-    vertexBuffer = std::make_unique<Buffer<Vertex>>(alloc, vertices_, vertexBufferInfo, commandPool);
-
-    Buffer<uint32_t>::CreateInfo indicesBufferInfo{};
-    indicesBufferInfo.size = sizeof(indices_[0]) * indices_.size();
-    indicesBufferInfo.usage = vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst;
-    indicesBuffer = std::make_unique<Buffer<uint32_t>>(alloc, indices_, indicesBufferInfo, commandPool);
 }
 
-std::unique_ptr<Mesh> Mesh::fromObj(const std::string& modelPath,
-                                    VmaAllocator alloc, CommandPool& commandPool) {
-    tinyobj::attrib_t                attrib;
-    std::vector<tinyobj::shape_t>    shapes;
-    std::vector<tinyobj::material_t> materials;
-    std::string                      err;
-    if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &err, modelPath.c_str()))
-    {
-        throw std::runtime_error(err.empty() ? "Failed to load OBJ: " + modelPath : err);
-    }
-    std::vector<Vertex>   vertices;
-    std::vector<uint32_t> indices;
-    size_t cornerCount = 0;
-    for (const auto& shape : shapes) cornerCount += shape.mesh.indices.size();
-    vertices.reserve(cornerCount);
-    indices.reserve(cornerCount);
-    const bool hasFileNormals = !attrib.normals.empty();
-    for (const auto& shape : shapes) {
-        for (const auto& index : shape.mesh.indices) {
-            Vertex vertex{};
-            vertex.pos = {
-                attrib.vertices[3 * index.vertex_index + 0],
-                attrib.vertices[3 * index.vertex_index + 1],
-                attrib.vertices[3 * index.vertex_index + 2]
-            };
-            if (!attrib.texcoords.empty() && index.texcoord_index >= 0) {
-                vertex.texCoord = {
-                    attrib.texcoords[2 * index.texcoord_index + 0],
-                    1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
-                };
-            } else {
-                vertex.texCoord = {0.0f, 0.0f};
-            }
-            if (hasFileNormals && index.normal_index >= 0) {
-                vertex.setNormal(glm::vec3(
-                    attrib.normals[3 * index.normal_index + 0],
-                    attrib.normals[3 * index.normal_index + 1],
-                    attrib.normals[3 * index.normal_index + 2]
-                ));
-            } else {
-                // Missing normals are generated as smooth normals in the Mesh constructor
-                vertex.setNormal({0.0f, 0.0f, 0.0f});
-            }
-            vertices.emplace_back(vertex);
-            indices.emplace_back(static_cast<uint32_t>(indices.size()));
-        }
-    }
-    return std::make_unique<Mesh>(std::move(vertices), std::move(indices), alloc, commandPool);
-}
+}  // namespace resource

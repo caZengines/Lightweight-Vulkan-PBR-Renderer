@@ -1,7 +1,6 @@
 #pragma once
 
 #include "render_context.hpp"
-#include "vulkan/vulkan.hpp"
 #include <cstdint>
 #include <vector>
 #define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS

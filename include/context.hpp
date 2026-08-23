@@ -9,13 +9,7 @@
 #include "platform/window.hpp"
 #include "render_context.hpp"
 
-inline const std::string MODEL_PATH = "../models/container.obj";
-inline const std::string ROCK_PATH  = "../models/rock.obj";
-inline const std::string PLANET_PATH = "../models/planet.obj";
-inline const std::string TEXTURE_PATH = "../textures/container.png";
-inline const std::string ROCK_TEXTURE_PATH  = "../textures/rock.png";
-inline const std::string MARS_PATH          = "../textures/mars.png";
-inline const std::string NORMAL_PATH  = "../textures/container_normal_OpenGL.png";
+// Asset paths moved to app::Config (Phase 2) — no "../" relative paths here.
 
 class Context {
     public:

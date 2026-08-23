@@ -1,4 +1,4 @@
-#include "generic/glTFloader.hpp"
+#include "resource/mesh_importer.hpp"
 
 #include "extern/tiny_gltf_v3.h"
 #include "platform/log.hpp"
@@ -12,8 +12,19 @@
 #include <string>
 #include <vector>
 
+#define TINYOBJLOADER_IMPLEMENTATION
+#include "extern/tiny_obj_loader.h"
+
 // =============================================================================
-// glTF 2.0 model loading through the tinygltf v3 C API.
+// MeshImporter — CPU-side geometry importers (OBJ + glTF 2.0).
+//
+// Both importers produce a post-processed resource::MeshData (deduplication,
+// smooth normal generation, tangent computation in MeshData::postProcess).
+// GPU upload is the job of ResourceRegistry/UploadQueue.
+// =============================================================================
+
+// =============================================================================
+// glTF 2.0 loading through the tinygltf v3 C API.
 //
 // Scope (basic geometry):
 //   * .gltf (with external .bin buffers) and .glb files
@@ -27,8 +38,7 @@
 //
 // Not supported yet: Draco compression, morph targets, materials/textures,
 // node transforms (warned and skipped/filled with defaults). Missing normals
-// are regenerated as smooth normals and tangents are computed by the Mesh
-// constructor.
+// are regenerated as smooth normals and tangents are computed by postProcess.
 // =============================================================================
 
 namespace {
@@ -82,17 +92,17 @@ uint64_t accessorElementSize(const tg3_accessor& accessor) {
 // validated once, so per-element reads are just pointer arithmetic. Sparse
 // substitutions are stored separately and resolved during sequential reads.
 struct AccessorData {
-    const tg3_accessor*      accessor = nullptr;
-    const tg3_buffer_view*   baseView = nullptr;
-    const tg3_buffer*        baseBuffer = nullptr;
-    int32_t                  componentSize = 0;
-    int32_t                  componentCount = 0;
-    uint64_t                 elementSize = 0;
-    uint64_t                 baseStride = 0;
+    const tg3_accessor*    accessor = nullptr;
+    const tg3_buffer_view* baseView = nullptr;
+    const tg3_buffer*      baseBuffer = nullptr;
+    int32_t                componentSize = 0;
+    int32_t                componentCount = 0;
+    uint64_t               elementSize = 0;
+    uint64_t               baseStride = 0;
 
     struct SparseSubstitution {
-        uint64_t        targetIndex;
-        const uint8_t*  valueData;
+        uint64_t       targetIndex;
+        const uint8_t* valueData;
     };
     std::vector<SparseSubstitution> sparseSubstitutions;
     mutable size_t                  sparseCursor = 0;
@@ -433,7 +443,6 @@ bool indexComponentReadable(const tg3_accessor& accessor) {
 // Append triangle-list indices directly to outIndices. This expands triangle
 // strips/fans on the fly and avoids the temporary localIndices/triangleIndices
 // vectors used by the previous implementation.
-
 void appendPrimitiveIndices(const AccessorData* indexData,
                             uint64_t indexCount,
                             uint64_t vertexCount,
@@ -604,7 +613,7 @@ void loadPrimitive(const tg3_model& model,
         if (normalData) {
             vertex.setNormal(glm::vec3(readAttributeElement(*normalData, i)));
         } else {
-            vertex.setNormal(glm::vec3(0.0f));  // Mesh regenerates smooth normals
+            vertex.setNormal(glm::vec3(0.0f));  // postProcess regenerates smooth normals
         }
         outVertices.emplace_back(vertex);
     }
@@ -615,9 +624,73 @@ void loadPrimitive(const tg3_model& model,
 
 }  // namespace
 
-std::unique_ptr<glTFModel> glTFModel::fromglTF(const std::string& modelPath,
-                                               VmaAllocator alloc,
-                                               CommandPool& commandPool) {
+namespace resource {
+
+bool MeshImporter::hasExtension(const std::string& path, const char* ext) {
+    if (path.size() < std::strlen(ext)) {
+        return false;
+    }
+    const size_t offset = path.size() - std::strlen(ext);
+    for (size_t i = 0; ext[i] != '\0'; ++i) {
+        if (std::tolower(static_cast<unsigned char>(path[offset + i])) != ext[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+MeshData MeshImporter::loadObj(const std::string& modelPath) {
+    tinyobj::attrib_t                attrib;
+    std::vector<tinyobj::shape_t>    shapes;
+    std::vector<tinyobj::material_t> materials;
+    std::string                      err;
+    if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &err, modelPath.c_str()))
+    {
+        throw std::runtime_error(err.empty() ? "Failed to load OBJ: " + modelPath : err);
+    }
+    std::vector<Vertex>   vertices;
+    std::vector<uint32_t> indices;
+    size_t cornerCount = 0;
+    for (const auto& shape : shapes) cornerCount += shape.mesh.indices.size();
+    vertices.reserve(cornerCount);
+    indices.reserve(cornerCount);
+    const bool hasFileNormals = !attrib.normals.empty();
+    for (const auto& shape : shapes) {
+        for (const auto& index : shape.mesh.indices) {
+            Vertex vertex{};
+            vertex.pos = {
+                attrib.vertices[3 * index.vertex_index + 0],
+                attrib.vertices[3 * index.vertex_index + 1],
+                attrib.vertices[3 * index.vertex_index + 2]
+            };
+            if (!attrib.texcoords.empty() && index.texcoord_index >= 0) {
+                vertex.texCoord = {
+                    attrib.texcoords[2 * index.texcoord_index + 0],
+                    1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
+                };
+            } else {
+                vertex.texCoord = {0.0f, 0.0f};
+            }
+            if (hasFileNormals && index.normal_index >= 0) {
+                vertex.setNormal(glm::vec3(
+                    attrib.normals[3 * index.normal_index + 0],
+                    attrib.normals[3 * index.normal_index + 1],
+                    attrib.normals[3 * index.normal_index + 2]
+                ));
+            } else {
+                // Missing normals are generated as smooth normals in postProcess
+                vertex.setNormal({0.0f, 0.0f, 0.0f});
+            }
+            vertices.emplace_back(vertex);
+            indices.emplace_back(static_cast<uint32_t>(indices.size()));
+        }
+    }
+    MeshData data(std::move(vertices), std::move(indices));
+    data.postProcess();
+    return data;
+}
+
+MeshData MeshImporter::loadGlTF(const std::string& modelPath) {
     tinygltf3::Model model;
     tinygltf3::ErrorStack errors;
 
@@ -662,6 +735,16 @@ std::unique_ptr<glTFModel> glTFModel::fromglTF(const std::string& modelPath,
         throw std::runtime_error("glTF: no triangle geometry found in " + modelPath);
     }
 
-    auto mesh_ = std::make_shared<Mesh>(std::move(vertices), std::move(indices), alloc, commandPool);
-    return std::unique_ptr<glTFModel>(new glTFModel(std::move(mesh_)));
+    MeshData data(std::move(vertices), std::move(indices));
+    data.postProcess();
+    return data;
 }
+
+MeshData MeshImporter::load(const std::string& path) {
+    if (hasExtension(path, ".gltf") || hasExtension(path, ".glb")) {
+        return loadGlTF(path);
+    }
+    return loadObj(path);
+}
+
+}  // namespace resource

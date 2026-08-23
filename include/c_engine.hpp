@@ -1,12 +1,16 @@
-#include "platform/window.hpp"
-#include "platform/input.hpp"
+#pragma once
+#include "app/config.hpp"
 #include "camera.hpp"
-#include "vma_allocator.hpp"
-#include "generic/scene.hpp"
-#include "vulkandevice.hpp"
 #include "context.hpp"
-#include "asset_manager.hpp"
+#include "generic/scene.hpp"
+#include "platform/input.hpp"
+#include "platform/window.hpp"
 #include "renderer/renderer.hpp"
+#include "resource/asset_library.hpp"
+#include "resource/resource_registry.hpp"
+#include "resource/upload_queue.hpp"
+#include "vma_allocator.hpp"
+#include "vulkandevice.hpp"
 #include <memory>
 #include <vector>
 
@@ -33,6 +37,8 @@ class CEngine final {
         void run();
     private:
 
+        app::Config                                  config_{};
+
         std::unique_ptr<platform::Window>            window             = nullptr;
         platform::Input                              input{};
         Camera                                       camera{};
@@ -43,7 +49,12 @@ class CEngine final {
         std::unique_ptr<CommandPool>                 graphicsCommandPool  = nullptr;
         std::unique_ptr<CommandPool>                 transientCommandPool = nullptr;
 
-        AssetManager                                 assetManage {};
+        // Resource layer (Phase 2). Declared before the material/scene
+        // members so every AssetHandle they hold dies before the library.
+        std::unique_ptr<resource::UploadQueue>       uploadQueue_        = nullptr;
+        std::unique_ptr<resource::ResourceRegistry>  resourceRegistry_   = nullptr;
+        std::unique_ptr<resource::AssetLibrary>      assetLibrary_       = nullptr;
+
         std::unique_ptr<Sampler>                     albedoSampler        = nullptr;
         std::unique_ptr<Sampler>                     normalSampler        = nullptr;
 
@@ -55,18 +66,10 @@ class CEngine final {
 
         std::shared_ptr<Material>                    MarsMaterial         = nullptr;
         std::shared_ptr<Material>                    rockMaterial         = nullptr;
-        std::vector<InstanceData>                    instanceDatas;
-
-        // Pre-created 1×1 fallback textures – safe to use when a real texture is unavailable.
-        std::shared_ptr<Texture>                     defaultAlbedoTexture_  = nullptr;
-        std::shared_ptr<Texture>                     defaultNormalTexture_  = nullptr;
 
         Scene                                        scene_{};
 
         std::unique_ptr<Renderer>                    renderer             = nullptr;
-        
-        uint32_t                                     mipLevels;
- 
 
         void initWindow();
         void initVulkan();
@@ -76,8 +79,7 @@ class CEngine final {
         void updateCamera(float deltaTime);
 
         void createCommandPools();
-        void initAssetManager();
-        void loadTextures();
+        void initAssetLibrary();
         void createSamplers();
         void createMaterials();
         void createDescriptorSetLayout();

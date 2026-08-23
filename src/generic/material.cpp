@@ -1,13 +1,25 @@
 #include "generic/material.hpp"
 
-Material::Material(const std::shared_ptr<const Texture>& albedo, const std::shared_ptr<const Texture>& normal, const Sampler& texSampler, const Sampler& norSampler)
-    : albedoTexture_(albedo), normalTexture_(normal), texSamplerHandle_(texSampler.getSampler()), norSamplerHandle_(norSampler.getSampler())
+Material::Material(const resource::AssetHandle& albedo, const resource::AssetHandle& normal,
+                   const Sampler& texSampler, const Sampler& norSampler,
+                   const resource::ResourceRegistry& registry)
+    : albedoHandle_(albedo), normalHandle_(normal),
+      texSamplerHandle_(texSampler.getSampler()), norSamplerHandle_(norSampler.getSampler())
 {
-    imageInfo_.setImageView(albedoTexture_->getTextureView())
-             .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
+    // Null Object: a missing/empty handle falls back to the registry's
+    // built-in 1×1 default textures.
+    const resource::TextureGPU& albedoTex = albedo.valid() ? registry.texture(albedo)
+                                                           : registry.defaultAlbedo();
+    const resource::TextureGPU& normalTex = normal.valid() ? registry.texture(normal)
+                                                           : registry.defaultNormal();
+    albedoTexture_ = &albedoTex;
+    normalTexture_ = &normalTex;
 
-    normalInfo_.setImageView(normalTexture_->getTextureView())
+    imageInfo_.setImageView(albedoTex.view())
               .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
+
+    normalInfo_.setImageView(normalTex.view())
+               .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
 
     albedoSamplerInfo_.setSampler(texSamplerHandle_);
     normalSamplerInfo_.setSampler(norSamplerHandle_);

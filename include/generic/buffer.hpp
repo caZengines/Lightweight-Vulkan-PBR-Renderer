@@ -1,6 +1,8 @@
 #pragma once
 #include "command_manager.hpp"
+#include "resource/upload_queue.hpp"
 #include "vma_allocator.hpp"
+
 #include <vector>
 
 #define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
@@ -12,41 +14,25 @@ template<typename T> class Buffer{
         struct CreateInfo{
             vk::DeviceSize size;
             vk::BufferUsageFlags usage;
-            vk::SharingMode sharingMode = vk::SharingMode::eExclusive;
-            std::vector<uint32_t> queueFamilyIndices;
         };
 
-        //Ban copying
-        Buffer<T>& operator=(const Buffer<T>&) = delete;
+        // Ban copying; allow moving
+        Buffer(const Buffer&) = delete;
+        Buffer& operator=(const Buffer&) = delete;
+        Buffer(Buffer&&) noexcept = default;
+        Buffer& operator=(Buffer&&) noexcept = default;
 
-        explicit Buffer(VmaAllocator alloc, const std::vector<T>& data_,const CreateInfo& info, CommandPool& commandPool){
-            vk::BufferCreateInfo stagingInfo{};
-            stagingInfo.setSize(info.size).setUsage(vk::BufferUsageFlagBits::eTransferSrc);
-            VmaAllocationCreateInfo stagingCI{};
-            stagingCI.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
-            stagingCI.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-            VmaBuffer stagingBuffer(alloc, static_cast<const VkBufferCreateInfo&>(stagingInfo), stagingCI);
+        // Create a device-local buffer and upload `data` through the
+        // UploadQueue (staging + single-time submit live in resource layer —
+        // Phase 2: buffers no longer create/upload themselves).
+        explicit Buffer(VmaAllocator alloc, const std::vector<T>& data_,
+                        const CreateInfo& info, resource::UploadQueue& queue)
+            : vmaBuffer_(queue.uploadBuffer(alloc, data_.data(), info.size, info.usage)) {}
 
-            void* dataStaging = stagingBuffer.map();
-            memcpy(dataStaging, data_.data(), info.size);
-            stagingBuffer.unmap();
-
-            vk::BufferCreateInfo bufferInfo;
-            bufferInfo.setSize(info.size).setUsage(info.usage).setSharingMode(info.sharingMode);
-            if(info.sharingMode == vk::SharingMode::eConcurrent) {
-                bufferInfo.setQueueFamilyIndices(info.queueFamilyIndices);
-            }
-            VmaAllocationCreateInfo allocCI{};
-            allocCI.usage = VMA_MEMORY_USAGE_AUTO;
-            vmaBuffer_ = VmaBuffer(alloc, static_cast<const VkBufferCreateInfo&>(bufferInfo), allocCI);
-            vk::raii::CommandBuffer commandBuffer = commandPool.beginSingleTimeCommands();
-            commandBuffer.copyBuffer(stagingBuffer.getHandle(), vmaBuffer_.getHandle(), vk::BufferCopy(0, 0, info.size));
-            commandPool.endSingleTimeCommands(std::move(commandBuffer));
-        }
         ~Buffer() = default;
 
         const VkBuffer getBuffer() const { return vmaBuffer_.getHandle(); }
 
     private:
-        VmaBuffer                                vmaBuffer_;
+        VmaBuffer vmaBuffer_;
 };

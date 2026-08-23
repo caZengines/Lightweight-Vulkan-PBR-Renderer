@@ -251,16 +251,16 @@ void Renderer::recordCommandBuffer(uint32_t ImageIndex, const std::vector<DrawBa
                 0, flags);
             // Bind vertex + instance buffers
             const std::array<vk::Buffer, 2> vertexBuffers {
-                batch.mesh->getVertexBuffer(),
+                batch.meshGPU->vertexBuffer(),
                 batch.instanceBuffer
             };
             constexpr std::array<vk::DeviceSize, 2> offsets {0, 0};
             graphicsCommandBuffers[frameIndex].bindVertexBuffers(0, vertexBuffers, offsets);
-            graphicsCommandBuffers[frameIndex].bindIndexBuffer(batch.mesh->getIndexBuffer(), 0, vk::IndexType::eUint32);
+            graphicsCommandBuffers[frameIndex].bindIndexBuffer(batch.meshGPU->indexBuffer(), 0, vk::IndexType::eUint32);
 
             // Draw all instances of this batch
             graphicsCommandBuffers[frameIndex].drawIndexed(
-                static_cast<uint32_t>(batch.mesh->getIndices().size()),
+                batch.meshGPU->indexCount(),
                 batch.instanceCount,
                 0, 0,
                 batch.firstInstance
