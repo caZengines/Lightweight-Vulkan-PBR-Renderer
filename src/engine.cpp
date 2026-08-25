@@ -78,8 +78,7 @@ void CEngine::run() {
 }
 
 void CEngine::updateCamera(float deltaTime) {
-    // WASD / Space / LShift movement — moved out of Renderer::updateCamera,
-    // now driven by the platform::Input facade instead of raw glfwGetKey.
+    //driven by the platform::Input
     if (input.isKeyDown(platform::Key::W))        camera.moveHorizontal(1.0f, 0.0f, deltaTime);
     if (input.isKeyDown(platform::Key::A))        camera.moveHorizontal(0.0f, -1.0f, deltaTime);
     if (input.isKeyDown(platform::Key::S))        camera.moveHorizontal(-1.0f, 0.0f, deltaTime);
@@ -102,7 +101,7 @@ void CEngine::initAssetLibrary() {
     // Phase 2: AssetLibrary assembly — UploadQueue wraps the transient pool's
     // single-time submissions; ResourceRegistry owns the GPU assets and the
     // built-in default textures; AssetLibrary caches by path with refcounting.
-    // (Kept inside the App 雏形 for now; Phase 5 moves this to app::App.)
+    // (Kept inside the App prototype for now; Phase 5 moves this to app::App.)
     uploadQueue_ = std::make_unique<resource::UploadQueue>(*transientCommandPool);
     resourceRegistry_ = std::make_unique<resource::ResourceRegistry>(vmaContext_->getAllocator(), *uploadQueue_);
     assetLibrary_ = std::make_unique<resource::AssetLibrary>(*resourceRegistry_);

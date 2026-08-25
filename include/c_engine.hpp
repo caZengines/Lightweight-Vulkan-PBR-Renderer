@@ -49,8 +49,6 @@ class CEngine final {
         std::unique_ptr<CommandPool>                 graphicsCommandPool  = nullptr;
         std::unique_ptr<CommandPool>                 transientCommandPool = nullptr;
 
-        // Resource layer (Phase 2). Declared before the material/scene
-        // members so every AssetHandle they hold dies before the library.
         std::unique_ptr<resource::UploadQueue>       uploadQueue_        = nullptr;
         std::unique_ptr<resource::ResourceRegistry>  resourceRegistry_   = nullptr;
         std::unique_ptr<resource::AssetLibrary>      assetLibrary_       = nullptr;

@@ -17,7 +17,7 @@ class MeshImporter {
         // (POSITION / NORMAL / TEXCOORD_0, sparse accessors, strips/fans).
         static MeshData loadGlTF(const std::string& path);
 
-        // Dispatch on file extension; unknown extensions fall back to OBJ.
+        // Dispatch on unknown file extension; fall back to OBJ.
         static MeshData load(const std::string& path);
 
     private:

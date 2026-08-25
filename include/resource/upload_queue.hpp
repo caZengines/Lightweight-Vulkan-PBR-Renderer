@@ -37,8 +37,7 @@ class UploadQueue {
     private:
         CommandPool& pool_;
 
-        // Blit-based mip chain generation (same algorithm as the old
-        // Texture::generateMipMaps).
+        // Blit-based mip chain generation.
         void generateMipmaps(VmaImage& image, vk::Format format, vk::Filter filter,
                              uint32_t width, uint32_t height, uint32_t mipLevels);
 };

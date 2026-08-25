@@ -25,16 +25,8 @@ AssetHandle::AssetHandle(const AssetHandle& other)
 }
 
 AssetHandle& AssetHandle::operator=(const AssetHandle& other) {
-    if (this != &other) {
-        if (library_ && id_) {
-            library_->release(id_);
-        }
-        library_ = other.library_;
-        id_      = other.id_;
-        if (library_ && id_) {
-            library_->retain(id_);
-        }
-    }
+    AssetHandle temp(other);
+    this->swap(temp);
     return *this;
 }
 
@@ -43,13 +35,7 @@ AssetHandle::AssetHandle(AssetHandle&& other) noexcept
       id_(std::exchange(other.id_, 0)) {}
 
 AssetHandle& AssetHandle::operator=(AssetHandle&& other) noexcept {
-    if (this != &other) {
-        if (library_ && id_) {
-            library_->release(id_);
-        }
-        library_ = std::exchange(other.library_, nullptr);
-        id_      = std::exchange(other.id_, 0);
-    }
+    this->swap(other);
     return *this;
 }
 
@@ -70,8 +56,7 @@ uint32_t ResourceRegistry::createMeshGPU(const MeshData& data) {
     if (data.empty()) {
         throw std::runtime_error("ResourceRegistry: cannot create MeshGPU from empty MeshData");
     }
-    // unique_ptr(new ...) instead of make_unique: the private ctor is
-    // accessible here (member context), but not inside the template.
+
     std::unique_ptr<MeshGPU> gpu(new MeshGPU());
     gpu->vertexCount_ = static_cast<uint32_t>(data.vertices().size());
     gpu->indexCount_  = static_cast<uint32_t>(data.indices().size());

@@ -32,6 +32,10 @@ class AssetHandle {
         AssetHandle(AssetHandle&& other) noexcept;
         AssetHandle& operator=(AssetHandle&& other) noexcept;
         ~AssetHandle();
+        void swap(AssetHandle& other) noexcept {
+            std::swap(library_, other.library_);
+            std::swap(id_, other.id_);
+        }
 
         uint32_t id() const noexcept { return id_; }
         bool     valid() const noexcept { return id_ != 0; }
@@ -47,7 +51,7 @@ class AssetHandle {
 };
 
 // ---------------------------------------------------------------------------
-// MeshGPU — GPU half of a mesh: vertex + index buffers only (no CPU data).
+// MeshGPU — GPU half of a mesh: vertex + index buffers only 
 // Created and owned by ResourceRegistry; Mesh no longer creates buffers.
 // ---------------------------------------------------------------------------
 class MeshGPU {

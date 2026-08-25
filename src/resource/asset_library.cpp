@@ -4,8 +4,6 @@
 #include "resource/texture_importer.hpp"
 #include "platform/log.hpp"
 
-#include <stdexcept>
-#include <utility>
 
 namespace resource {
 
@@ -14,7 +12,7 @@ AssetHandle AssetLibrary::loadMesh(const std::string& path) {
     if (it != paths_.end()) {
         ++refCounts_[it->second];
         platform::LogLocator::get().write(platform::LogLevel::Info,
-            "AssetLibrary: mesh cache hit (no re-upload): " + path);
+            "AssetLibrary: mesh cache hit: " + path);
         return AssetHandle(this, it->second);
     }
 
@@ -35,7 +33,7 @@ AssetHandle AssetLibrary::loadImage(const std::string& path, vk::Format format, 
     if (it != paths_.end()) {
         ++refCounts_[it->second];
         platform::LogLocator::get().write(platform::LogLevel::Info,
-            "AssetLibrary: image cache hit (no re-upload): " + path);
+            "AssetLibrary: image cache hit: " + path);
         return AssetHandle(this, it->second);
     }
 

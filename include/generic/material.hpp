@@ -2,7 +2,6 @@
 #include "generic/sampler.hpp"
 #include "render_context.hpp"
 #include "resource/resource_registry.hpp"
-#include <memory>
 
 
 // Push-constant render flags

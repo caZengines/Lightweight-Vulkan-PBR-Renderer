@@ -1,5 +1,4 @@
 #pragma once
-#include "command_manager.hpp"
 #include "descriptor_manager.hpp"
 #include "generic/buffer.hpp"
 #include "generic/material.hpp"

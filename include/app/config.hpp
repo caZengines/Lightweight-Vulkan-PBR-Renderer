@@ -5,7 +5,7 @@
 
 namespace app {
 
-// Application configuration — composition-root 雏形 (Phase 5 will grow this).
+// Application configuration — composition-root prototype (Phase 5 will grow this).
 // Every path is resolved to an absolute path against
 // platform::PlatformUtils::assetRoot() at construction, so no "../" relative
 // paths remain in the codebase (risk R5).

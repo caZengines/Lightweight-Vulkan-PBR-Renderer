@@ -35,7 +35,8 @@ class AssetLibrary {
 
         // Refcounting (called by AssetHandle).
         void retain(uint32_t id);
-        void release(uint32_t id);  // last reference → unload from the registry
+        // last reference → unload from the registry
+        void release(uint32_t id);
 
     private:
         std::unordered_map<std::string, uint32_t> paths_;     // path → id

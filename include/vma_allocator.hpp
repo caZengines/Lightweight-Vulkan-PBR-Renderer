@@ -36,12 +36,9 @@ class VmaBuffer {
         , allocation_(std::exchange(other.allocation_, VK_NULL_HANDLE))
         , allocator_(std::exchange(other.allocator_, nullptr)) {}
     VmaBuffer& operator=(VmaBuffer&& other) noexcept {
-        if(this != &other) {
-            destroy();
-            buffer_ = std::exchange(other.buffer_, VK_NULL_HANDLE);
-            allocation_ = std::exchange(other.allocation_, VK_NULL_HANDLE);
-            allocator_ = std::exchange(other.allocator_, nullptr);
-        }
+        std::swap(buffer_, other.buffer_);
+        std::swap(allocation_, other.allocation_);
+        std::swap(allocator_, other.allocator_);
         return *this;
     }
     
@@ -80,12 +77,9 @@ class VmaImage {
             , allocation_(std::exchange(other.allocation_, VK_NULL_HANDLE))
             , allocator_(std::exchange(other.allocator_, nullptr)) {}
         VmaImage& operator=(VmaImage&& other) noexcept {
-            if(this != &other) {
-                destroy();
-                image_ = std::exchange(other.image_, VK_NULL_HANDLE);
-                allocation_ = std::exchange(other.allocation_, VK_NULL_HANDLE);
-                allocator_ = std::exchange(other.allocator_, nullptr);
-            }
+            std::swap(image_, other.image_);
+            std::swap(allocation_, other.allocation_);
+            std::swap(allocator_, other.allocator_);
             return *this;
         }
 
