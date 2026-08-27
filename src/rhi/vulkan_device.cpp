@@ -1,7 +1,9 @@
-#include "vulkandevice.hpp"
+#include "rhi/vulkan_device.hpp"
 #include "platform/log.hpp"
 #include <map>
 #include <string>
+
+namespace rhi {
 
 void VulkanDevice::init(const CreateInfo& info){
     info_ = info;
@@ -248,3 +250,4 @@ void VulkanDevice::setSampleCount(){
     //     }
     // }
 }
+}  // namespace rhi

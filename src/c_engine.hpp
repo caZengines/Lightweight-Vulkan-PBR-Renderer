@@ -1,7 +1,6 @@
 #pragma once
 #include "app/config.hpp"
 #include "camera.hpp"
-#include "context.hpp"
 #include "generic/material.hpp"
 #include "generic/scene.hpp"
 #include "platform/input.hpp"
@@ -12,9 +11,11 @@
 #include "resource/asset_library.hpp"
 #include "resource/resource_registry.hpp"
 #include "resource/upload_queue.hpp"
+#include "rhi/debug_messenger.hpp"
 #include "rhi/rhi_factory.hpp"
+#include "rhi/surface.hpp"
 #include "rhi/vma_allocator.hpp"
-#include "vulkandevice.hpp"
+#include "rhi/vulkan_device.hpp"
 #include <memory>
 #include <vector>
 
@@ -46,9 +47,11 @@ class CEngine final {
         std::unique_ptr<platform::Window>            window             = nullptr;
         platform::Input                              input{};
         Camera                                       camera{};
-        VulkanDevice                                 vulkanDevice_{};
+        rhi::VulkanDevice                            vulkanDevice_{};
         std::unique_ptr<rhi::VmaContext>                  vmaContext_        = nullptr;
-        std::unique_ptr<Context>                     context            = nullptr;
+        // Phase 3 cleanup: the former god-config Context split in two.
+        std::unique_ptr<rhi::DebugMessenger>         debugMessenger     = nullptr;
+        std::unique_ptr<rhi::Surface>                surface            = nullptr;
 
         // Phase 3: explicit (non-singleton) RHI helper + shared shader cache.
         std::unique_ptr<rhi::RhiFactory>             rhiFactory_        = nullptr;

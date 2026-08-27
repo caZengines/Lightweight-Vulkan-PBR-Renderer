@@ -1,4 +1,4 @@
-#include "render/swapchain.hpp"
+#include "rhi/swapchain.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -12,14 +12,14 @@
 #include "rhi/rhi_factory.hpp"
 #include "render_context.hpp"
 
-namespace render {
+namespace rhi {
 
 Swapchain::Swapchain(RenderContext& rct,
                      VmaAllocator alloc,
-                     vk::raii::SurfaceKHR& surface,
+                     const vk::raii::SurfaceKHR& surface,
                      platform::Window& window,
                      const rhi::RhiFactory& factory,
-                     const RenderSettings& settings)
+                     const render::RenderSettings& settings)
     : rct_(rct),
       allocator_(alloc),
       factory_(factory),
@@ -29,7 +29,7 @@ Swapchain::Swapchain(RenderContext& rct,
     createColorAndDepthResources();
 }
 
-void Swapchain::createSwapChain(vk::raii::SurfaceKHR& surface, platform::Window& window) {
+void Swapchain::createSwapChain(const vk::raii::SurfaceKHR& surface, platform::Window& window) {
     const vk::SurfaceCapabilitiesKHR caps = rct_.physicalDevice.getSurfaceCapabilitiesKHR(*surface);
     extent_                 = chooseExtent(caps, window);
     const std::uint32_t minCount = chooseMinImageCount(caps);
@@ -129,7 +129,7 @@ void Swapchain::createColorAndDepthResources() {
                                                 vk::ImageAspectFlagBits::eDepth);
 }
 
-void Swapchain::recreateSwapChain(vk::raii::SurfaceKHR& surface, platform::Window& window) {
+void Swapchain::recreateSwapChain(const vk::raii::SurfaceKHR& surface, platform::Window& window) {
     // Minimized-window parking loop.
     int w = static_cast<int>(window.framebufferWidth());
     int h = static_cast<int>(window.framebufferHeight());
@@ -177,4 +177,4 @@ vk::PresentModeKHR Swapchain::choosePresentMode(std::vector<vk::PresentModeKHR> 
     return vk::PresentModeKHR::eFifo;  // universally supported fallback
 }
 
-}  // namespace render
+}  // namespace rhi

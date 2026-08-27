@@ -7,6 +7,8 @@
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
 
+namespace rhi {
+
 class VulkanDevice {
     public:
         struct CreateInfo{
@@ -47,3 +49,5 @@ class VulkanDevice {
 
         std::vector<const char*> GetRequiredExtension();
 };
+
+}  // namespace rhi

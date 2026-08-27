@@ -25,6 +25,7 @@ class Window;
 
 namespace rhi {
 class RhiFactory;
+class Swapchain;
 }  // namespace rhi
 
 namespace render {
@@ -33,7 +34,6 @@ class CommandRecorder;
 class FrameResources;
 class PipelineCache;
 class ShaderManager;
-class Swapchain;
 
 // Fills one frame: acquire → [app records] → submit/present.
 // Phase 3 made this class an orchestrator: per-frame state lives in
@@ -53,7 +53,7 @@ public:
         const vk::DescriptorPool&            set0Pool;
         CommandPool&                         graphicsPool;
         Camera&                              camera;
-        vk::raii::SurfaceKHR&                surface;
+        const vk::raii::SurfaceKHR&          surface;
         platform::Window&                    window;
         std::string_view                     spirvPath;       // absolute, from app::Config
         const rhi::RhiFactory&               factory;
@@ -80,7 +80,7 @@ private:
     void recreateAfterResize();
 
     platform::Window&             window_;
-    vk::raii::SurfaceKHR&         surface_;
+    const vk::raii::SurfaceKHR&   surface_;
     RenderContext                 rct_;
     Camera&                       camera_;
     CommandPool&                  graphicsPool_;
@@ -89,7 +89,7 @@ private:
     std::string_view              spirvPath_;
     std::vector<vk::DescriptorSetLayout> setLayouts_;
 
-    std::unique_ptr<Swapchain>       swapchain_;
+    std::unique_ptr<rhi::Swapchain>  swapchain_;
     std::unique_ptr<FrameResources>  frames_;
     std::unique_ptr<ShaderManager>   shaders_;
     std::unique_ptr<PipelineCache>   pipelineCache_;

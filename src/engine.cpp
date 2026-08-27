@@ -1,5 +1,4 @@
 #include "c_engine.hpp"
-#include "context.hpp"
 #include "generic/material.hpp"
 #include "generic/renderobject.hpp"
 #include "platform/log.hpp"
@@ -75,7 +74,7 @@ void CEngine::initWindow() {
 }
 
 void CEngine::initVulkan() {
-    VulkanDevice::CreateInfo deviceInfo;
+    rhi::VulkanDevice::CreateInfo deviceInfo;
     deviceInfo.requiredDeviceExtensions_ = requiredDeviceExtensions;
     deviceInfo.appName = "No Engine";
     deviceInfo.enableValidationLayers_= enableValidationLayers;
@@ -88,11 +87,9 @@ void CEngine::initVulkan() {
     rhiFactory_   = std::make_unique<rhi::RhiFactory>(vulkanDevice_.physicalDevice, vulkanDevice_.device);
     shaderManager_ = std::make_unique<render::ShaderManager>();
 
-    Context::Config cfg;
-    cfg.enableValidationLayers_ = enableValidationLayers;
-    cfg.validationLayers_       = validationLayers;
-    cfg.msaaSamples_            = vulkanDevice_.msaaSamples;
-    context = std::make_unique<Context>(cfg, vulkanDevice_.physicalDevice, vulkanDevice_.device, vulkanDevice_.instance, *window);
+    debugMessenger = std::make_unique<rhi::DebugMessenger>(vulkanDevice_.instance,
+                                                           enableValidationLayers);
+    surface        = std::make_unique<rhi::Surface>(vulkanDevice_.instance, *window);
 
     createCommandPools();
     initAssetLibrary();
@@ -204,7 +201,7 @@ void CEngine::initRenderer(){
         .set0Pool     = *descriptorPool->getDescriptorPool(),
         .graphicsPool = *graphicsCommandPool,
         .camera       = camera,
-        .surface      = context->surface,
+        .surface      = surface->handle(),
         .window       = *window,
         .spirvPath    = config_.shaderPath,
         .factory      = *rhiFactory_,
