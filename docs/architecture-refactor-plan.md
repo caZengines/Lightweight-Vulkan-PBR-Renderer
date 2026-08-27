@@ -377,7 +377,7 @@ App::run
 ### 2.4 建议的目录结构（最终形态）
 
 ```
-src/ (include/ 同名镜像)
+src/ （单树：每个 .hpp 与对应 .cpp 同目录，已无独立 include/ 树）
 ├── platform/   window.{hpp,cpp}  input.{hpp,cpp}  platform_utils.{hpp,cpp}
 ├── rhi/        vulkan_device.*  vma_allocator.*  command_pool.*  rhi_factory.*
 │               debug_messenger.*  surface.*  swapchain.*  render_context.hpp  vertex_input.*
