@@ -1,29 +1,29 @@
 From: <Saved by Blink>
-Snapshot-Content-Location: https://docs.vulkan.org/tutorial/latest/Building_a_Simple_Engine/Engine_Architecture/02_architectural_patterns.html?__cf_chl_tk=zmMG998l.n8kH.L.yRJcPAKx7V2RR9IiALx7yJSMWf0-1786880506-1.0.1.1-e7uo7pEKdfN6UJTV3PyjmTpBm4rptbgO3RIPy202RB0
-Subject: Engine Architecture: Architectural Patterns :: Vulkan Documentation Project
-Date: Sun, 16 Aug 2026 20:03:17 +0800
+Snapshot-Content-Location: https://docs.vulkan.org/tutorial/latest/Building_a_Simple_Engine/Engine_Architecture/03_component_systems.html
+Subject: Engine Architecture: Component Systems :: Vulkan Documentation Project
+Date: Tue, 25 Aug 2026 20:20:12 +0800
 MIME-Version: 1.0
 Content-Type: multipart/related;
 	type="text/html";
-	boundary="----MultipartBoundary--jYCm2tbor94wnC4vBMHuEqzZfjgr2ic8E157QRhAVZ----"
+	boundary="----MultipartBoundary--GtO4HQLyA3aXeQny9i5YVdJCVvJ7pY93rjaXiV1ntu----"
 
 
-------MultipartBoundary--jYCm2tbor94wnC4vBMHuEqzZfjgr2ic8E157QRhAVZ----
+------MultipartBoundary--GtO4HQLyA3aXeQny9i5YVdJCVvJ7pY93rjaXiV1ntu----
 Content-Type: text/html
-Content-ID: <frame-A35A4F7F81104DD60609EFBC3E7E0EE6@mhtml.blink>
+Content-ID: <frame-7F26E81A2E47744E5BCCD5CEC2F1EF4C@mhtml.blink>
 Content-Transfer-Encoding: quoted-printable
-Content-Location: https://docs.vulkan.org/tutorial/latest/Building_a_Simple_Engine/Engine_Architecture/02_architectural_patterns.html?__cf_chl_tk=zmMG998l.n8kH.L.yRJcPAKx7V2RR9IiALx7yJSMWf0-1786880506-1.0.1.1-e7uo7pEKdfN6UJTV3PyjmTpBm4rptbgO3RIPy202RB0
+Content-Location: https://docs.vulkan.org/tutorial/latest/Building_a_Simple_Engine/Engine_Architecture/03_component_systems.html
 
 <!DOCTYPE html><html lang=3D"en" class=3D"dark"><head><meta http-equiv=3D"C=
 ontent-Type" content=3D"text/html; charset=3DUTF-8"><link rel=3D"stylesheet=
-" type=3D"text/css" href=3D"cid:css-bbaf6caa-25a4-473e-bdf2-23241bfc7b7b@mh=
-tml.blink" /><link rel=3D"stylesheet" type=3D"text/css" href=3D"cid:css-df2=
-46e5f-48dd-4d53-9489-f8a205a88b34@mhtml.blink" />
+" type=3D"text/css" href=3D"cid:css-2f5e0776-7683-4dac-9b75-05734c4f4957@mh=
+tml.blink" /><link rel=3D"stylesheet" type=3D"text/css" href=3D"cid:css-39a=
+b22d6-b2d2-46b4-ac5f-639c0845e6f3@mhtml.blink" />
    =20
     <meta name=3D"viewport" content=3D"width=3Ddevice-width,initial-scale=
 =3D1">
-    <title>Engine Architecture: Architectural Patterns :: Vulkan Documentat=
-ion Project</title>
+    <title>Engine Architecture: Component Systems :: Vulkan Documentation P=
+roject</title>
     <meta name=3D"generator" content=3D"Antora 3.1.10">
    =20
     <link rel=3D"stylesheet" href=3D"https://docs.vulkan.org/_/css/site.css=
@@ -96,9 +96,8 @@ anded=3D"false" aria-label=3D"Toggle main menu">
         <!-- <a class=3D"navbar-item" href=3D"#">Home</a> -->
         <div class=3D"navbar-item has-dropdown is-hoverable">
           <a class=3D"navbar-link" href=3D"https://docs.vulkan.org/tutorial=
-/latest/Building_a_Simple_Engine/Engine_Architecture/02_architectural_patte=
-rns.html?__cf_chl_tk=3DzmMG998l.n8kH.L.yRJcPAKx7V2RR9IiALx7yJSMWf0-17868805=
-06-1.0.1.1-e7uo7pEKdfN6UJTV3PyjmTpBm4rptbgO3RIPy202RB0#">Specs</a>
+/latest/Building_a_Simple_Engine/Engine_Architecture/03_component_systems.h=
+tml#">Specs</a>
           <div class=3D"navbar-dropdown is-right">
             <a class=3D"navbar-item" href=3D"https://docs.vulkan.org/spec/l=
 atest/chapters/introduction.html">Vulkan API</a>
@@ -112,9 +111,8 @@ latest/slang.html">Slang</a>
         </div>
         <div class=3D"navbar-item has-dropdown is-hoverable">
           <a class=3D"navbar-link" href=3D"https://docs.vulkan.org/tutorial=
-/latest/Building_a_Simple_Engine/Engine_Architecture/02_architectural_patte=
-rns.html?__cf_chl_tk=3DzmMG998l.n8kH.L.yRJcPAKx7V2RR9IiALx7yJSMWf0-17868805=
-06-1.0.1.1-e7uo7pEKdfN6UJTV3PyjmTpBm4rptbgO3RIPy202RB0#">Education</a>
+/latest/Building_a_Simple_Engine/Engine_Architecture/03_component_systems.h=
+tml#">Education</a>
           <div class=3D"navbar-dropdown is-right">
             <a class=3D"navbar-item" href=3D"https://docs.vulkan.org/refpag=
 es/latest/refpages/index.html">Vulkan Reference Pages</a>
@@ -136,9 +134,8 @@ an">YouTube</a>
         </div>
         <div class=3D"navbar-item has-dropdown is-hoverable">
           <a class=3D"navbar-link" href=3D"https://docs.vulkan.org/tutorial=
-/latest/Building_a_Simple_Engine/Engine_Architecture/02_architectural_patte=
-rns.html?__cf_chl_tk=3DzmMG998l.n8kH.L.yRJcPAKx7V2RR9IiALx7yJSMWf0-17868805=
-06-1.0.1.1-e7uo7pEKdfN6UJTV3PyjmTpBm4rptbgO3RIPy202RB0#">Feedback</a>
+/latest/Building_a_Simple_Engine/Engine_Architecture/03_component_systems.h=
+tml#">Feedback</a>
           <div class=3D"navbar-dropdown is-right">
             <a class=3D"navbar-item" href=3D"https://github.com/KhronosGrou=
 p/Vulkan-Site/issues/new/choose" target=3D"_blank">Report a Problem</a>
@@ -146,9 +143,8 @@ p/Vulkan-Site/issues/new/choose" target=3D"_blank">Report a Problem</a>
         </div>
         <div class=3D"navbar-item has-dropdown is-hoverable">
           <a class=3D"navbar-link" href=3D"https://docs.vulkan.org/tutorial=
-/latest/Building_a_Simple_Engine/Engine_Architecture/02_architectural_patte=
-rns.html?__cf_chl_tk=3DzmMG998l.n8kH.L.yRJcPAKx7V2RR9IiALx7yJSMWf0-17868805=
-06-1.0.1.1-e7uo7pEKdfN6UJTV3PyjmTpBm4rptbgO3RIPy202RB0#">Community</a>
+/latest/Building_a_Simple_Engine/Engine_Architecture/03_component_systems.h=
+tml#">Community</a>
           <div class=3D"navbar-dropdown is-right">
             <a class=3D"navbar-item" href=3D"https://discord.gg/vulkan">Vul=
 kan Discord</a>
@@ -514,12 +510,12 @@ uilding_a_Simple_Engine/introduction.html">Introduction</a>
 uilding_a_Simple_Engine/Engine_Architecture/01_introduction.html">Introduct=
 ion</a>
   </li>
-  <li class=3D"nav-item is-current-page is-active" data-depth=3D"3">
+  <li class=3D"nav-item" data-depth=3D"3">
     <a class=3D"nav-link" href=3D"https://docs.vulkan.org/tutorial/latest/B=
 uilding_a_Simple_Engine/Engine_Architecture/02_architectural_patterns.html"=
 >Architectural patterns</a>
   </li>
-  <li class=3D"nav-item" data-depth=3D"3">
+  <li class=3D"nav-item is-current-page is-active" data-depth=3D"3">
     <a class=3D"nav-link" href=3D"https://docs.vulkan.org/tutorial/latest/B=
 uilding_a_Simple_Engine/Engine_Architecture/03_component_systems.html">Comp=
 onent systems</a>
@@ -3020,8 +3016,8 @@ html">Khronos Vulkan Tutorial</a></li>
     <li>Building a Simple Engine</li>
     <li>Engine Architecture</li>
     <li><a href=3D"https://docs.vulkan.org/tutorial/latest/Building_a_Simpl=
-e_Engine/Engine_Architecture/02_architectural_patterns.html">Architectural =
-patterns</a></li>
+e_Engine/Engine_Architecture/03_component_systems.html">Component systems</=
+a></li>
   </ul>
 </nav>
 </div>
@@ -3029,369 +3025,209 @@ patterns</a></li>
 <aside class=3D"toc sidebar" data-title=3D"Contents" data-levels=3D"2">
   <div class=3D"toc-menu"><h3>Contents</h3><ul><li data-level=3D"1"><a href=
 =3D"https://docs.vulkan.org/tutorial/latest/Building_a_Simple_Engine/Engine=
-_Architecture/02_architectural_patterns.html?__cf_chl_tk=3DzmMG998l.n8kH.L.=
-yRJcPAKx7V2RR9IiALx7yJSMWf0-1786880506-1.0.1.1-e7uo7pEKdfN6UJTV3PyjmTpBm4rp=
-tbgO3RIPy202RB0#_architectural_patterns" class=3D"">Architectural Patterns<=
-/a></li><li data-level=3D"2"><a href=3D"https://docs.vulkan.org/tutorial/la=
-test/Building_a_Simple_Engine/Engine_Architecture/02_architectural_patterns=
-.html?__cf_chl_tk=3DzmMG998l.n8kH.L.yRJcPAKx7V2RR9IiALx7yJSMWf0-1786880506-=
-1.0.1.1-e7uo7pEKdfN6UJTV3PyjmTpBm4rptbgO3RIPy202RB0#_overview_of_common_arc=
-hitectural_patterns" class=3D"">Overview of Common Architectural Patterns</=
-a></li><li data-level=3D"2"><a href=3D"https://docs.vulkan.org/tutorial/lat=
-est/Building_a_Simple_Engine/Engine_Architecture/02_architectural_patterns.=
-html?__cf_chl_tk=3DzmMG998l.n8kH.L.yRJcPAKx7V2RR9IiALx7yJSMWf0-1786880506-1=
-.0.1.1-e7uo7pEKdfN6UJTV3PyjmTpBm4rptbgO3RIPy202RB0#_component_based_archite=
-cture">Component-Based Architecture</a></li><li data-level=3D"2"><a href=3D=
-"https://docs.vulkan.org/tutorial/latest/Building_a_Simple_Engine/Engine_Ar=
-chitecture/02_architectural_patterns.html?__cf_chl_tk=3DzmMG998l.n8kH.L.yRJ=
-cPAKx7V2RR9IiALx7yJSMWf0-1786880506-1.0.1.1-e7uo7pEKdfN6UJTV3PyjmTpBm4rptbg=
-O3RIPy202RB0#_why_were_focusing_on_component_systems">Why We=E2=80=99re Foc=
-using on Component Systems</a></li><li data-level=3D"2"><a href=3D"https://=
-docs.vulkan.org/tutorial/latest/Building_a_Simple_Engine/Engine_Architectur=
-e/02_architectural_patterns.html?__cf_chl_tk=3DzmMG998l.n8kH.L.yRJcPAKx7V2R=
-R9IiALx7yJSMWf0-1786880506-1.0.1.1-e7uo7pEKdfN6UJTV3PyjmTpBm4rptbgO3RIPy202=
-RB0#_conclusion">Conclusion</a></li></ul></div>
+_Architecture/03_component_systems.html#_component_systems" class=3D"">Comp=
+onent Systems</a></li><li data-level=3D"2"><a href=3D"https://docs.vulkan.o=
+rg/tutorial/latest/Building_a_Simple_Engine/Engine_Architecture/03_componen=
+t_systems.html#_the_problem_with_deep_inheritance" class=3D"">The Problem w=
+ith Deep Inheritance</a></li><li data-level=3D"2"><a href=3D"https://docs.v=
+ulkan.org/tutorial/latest/Building_a_Simple_Engine/Engine_Architecture/03_c=
+omponent_systems.html#_component_based_design_principles" class=3D"">Compon=
+ent-Based Design Principles</a></li><li data-level=3D"2"><a href=3D"https:/=
+/docs.vulkan.org/tutorial/latest/Building_a_Simple_Engine/Engine_Architectu=
+re/03_component_systems.html#_basic_component_system_implementation" class=
+=3D"">Basic Component System Implementation</a></li><li data-level=3D"2"><a=
+ href=3D"https://docs.vulkan.org/tutorial/latest/Building_a_Simple_Engine/E=
+ngine_Architecture/03_component_systems.html#_common_component_types" class=
+=3D"">Common Component Types</a></li><li data-level=3D"2"><a href=3D"https:=
+//docs.vulkan.org/tutorial/latest/Building_a_Simple_Engine/Engine_Architect=
+ure/03_component_systems.html#_component_communication">Component Communica=
+tion</a></li><li data-level=3D"2"><a href=3D"https://docs.vulkan.org/tutori=
+al/latest/Building_a_Simple_Engine/Engine_Architecture/03_component_systems=
+.html#_component_lifecycle_management">Component Lifecycle Management</a></=
+li><li data-level=3D"2"><a href=3D"https://docs.vulkan.org/tutorial/latest/=
+Building_a_Simple_Engine/Engine_Architecture/03_component_systems.html#_opt=
+imizing_component_access">Optimizing Component Access</a></li><li data-leve=
+l=3D"2"><a href=3D"https://docs.vulkan.org/tutorial/latest/Building_a_Simpl=
+e_Engine/Engine_Architecture/03_component_systems.html#_conclusion">Conclus=
+ion</a></li></ul></div>
 </aside>
 <article class=3D"doc">
-<h1 class=3D"page">Engine Architecture: Architectural Patterns</h1>
+<h1 class=3D"page">Engine Architecture: Component Systems</h1>
 <aside class=3D"toc embedded"><div class=3D"toc-menu"><h3>Contents</h3><ul>=
 <li data-level=3D"1"><a href=3D"https://docs.vulkan.org/tutorial/latest/Bui=
-lding_a_Simple_Engine/Engine_Architecture/02_architectural_patterns.html?__=
-cf_chl_tk=3DzmMG998l.n8kH.L.yRJcPAKx7V2RR9IiALx7yJSMWf0-1786880506-1.0.1.1-=
-e7uo7pEKdfN6UJTV3PyjmTpBm4rptbgO3RIPy202RB0#_architectural_patterns">Archit=
-ectural Patterns</a></li><li data-level=3D"2"><a href=3D"https://docs.vulka=
-n.org/tutorial/latest/Building_a_Simple_Engine/Engine_Architecture/02_archi=
-tectural_patterns.html?__cf_chl_tk=3DzmMG998l.n8kH.L.yRJcPAKx7V2RR9IiALx7yJ=
-SMWf0-1786880506-1.0.1.1-e7uo7pEKdfN6UJTV3PyjmTpBm4rptbgO3RIPy202RB0#_overv=
-iew_of_common_architectural_patterns">Overview of Common Architectural Patt=
-erns</a></li><li data-level=3D"2"><a href=3D"https://docs.vulkan.org/tutori=
-al/latest/Building_a_Simple_Engine/Engine_Architecture/02_architectural_pat=
-terns.html?__cf_chl_tk=3DzmMG998l.n8kH.L.yRJcPAKx7V2RR9IiALx7yJSMWf0-178688=
-0506-1.0.1.1-e7uo7pEKdfN6UJTV3PyjmTpBm4rptbgO3RIPy202RB0#_component_based_a=
-rchitecture">Component-Based Architecture</a></li><li data-level=3D"2"><a h=
-ref=3D"https://docs.vulkan.org/tutorial/latest/Building_a_Simple_Engine/Eng=
-ine_Architecture/02_architectural_patterns.html?__cf_chl_tk=3DzmMG998l.n8kH=
-.L.yRJcPAKx7V2RR9IiALx7yJSMWf0-1786880506-1.0.1.1-e7uo7pEKdfN6UJTV3PyjmTpBm=
-4rptbgO3RIPy202RB0#_why_were_focusing_on_component_systems">Why We=E2=80=99=
-re Focusing on Component Systems</a></li><li data-level=3D"2"><a href=3D"ht=
-tps://docs.vulkan.org/tutorial/latest/Building_a_Simple_Engine/Engine_Archi=
-tecture/02_architectural_patterns.html?__cf_chl_tk=3DzmMG998l.n8kH.L.yRJcPA=
-Kx7V2RR9IiALx7yJSMWf0-1786880506-1.0.1.1-e7uo7pEKdfN6UJTV3PyjmTpBm4rptbgO3R=
-IPy202RB0#_conclusion">Conclusion</a></li></ul></div></aside><div class=3D"=
-sect1">
-<h2 id=3D"_architectural_patterns"><a class=3D"anchor" href=3D"https://docs=
-.vulkan.org/tutorial/latest/Building_a_Simple_Engine/Engine_Architecture/02=
-_architectural_patterns.html?__cf_chl_tk=3DzmMG998l.n8kH.L.yRJcPAKx7V2RR9Ii=
-ALx7yJSMWf0-1786880506-1.0.1.1-e7uo7pEKdfN6UJTV3PyjmTpBm4rptbgO3RIPy202RB0#=
-_architectural_patterns"></a>Architectural Patterns</h2>
+lding_a_Simple_Engine/Engine_Architecture/03_component_systems.html#_compon=
+ent_systems">Component Systems</a></li><li data-level=3D"2"><a href=3D"http=
+s://docs.vulkan.org/tutorial/latest/Building_a_Simple_Engine/Engine_Archite=
+cture/03_component_systems.html#_the_problem_with_deep_inheritance">The Pro=
+blem with Deep Inheritance</a></li><li data-level=3D"2"><a href=3D"https://=
+docs.vulkan.org/tutorial/latest/Building_a_Simple_Engine/Engine_Architectur=
+e/03_component_systems.html#_component_based_design_principles">Component-B=
+ased Design Principles</a></li><li data-level=3D"2"><a href=3D"https://docs=
+.vulkan.org/tutorial/latest/Building_a_Simple_Engine/Engine_Architecture/03=
+_component_systems.html#_basic_component_system_implementation">Basic Compo=
+nent System Implementation</a></li><li data-level=3D"2"><a href=3D"https://=
+docs.vulkan.org/tutorial/latest/Building_a_Simple_Engine/Engine_Architectur=
+e/03_component_systems.html#_common_component_types">Common Component Types=
+</a></li><li data-level=3D"2"><a href=3D"https://docs.vulkan.org/tutorial/l=
+atest/Building_a_Simple_Engine/Engine_Architecture/03_component_systems.htm=
+l#_component_communication">Component Communication</a></li><li data-level=
+=3D"2"><a href=3D"https://docs.vulkan.org/tutorial/latest/Building_a_Simple=
+_Engine/Engine_Architecture/03_component_systems.html#_component_lifecycle_=
+management">Component Lifecycle Management</a></li><li data-level=3D"2"><a =
+href=3D"https://docs.vulkan.org/tutorial/latest/Building_a_Simple_Engine/En=
+gine_Architecture/03_component_systems.html#_optimizing_component_access">O=
+ptimizing Component Access</a></li><li data-level=3D"2"><a href=3D"https://=
+docs.vulkan.org/tutorial/latest/Building_a_Simple_Engine/Engine_Architectur=
+e/03_component_systems.html#_conclusion">Conclusion</a></li></ul></div></as=
+ide><div class=3D"sect1">
+<h2 id=3D"_component_systems"><a class=3D"anchor" href=3D"https://docs.vulk=
+an.org/tutorial/latest/Building_a_Simple_Engine/Engine_Architecture/03_comp=
+onent_systems.html#_component_systems"></a>Component Systems</h2>
 <div class=3D"sectionbody">
 <div class=3D"paragraph">
-<p>In this section, we=E2=80=99ll provide a quick overview of common archit=
-ectural patterns used in modern rendering and game engines, with a focus on=
- Component-Based Architecture which forms the foundation of our Vulkan rend=
-ering engine.</p>
-</div>
-<div class=3D"paragraph">
-<p>Before diving into specific patterns, it=E2=80=99s important to clarify =
-that while we=E2=80=99re building a Vulkan-based rendering engine in this t=
-utorial, many of the architectural patterns we=E2=80=99ll discuss are commo=
-nly used in both rendering engines and full game engines. A rendering engin=
-e focuses primarily on graphics rendering capabilities, while a full game e=
-ngine typically includes additional systems like physics, audio, AI, and ga=
-meplay logic.</p>
+<p>In the previous section, we introduced several architectural patterns an=
+d explained why we=E2=80=99re focusing on component-based architecture for =
+our Vulkan rendering engine. As we established, component systems provide t=
+he ideal balance of flexibility, modularity, and performance for modern ren=
+dering engines. Now, let=E2=80=99s dive deeper into how to implement effect=
+ive component systems in your rendering engine.</p>
 </div>
 <div class=3D"sect2">
-<h3 id=3D"_overview_of_common_architectural_patterns"><a class=3D"anchor" h=
-ref=3D"https://docs.vulkan.org/tutorial/latest/Building_a_Simple_Engine/Eng=
-ine_Architecture/02_architectural_patterns.html?__cf_chl_tk=3DzmMG998l.n8kH=
-.L.yRJcPAKx7V2RR9IiALx7yJSMWf0-1786880506-1.0.1.1-e7uo7pEKdfN6UJTV3PyjmTpBm=
-4rptbgO3RIPy202RB0#_overview_of_common_architectural_patterns"></a>Overview=
- of Common Architectural Patterns</h3>
+<h3 id=3D"_the_problem_with_deep_inheritance"><a class=3D"anchor" href=3D"h=
+ttps://docs.vulkan.org/tutorial/latest/Building_a_Simple_Engine/Engine_Arch=
+itecture/03_component_systems.html#_the_problem_with_deep_inheritance"></a>=
+The Problem with Deep Inheritance</h3>
 <div class=3D"paragraph">
-<p>Here=E2=80=99s a brief introduction to the most common architectural pat=
-terns used in game and rendering engines:</p>
+<p>Traditional game object systems often rely on deep inheritance hierarchi=
+es:</p>
 </div>
-<div class=3D"sect3">
-<h4 id=3D"_layered_architecture"><a class=3D"anchor" href=3D"https://docs.v=
-ulkan.org/tutorial/latest/Building_a_Simple_Engine/Engine_Architecture/02_a=
-rchitectural_patterns.html?__cf_chl_tk=3DzmMG998l.n8kH.L.yRJcPAKx7V2RR9IiAL=
-x7yJSMWf0-1786880506-1.0.1.1-e7uo7pEKdfN6UJTV3PyjmTpBm4rptbgO3RIPy202RB0#_l=
-ayered_architecture"></a><a href=3D"https://games-1312234642.cos.ap-guangzh=
-ou.myqcloud.com/course/GAMES104/GAMES104_Lecture02.pdf">Layered Architectur=
-e</a></h4>
-<div class=3D"paragraph">
-<p>Layered architecture divides the system into distinct layers, each with =
-a specific responsibility. Typical layers include platform abstraction, res=
-ource management, rendering, scene management, and application layers.</p>
-</div>
-<div class=3D"imageblock">
+<div class=3D"listingblock">
 <div class=3D"content">
-<img src=3D"https://docs.vulkan.org/tutorial/latest/_images/images/layered_=
-architecture_diagram.png" alt=3D"Layered Architecture Diagram showing diffe=
-rent layers of a rendering engine" width=3D"400">
-</div>
-</div>
-<div class=3D"paragraph">
-<p><strong>Key Benefits:</strong></p>
-</div>
-<div class=3D"ulist">
-<ul>
-<li>
-<p>Clear separation of concerns</p>
-</li>
-<li>
-<p>Easier to understand and maintain</p>
-</li>
-<li>
-<p>Can replace or modify individual layers without affecting others</p>
-</li>
-</ul>
-</div>
-<div class=3D"paragraph">
-<p>For detailed information and implementation examples, see the <a href=3D=
-"https://docs.vulkan.org/tutorial/latest/Building_a_Simple_Engine/Appendix/=
-appendix.html#layered-architecture" class=3D"xref page">Appendix: Layered A=
-rchitecture</a>.</p>
-</div>
-</div>
-<div class=3D"sect3">
-<h4 id=3D"_data_oriented_design"><a class=3D"anchor" href=3D"https://docs.v=
-ulkan.org/tutorial/latest/Building_a_Simple_Engine/Engine_Architecture/02_a=
-rchitectural_patterns.html?__cf_chl_tk=3DzmMG998l.n8kH.L.yRJcPAKx7V2RR9IiAL=
-x7yJSMWf0-1786880506-1.0.1.1-e7uo7pEKdfN6UJTV3PyjmTpBm4rptbgO3RIPy202RB0#_d=
-ata_oriented_design"></a><a href=3D"https://www.youtube.com/watch?v=3DrX0It=
-VEVjHc">Data-Oriented Design</a></h4>
-<div class=3D"paragraph">
-<p>Data-Oriented Design (DOD) focuses on organizing data for efficient proc=
-essing rather than organizing code around objects. It emphasizes cache-frie=
-ndly memory layouts and bulk processing of data.</p>
-</div>
-<div class=3D"imageblock">
-<div class=3D"content">
-<img src=3D"https://docs.vulkan.org/tutorial/latest/_images/images/data_ori=
-ented_design_diagram.svg" alt=3D"Data-Oriented Design Diagram" width=3D"400=
-">
-</div>
+<pre class=3D"highlightjs highlight"><code class=3D"language-cpp hljs" data=
+-lang=3D"cpp"><span class=3D"hljs-class"><span class=3D"hljs-keyword">class=
+</span> <span class=3D"hljs-title">GameObject</span> {</span> <span class=
+=3D"hljs-comment">/* ... */</span> };
+<span class=3D"hljs-class"><span class=3D"hljs-keyword">class</span> <span =
+class=3D"hljs-title">PhysicalObject</span> :</span> <span class=3D"hljs-key=
+word">public</span> GameObject { <span class=3D"hljs-comment">/* ... */</sp=
+an> };
+<span class=3D"hljs-class"><span class=3D"hljs-keyword">class</span> <span =
+class=3D"hljs-title">Character</span> :</span> <span class=3D"hljs-keyword"=
+>public</span> PhysicalObject { <span class=3D"hljs-comment">/* ... */</spa=
+n> };
+<span class=3D"hljs-class"><span class=3D"hljs-keyword">class</span> <span =
+class=3D"hljs-title">Player</span> :</span> <span class=3D"hljs-keyword">pu=
+blic</span> Character { <span class=3D"hljs-comment">/* ... */</span> };
+<span class=3D"hljs-class"><span class=3D"hljs-keyword">class</span> <span =
+class=3D"hljs-title">Enemy</span> :</span> <span class=3D"hljs-keyword">pub=
+lic</span> Character { <span class=3D"hljs-comment">/* ... */</span> };
+<span class=3D"hljs-class"><span class=3D"hljs-keyword">class</span> <span =
+class=3D"hljs-title">FlyingEnemy</span> :</span> <span class=3D"hljs-keywor=
+d">public</span> Enemy { <span class=3D"hljs-comment">/* ... */</span> };
+<span class=3D"hljs-comment">// And so on...</span></code></pre>
+<div class=3D"source-toolbox"><span class=3D"source-lang">cpp</span><button=
+ class=3D"copy-button" title=3D"Copy to clipboard"><img src=3D"https://docs=
+.vulkan.org/_/img/octicons-16.svg#view-clippy" alt=3D"copy icon" class=3D"c=
+opy-icon" width=3D"13" height=3D"13"><span class=3D"copy-toast">Copied!</sp=
+an></button></div></div>
 </div>
 <div class=3D"paragraph">
-<p><strong>Key Benefits:</strong></p>
+<p>This approach has several drawbacks:</p>
 </div>
-<div class=3D"ulist">
-<ul>
-<li>
-<p>Better cache utilization</p>
-</li>
-<li>
-<p>More efficient memory usage</p>
-</li>
-<li>
-<p>Easier to parallelize</p>
-</li>
-</ul>
-</div>
-<div class=3D"paragraph">
-<p>For detailed information and implementation examples, see the <a href=3D=
-"https://docs.vulkan.org/tutorial/latest/Building_a_Simple_Engine/Appendix/=
-appendix.html#data-oriented-design" class=3D"xref page">Appendix: Data-Orie=
-nted Design</a>.</p>
-</div>
-</div>
-<div class=3D"sect3">
-<h4 id=3D"_service_locator_pattern"><a class=3D"anchor" href=3D"https://doc=
-s.vulkan.org/tutorial/latest/Building_a_Simple_Engine/Engine_Architecture/0=
-2_architectural_patterns.html?__cf_chl_tk=3DzmMG998l.n8kH.L.yRJcPAKx7V2RR9I=
-iALx7yJSMWf0-1786880506-1.0.1.1-e7uo7pEKdfN6UJTV3PyjmTpBm4rptbgO3RIPy202RB0=
-#_service_locator_pattern"></a><a href=3D"https://gameprogrammingpatterns.c=
-om/service-locator.html">Service Locator Pattern</a></h4>
-<div class=3D"paragraph">
-<p>The Service Locator pattern provides a global point of access to service=
-s without coupling consumers to concrete implementations.</p>
-</div>
-<div class=3D"imageblock">
-<div class=3D"content">
-<img src=3D"https://docs.vulkan.org/tutorial/latest/_images/images/service_=
-locator_pattern_diagram.svg" alt=3D"Service Locator Pattern Diagram" width=
-=3D"400">
-</div>
-</div>
-<div class=3D"paragraph">
-<p><strong>Key Benefits:</strong></p>
-</div>
-<div class=3D"ulist">
-<ul>
-<li>
-<p>Decouples service consumers from service providers</p>
-</li>
-<li>
-<p>Allows for easy service replacement</p>
-</li>
-<li>
-<p>Facilitates testing with mock services</p>
-</li>
-</ul>
-</div>
-<div class=3D"paragraph">
-<p>For detailed information and implementation examples, see the <a href=3D=
-"https://docs.vulkan.org/tutorial/latest/Building_a_Simple_Engine/Appendix/=
-appendix.html#service-locator-pattern" class=3D"xref page">Appendix: Servic=
-e Locator Pattern</a>.</p>
-</div>
-</div>
-</div>
-<div class=3D"sect2">
-<h3 id=3D"_component_based_architecture"><a class=3D"anchor" href=3D"https:=
-//docs.vulkan.org/tutorial/latest/Building_a_Simple_Engine/Engine_Architect=
-ure/02_architectural_patterns.html?__cf_chl_tk=3DzmMG998l.n8kH.L.yRJcPAKx7V=
-2RR9IiALx7yJSMWf0-1786880506-1.0.1.1-e7uo7pEKdfN6UJTV3PyjmTpBm4rptbgO3RIPy2=
-02RB0#_component_based_architecture"></a><a href=3D"https://gameprogramming=
-patterns.com/component.html">Component-Based Architecture</a></h3>
-<div class=3D"paragraph">
-<p>Component-based architecture is widely used in modern game engines and f=
-orms the foundation of our Vulkan rendering engine. It promotes composition=
- over inheritance and allows for more flexible entity design.</p>
-</div>
-<div class=3D"imageblock">
-<div class=3D"content">
-<img src=3D"https://docs.vulkan.org/tutorial/latest/_images/images/componen=
-t_based_architecture_diagram.png" alt=3D"Component-Based Architecture Diagr=
-am showing entities, components, and systems" width=3D"600">
-</div>
-</div>
-<div class=3D"admonitionblock note">
-<table>
-<tbody><tr>
-<td class=3D"icon">
-<i class=3D"fa icon-note" title=3D"Note"></i>
-</td>
-<td class=3D"content">
-<div class=3D"paragraph">
-<p><strong>Diagram Legend:</strong></p>
-</div>
-<div class=3D"ulist">
-<ul>
-<li>
-<p><strong>Boxes</strong>: Blue boxes represent Entities, orange boxes repr=
-esent Components, and green boxes represent Systems</p>
-</li>
-<li>
-<p><strong>Line Types</strong>:</p>
-<div class=3D"ulist">
-<ul>
-<li>
-<p>Dashed lines show ownership/containment (Entities contain Components)</p=
->
-</li>
-<li>
-<p>Solid lines show processing relationships (Systems process specific Comp=
-onents)</p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p><strong>Text</strong>: All text elements use dark colors for visibility =
-in both light and dark modes</p>
-</li>
-<li>
-<p><strong>Directional Flow</strong>: Arrows indicate the direction of rela=
-tionships between elements</p>
-</li>
-</ul>
-</div>
-</td>
-</tr>
-</tbody></table>
-</div>
-<div class=3D"sect3">
-<h4 id=3D"_key_concepts"><a class=3D"anchor" href=3D"https://docs.vulkan.or=
-g/tutorial/latest/Building_a_Simple_Engine/Engine_Architecture/02_architect=
-ural_patterns.html?__cf_chl_tk=3DzmMG998l.n8kH.L.yRJcPAKx7V2RR9IiALx7yJSMWf=
-0-1786880506-1.0.1.1-e7uo7pEKdfN6UJTV3PyjmTpBm4rptbgO3RIPy202RB0#_key_conce=
-pts"></a>Key Concepts</h4>
 <div class=3D"olist arabic">
 <ol class=3D"arabic">
 <li>
-<p><strong>Entities</strong> - Basic containers that represent objects in t=
-he game world.</p>
+<p><strong>Rigidity</strong> - Adding new combinations of behaviors require=
+s creating new classes.</p>
 </li>
 <li>
-<p><strong>Components</strong> - Modular pieces of functionality that can b=
-e attached to entities.</p>
+<p><strong>Code Duplication</strong> - Similar functionality may be duplica=
+ted across different branches of the hierarchy.</p>
 </li>
 <li>
-<p><strong>Systems</strong> - Process entities with specific components to =
-implement game logic.</p>
+<p><strong>Bloated Classes</strong> - Base classes tend to accumulate funct=
+ionality over time.</p>
+</li>
+<li>
+<p><strong>Difficult Refactoring</strong> - Changes to base classes can hav=
+e far-reaching consequences.</p>
 </li>
 </ol>
 </div>
 </div>
-<div class=3D"sect3">
-<h4 id=3D"_benefits_of_component_based_architecture"><a class=3D"anchor" hr=
-ef=3D"https://docs.vulkan.org/tutorial/latest/Building_a_Simple_Engine/Engi=
-ne_Architecture/02_architectural_patterns.html?__cf_chl_tk=3DzmMG998l.n8kH.=
-L.yRJcPAKx7V2RR9IiALx7yJSMWf0-1786880506-1.0.1.1-e7uo7pEKdfN6UJTV3PyjmTpBm4=
-rptbgO3RIPy202RB0#_benefits_of_component_based_architecture"></a>Benefits o=
-f Component-Based Architecture</h4>
-<div class=3D"ulist">
-<ul>
+<div class=3D"sect2">
+<h3 id=3D"_component_based_design_principles"><a class=3D"anchor" href=3D"h=
+ttps://docs.vulkan.org/tutorial/latest/Building_a_Simple_Engine/Engine_Arch=
+itecture/03_component_systems.html#_component_based_design_principles"></a>=
+Component-Based Design Principles</h3>
+<div class=3D"paragraph">
+<p>Component-based design addresses these issues by favoring composition ov=
+er inheritance:</p>
+</div>
+<div class=3D"olist arabic">
+<ol class=3D"arabic">
 <li>
-<p>Highly modular and flexible</p>
+<p><strong>Single Responsibility</strong> - Each component should have a si=
+ngle, well-defined responsibility.</p>
 </li>
 <li>
-<p>Avoids deep inheritance hierarchies</p>
+<p><strong>Encapsulation</strong> - Components should encapsulate their int=
+ernal state and behavior.</p>
 </li>
 <li>
-<p>Enables data-oriented design</p>
+<p><strong>Loose Coupling</strong> - Components should minimize dependencie=
+s on other components.</p>
 </li>
 <li>
-<p>Facilitates parallel processing</p>
+<p><strong>Reusability</strong> - Components should be designed for reuse a=
+cross different entity types.</p>
 </li>
-</ul>
+</ol>
 </div>
 </div>
-<div class=3D"sect3">
-<h4 id=3D"_implementation_example"><a class=3D"anchor" href=3D"https://docs=
-.vulkan.org/tutorial/latest/Building_a_Simple_Engine/Engine_Architecture/02=
-_architectural_patterns.html?__cf_chl_tk=3DzmMG998l.n8kH.L.yRJcPAKx7V2RR9Ii=
-ALx7yJSMWf0-1786880506-1.0.1.1-e7uo7pEKdfN6UJTV3PyjmTpBm4rptbgO3RIPy202RB0#=
-_implementation_example"></a>Implementation Example</h4>
+<div class=3D"sect2">
+<h3 id=3D"_basic_component_system_implementation"><a class=3D"anchor" href=
+=3D"https://docs.vulkan.org/tutorial/latest/Building_a_Simple_Engine/Engine=
+_Architecture/03_component_systems.html#_basic_component_system_implementat=
+ion"></a>Basic Component System Implementation</h3>
+<div class=3D"paragraph">
+<p>Let=E2=80=99s build a more complete component system based on the exampl=
+e from the previous section:</p>
+</div>
 <div class=3D"listingblock">
 <div class=3D"content">
 <pre class=3D"highlightjs highlight"><code class=3D"language-cpp hljs" data=
--lang=3D"cpp"><span class=3D"hljs-comment">// Component base class</span>
+-lang=3D"cpp"><span class=3D"hljs-comment">// Forward declarations</span>
+<span class=3D"hljs-class"><span class=3D"hljs-keyword">class</span> <span =
+class=3D"hljs-title">Entity</span>;</span>
+
+<span class=3D"hljs-comment">// Base component class</span>
 <span class=3D"hljs-class"><span class=3D"hljs-keyword">class</span> <span =
 class=3D"hljs-title">Component</span> {</span>
+<span class=3D"hljs-keyword">protected</span>:
+    Entity* owner =3D <span class=3D"hljs-literal">nullptr</span>;
+
 <span class=3D"hljs-keyword">public</span>:
     <span class=3D"hljs-keyword">virtual</span> ~Component() =3D <span clas=
 s=3D"hljs-keyword">default</span>;
+
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">virtual</spa=
+n> <span class=3D"hljs-keyword">void</span> <span class=3D"hljs-title">Init=
+ialize</span><span class=3D"hljs-params">()</span> </span>{}
     <span class=3D"hljs-function"><span class=3D"hljs-keyword">virtual</spa=
 n> <span class=3D"hljs-keyword">void</span> <span class=3D"hljs-title">Upda=
 te</span><span class=3D"hljs-params">(<span class=3D"hljs-keyword">float</s=
 pan> deltaTime)</span> </span>{}
-};
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">virtual</spa=
+n> <span class=3D"hljs-keyword">void</span> <span class=3D"hljs-title">Rend=
+er</span><span class=3D"hljs-params">()</span> </span>{}
 
-<span class=3D"hljs-comment">// Specific component types</span>
-<span class=3D"hljs-class"><span class=3D"hljs-keyword">class</span> <span =
-class=3D"hljs-title">TransformComponent</span> :</span> <span class=3D"hljs=
--keyword">public</span> Component {
-<span class=3D"hljs-keyword">private</span>:
-    glm::vec3 position;
-    glm::quat rotation;
-    glm::vec3 scale;
-
-<span class=3D"hljs-keyword">public</span>:
-    <span class=3D"hljs-comment">// Methods to manipulate transform</span>
-};
-
-<span class=3D"hljs-class"><span class=3D"hljs-keyword">class</span> <span =
-class=3D"hljs-title">MeshComponent</span> :</span> <span class=3D"hljs-keyw=
-ord">public</span> Component {
-<span class=3D"hljs-keyword">private</span>:
-    Mesh* mesh;
-    Material* material;
-
-<span class=3D"hljs-keyword">public</span>:
-    <span class=3D"hljs-comment">// Methods to render the mesh</span>
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">void</span> =
+<span class=3D"hljs-title">SetOwner</span><span class=3D"hljs-params">(Enti=
+ty* entity)</span> </span>{ owner =3D entity; }
+    <span class=3D"hljs-function">Entity* <span class=3D"hljs-title">GetOwn=
+er</span><span class=3D"hljs-params">()</span> <span class=3D"hljs-keyword"=
+>const</span> </span>{ <span class=3D"hljs-keyword">return</span> owner; }
 };
 
 <span class=3D"hljs-comment">// Entity class</span>
@@ -3399,10 +3235,68 @@ ord">public</span> Component {
 class=3D"hljs-title">Entity</span> {</span>
 <span class=3D"hljs-keyword">private</span>:
     <span class=3D"hljs-built_in">std</span>::<span class=3D"hljs-built_in"=
+>string</span> name;
+    <span class=3D"hljs-keyword">bool</span> active =3D <span class=3D"hljs=
+-literal">true</span>;
+    <span class=3D"hljs-built_in">std</span>::<span class=3D"hljs-built_in"=
 >vector</span>&lt;<span class=3D"hljs-built_in">std</span>::<span class=3D"=
 hljs-built_in">unique_ptr</span>&lt;Component&gt;&gt; components;
 
 <span class=3D"hljs-keyword">public</span>:
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">explicit</sp=
+an> <span class=3D"hljs-title">Entity</span><span class=3D"hljs-params">(<s=
+pan class=3D"hljs-keyword">const</span> <span class=3D"hljs-built_in">std</=
+span>::<span class=3D"hljs-built_in">string</span>&amp; entityName)</span> =
+: <span class=3D"hljs-title">name</span><span class=3D"hljs-params">(entity=
+Name)</span> </span>{}
+
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">const</span>=
+ <span class=3D"hljs-built_in">std</span>::<span class=3D"hljs-built_in">st=
+ring</span>&amp; <span class=3D"hljs-title">GetName</span><span class=3D"hl=
+js-params">()</span> <span class=3D"hljs-keyword">const</span> </span>{ <sp=
+an class=3D"hljs-keyword">return</span> name; }
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">bool</span> =
+<span class=3D"hljs-title">IsActive</span><span class=3D"hljs-params">()</s=
+pan> <span class=3D"hljs-keyword">const</span> </span>{ <span class=3D"hljs=
+-keyword">return</span> active; }
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">void</span> =
+<span class=3D"hljs-title">SetActive</span><span class=3D"hljs-params">(<sp=
+an class=3D"hljs-keyword">bool</span> isActive)</span> </span>{ active =3D =
+isActive; }
+
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">void</span> =
+<span class=3D"hljs-title">Initialize</span><span class=3D"hljs-params">()<=
+/span> </span>{
+        <span class=3D"hljs-keyword">for</span> (<span class=3D"hljs-keywor=
+d">auto</span>&amp; component : components) {
+            component-&gt;Initialize();
+        }
+    }
+
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">void</span> =
+<span class=3D"hljs-title">Update</span><span class=3D"hljs-params">(<span =
+class=3D"hljs-keyword">float</span> deltaTime)</span> </span>{
+        <span class=3D"hljs-keyword">if</span> (!active) <span class=3D"hlj=
+s-keyword">return</span>;
+
+        <span class=3D"hljs-keyword">for</span> (<span class=3D"hljs-keywor=
+d">auto</span>&amp; component : components) {
+            component-&gt;Update(deltaTime);
+        }
+    }
+
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">void</span> =
+<span class=3D"hljs-title">Render</span><span class=3D"hljs-params">()</spa=
+n> </span>{
+        <span class=3D"hljs-keyword">if</span> (!active) <span class=3D"hlj=
+s-keyword">return</span>;
+
+        <span class=3D"hljs-keyword">for</span> (<span class=3D"hljs-keywor=
+d">auto</span>&amp; component : components) {
+            component-&gt;Render();
+        }
+    }
+
     <span class=3D"hljs-function"><span class=3D"hljs-keyword">template</sp=
 an>&lt;<span class=3D"hljs-keyword">typename</span> T, <span class=3D"hljs-=
 keyword">typename</span>... Args&gt;
@@ -3411,10 +3305,14 @@ rams">(Args&amp;&amp;... args)</span> </span>{
         <span class=3D"hljs-keyword">static_assert</span>(<span class=3D"hl=
 js-built_in">std</span>::is_base_of&lt;Component, T&gt;::value, <span class=
 =3D"hljs-string">"T must derive from Component"</span>);
+
+        <span class=3D"hljs-comment">// Create new component</span>
         <span class=3D"hljs-keyword">auto</span> component =3D <span class=
 =3D"hljs-built_in">std</span>::make_unique&lt;T&gt;(<span class=3D"hljs-bui=
 lt_in">std</span>::forward&lt;Args&gt;(args)...);
         T* componentPtr =3D component.get();
+        componentPtr-&gt;SetOwner(<span class=3D"hljs-keyword">this</span>)=
+;
         components.push_back(<span class=3D"hljs-built_in">std</span>::move=
 (component));
         <span class=3D"hljs-keyword">return</span> componentPtr;
@@ -3435,13 +3333,21 @@ ss=3D"hljs-keyword">dynamic_cast</span>&lt;T*&gt;(component.get())) {
 ral">nullptr</span>;
     }
 
-    <span class=3D"hljs-function"><span class=3D"hljs-keyword">void</span> =
-<span class=3D"hljs-title">Update</span><span class=3D"hljs-params">(<span =
-class=3D"hljs-keyword">float</span> deltaTime)</span> </span>{
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">template</sp=
+an>&lt;<span class=3D"hljs-keyword">typename</span> T&gt;
+    <span class=3D"hljs-keyword">bool</span> <span class=3D"hljs-title">Rem=
+oveComponent</span><span class=3D"hljs-params">()</span> </span>{
         <span class=3D"hljs-keyword">for</span> (<span class=3D"hljs-keywor=
-d">auto</span>&amp; component : components) {
-            component-&gt;Update(deltaTime);
+d">auto</span> it =3D components.begin(); it !=3D components.end(); ++it) {
+            <span class=3D"hljs-keyword">if</span> (<span class=3D"hljs-key=
+word">dynamic_cast</span>&lt;T*&gt;(it-&gt;get())) {
+                components.erase(it);
+                <span class=3D"hljs-keyword">return</span> <span class=3D"h=
+ljs-literal">true</span>;
+            }
         }
+        <span class=3D"hljs-keyword">return</span> <span class=3D"hljs-lite=
+ral">false</span>;
     }
 };</code></pre>
 <div class=3D"source-toolbox"><span class=3D"source-lang">cpp</span><button=
@@ -3451,83 +3357,704 @@ opy-icon" width=3D"13" height=3D"13"><span class=3D"copy-toast">Copied!</sp=
 an></button></div></div>
 </div>
 </div>
+<div class=3D"sect2">
+<h3 id=3D"_common_component_types"><a class=3D"anchor" href=3D"https://docs=
+.vulkan.org/tutorial/latest/Building_a_Simple_Engine/Engine_Architecture/03=
+_component_systems.html#_common_component_types"></a>Common Component Types=
+</h3>
+<div class=3D"paragraph">
+<p>Let=E2=80=99s implement some common component types that you might use i=
+n a rendering engine:</p>
+</div>
+<div class=3D"listingblock">
+<div class=3D"content">
+<pre class=3D"highlightjs highlight"><code class=3D"language-cpp hljs" data=
+-lang=3D"cpp"><span class=3D"hljs-comment">// Transform component</span>
+<span class=3D"hljs-comment">// Handles the position, rotation, and scale o=
+f an entity in 3D space</span>
+<span class=3D"hljs-comment">// AffineTransform or "Pose" matrix.</span>
+<span class=3D"hljs-class"><span class=3D"hljs-keyword">class</span> <span =
+class=3D"hljs-title">TransformComponent</span> :</span> <span class=3D"hljs=
+-keyword">public</span> Component {
+<span class=3D"hljs-keyword">private</span>:
+    glm::vec3 position =3D glm::vec3(<span class=3D"hljs-number">0.0f</span=
+>);
+    glm::quat rotation =3D glm::quat(<span class=3D"hljs-number">1.0f</span=
+>, <span class=3D"hljs-number">0.0f</span>, <span class=3D"hljs-number">0.0=
+f</span>, <span class=3D"hljs-number">0.0f</span>); <span class=3D"hljs-com=
+ment">// Identity quaternion</span>
+    glm::vec3 scale =3D glm::vec3(<span class=3D"hljs-number">1.0f</span>);
+
+    <span class=3D"hljs-comment">// Cached transformation matrix</span>
+    <span class=3D"hljs-keyword">mutable</span> glm::mat4 transformMatrix =
+=3D glm::mat4(<span class=3D"hljs-number">1.0f</span>);
+    <span class=3D"hljs-keyword">mutable</span> <span class=3D"hljs-keyword=
+">bool</span> transformDirty =3D <span class=3D"hljs-literal">true</span>;
+
+<span class=3D"hljs-keyword">public</span>:
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">void</span> =
+<span class=3D"hljs-title">SetPosition</span><span class=3D"hljs-params">(<=
+span class=3D"hljs-keyword">const</span> glm::vec3&amp; pos)</span> </span>=
+{
+        position =3D pos;
+        transformDirty =3D <span class=3D"hljs-literal">true</span>;
+    }
+
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">void</span> =
+<span class=3D"hljs-title">SetRotation</span><span class=3D"hljs-params">(<=
+span class=3D"hljs-keyword">const</span> glm::quat&amp; rot)</span> </span>=
+{
+        rotation =3D rot;
+        transformDirty =3D <span class=3D"hljs-literal">true</span>;
+    }
+
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">void</span> =
+<span class=3D"hljs-title">SetScale</span><span class=3D"hljs-params">(<spa=
+n class=3D"hljs-keyword">const</span> glm::vec3&amp; s)</span> </span>{
+        scale =3D s;
+        transformDirty =3D <span class=3D"hljs-literal">true</span>;
+    }
+
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">const</span>=
+ glm::vec3&amp; <span class=3D"hljs-title">GetPosition</span><span class=3D=
+"hljs-params">()</span> <span class=3D"hljs-keyword">const</span> </span>{ =
+<span class=3D"hljs-keyword">return</span> position; }
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">const</span>=
+ glm::quat&amp; <span class=3D"hljs-title">GetRotation</span><span class=3D=
+"hljs-params">()</span> <span class=3D"hljs-keyword">const</span> </span>{ =
+<span class=3D"hljs-keyword">return</span> rotation; }
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">const</span>=
+ glm::vec3&amp; <span class=3D"hljs-title">GetScale</span><span class=3D"hl=
+js-params">()</span> <span class=3D"hljs-keyword">const</span> </span>{ <sp=
+an class=3D"hljs-keyword">return</span> scale; }
+
+    <span class=3D"hljs-function">glm::mat4 <span class=3D"hljs-title">GetT=
+ransformMatrix</span><span class=3D"hljs-params">()</span> <span class=3D"h=
+ljs-keyword">const</span> </span>{
+        <span class=3D"hljs-keyword">if</span> (transformDirty) {
+            <span class=3D"hljs-comment">// Calculate transformation matrix=
+</span>
+            glm::mat4 translationMatrix =3D glm::translate(glm::mat4(<span =
+class=3D"hljs-number">1.0f</span>), position);
+            glm::mat4 rotationMatrix =3D glm::mat4_cast(rotation);
+            glm::mat4 scaleMatrix =3D glm::scale(glm::mat4(<span class=3D"h=
+ljs-number">1.0f</span>), scale);
+
+            transformMatrix =3D translationMatrix * rotationMatrix * scaleM=
+atrix;
+            transformDirty =3D <span class=3D"hljs-literal">false</span>;
+        }
+        <span class=3D"hljs-keyword">return</span> transformMatrix;
+    }
+};
+
+<span class=3D"hljs-comment">// Mesh component</span>
+<span class=3D"hljs-comment">// Manages the visual representation of an ent=
+ity by handling its 3D mesh and material</span>
+<span class=3D"hljs-class"><span class=3D"hljs-keyword">class</span> <span =
+class=3D"hljs-title">MeshComponent</span> :</span> <span class=3D"hljs-keyw=
+ord">public</span> Component {
+<span class=3D"hljs-keyword">private</span>:
+    Mesh* mesh =3D <span class=3D"hljs-literal">nullptr</span>;
+    Material* material =3D <span class=3D"hljs-literal">nullptr</span>;
+
+<span class=3D"hljs-keyword">public</span>:
+    MeshComponent(Mesh* m, Material* mat) : mesh(m), material(mat) {}
+
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">void</span> =
+<span class=3D"hljs-title">SetMesh</span><span class=3D"hljs-params">(Mesh*=
+ m)</span> </span>{ mesh =3D m; }
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">void</span> =
+<span class=3D"hljs-title">SetMaterial</span><span class=3D"hljs-params">(M=
+aterial* mat)</span> </span>{ material =3D mat; }
+
+    <span class=3D"hljs-function">Mesh* <span class=3D"hljs-title">GetMesh<=
+/span><span class=3D"hljs-params">()</span> <span class=3D"hljs-keyword">co=
+nst</span> </span>{ <span class=3D"hljs-keyword">return</span> mesh; }
+    <span class=3D"hljs-function">Material* <span class=3D"hljs-title">GetM=
+aterial</span><span class=3D"hljs-params">()</span> <span class=3D"hljs-key=
+word">const</span> </span>{ <span class=3D"hljs-keyword">return</span> mate=
+rial; }
+
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">void</span> =
+<span class=3D"hljs-title">Render</span><span class=3D"hljs-params">()</spa=
+n> <span class=3D"hljs-keyword">override</span> </span>{
+        <span class=3D"hljs-keyword">if</span> (!mesh || !material) <span c=
+lass=3D"hljs-keyword">return</span>;
+
+        <span class=3D"hljs-comment">// Get transform component</span>
+        <span class=3D"hljs-keyword">auto</span> transform =3D GetOwner()-&=
+gt;GetComponent&lt;TransformComponent&gt;();
+        <span class=3D"hljs-keyword">if</span> (!transform) <span class=3D"=
+hljs-keyword">return</span>;
+
+        <span class=3D"hljs-comment">// Render mesh with material and trans=
+form</span>
+        material-&gt;Bind();
+        material-&gt;SetUniform(<span class=3D"hljs-string">"modelMatrix"</=
+span>, transform-&gt;GetTransformMatrix());
+        mesh-&gt;Render();
+    }
+};
+
+<span class=3D"hljs-comment">// Camera component</span>
+<span class=3D"hljs-comment">// Defines a viewpoint for rendering the scene=
+ by managing view and projection matrices</span>
+<span class=3D"hljs-class"><span class=3D"hljs-keyword">class</span> <span =
+class=3D"hljs-title">CameraComponent</span> :</span> <span class=3D"hljs-ke=
+yword">public</span> Component {
+<span class=3D"hljs-keyword">private</span>:
+    <span class=3D"hljs-keyword">float</span> fieldOfView =3D <span class=
+=3D"hljs-number">45.0f</span>;
+    <span class=3D"hljs-keyword">float</span> aspectRatio =3D <span class=
+=3D"hljs-number">16.0f</span> / <span class=3D"hljs-number">9.0f</span>;
+    <span class=3D"hljs-keyword">float</span> nearPlane =3D <span class=3D"=
+hljs-number">0.1f</span>;
+    <span class=3D"hljs-keyword">float</span> farPlane =3D <span class=3D"h=
+ljs-number">1000.0f</span>;
+
+    glm::mat4 viewMatrix =3D glm::mat4(<span class=3D"hljs-number">1.0f</sp=
+an>);
+    glm::mat4 projectionMatrix =3D glm::mat4(<span class=3D"hljs-number">1.=
+0f</span>);
+    <span class=3D"hljs-keyword">bool</span> projectionDirty =3D <span clas=
+s=3D"hljs-literal">true</span>;
+
+<span class=3D"hljs-keyword">public</span>:
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">void</span> =
+<span class=3D"hljs-title">SetPerspective</span><span class=3D"hljs-params"=
+>(<span class=3D"hljs-keyword">float</span> fov, <span class=3D"hljs-keywor=
+d">float</span> aspect, <span class=3D"hljs-keyword">float</span> near, <sp=
+an class=3D"hljs-keyword">float</span> far)</span> </span>{
+        fieldOfView =3D fov;
+        aspectRatio =3D aspect;
+        nearPlane =3D near;
+        farPlane =3D far;
+        projectionDirty =3D <span class=3D"hljs-literal">true</span>;
+    }
+
+    <span class=3D"hljs-function">glm::mat4 <span class=3D"hljs-title">GetV=
+iewMatrix</span><span class=3D"hljs-params">()</span> <span class=3D"hljs-k=
+eyword">const</span> </span>{
+        <span class=3D"hljs-comment">// Get transform component</span>
+        <span class=3D"hljs-keyword">auto</span> transform =3D GetOwner()-&=
+gt;GetComponent&lt;TransformComponent&gt;();
+        <span class=3D"hljs-keyword">if</span> (transform) {
+            <span class=3D"hljs-comment">// Calculate view matrix from tran=
+sform</span>
+            glm::vec3 position =3D transform-&gt;GetPosition();
+            glm::quat rotation =3D transform-&gt;GetRotation();
+
+            <span class=3D"hljs-comment">// Forward vector (local -Z)</span=
+>
+            glm::vec3 forward =3D rotation * glm::vec3(<span class=3D"hljs-=
+number">0.0f</span>, <span class=3D"hljs-number">0.0f</span>, <span class=
+=3D"hljs-number">-1.0f</span>);
+            <span class=3D"hljs-comment">// Up vector (local +Y)</span>
+            glm::vec3 up =3D rotation * glm::vec3(<span class=3D"hljs-numbe=
+r">0.0f</span>, <span class=3D"hljs-number">1.0f</span>, <span class=3D"hlj=
+s-number">0.0f</span>);
+
+            <span class=3D"hljs-keyword">return</span> glm::lookAt(position=
+, position + forward, up);
+        }
+        <span class=3D"hljs-keyword">return</span> glm::mat4(<span class=3D=
+"hljs-number">1.0f</span>);
+    }
+
+    <span class=3D"hljs-function">glm::mat4 <span class=3D"hljs-title">GetP=
+rojectionMatrix</span><span class=3D"hljs-params">()</span> <span class=3D"=
+hljs-keyword">const</span> </span>{
+        <span class=3D"hljs-keyword">if</span> (projectionDirty) {
+            projectionMatrix =3D glm::perspective(
+                glm::radians(fieldOfView),
+                aspectRatio,
+                nearPlane,
+                farPlane
+            );
+            projectionDirty =3D <span class=3D"hljs-literal">false</span>;
+        }
+        <span class=3D"hljs-keyword">return</span> projectionMatrix;
+    }
+};</code></pre>
+<div class=3D"source-toolbox"><span class=3D"source-lang">cpp</span><button=
+ class=3D"copy-button" title=3D"Copy to clipboard"><img src=3D"https://docs=
+.vulkan.org/_/img/octicons-16.svg#view-clippy" alt=3D"copy icon" class=3D"c=
+opy-icon" width=3D"13" height=3D"13"><span class=3D"copy-toast">Copied!</sp=
+an></button></div></div>
+</div>
 </div>
 <div class=3D"sect2">
-<h3 id=3D"_why_were_focusing_on_component_systems"><a class=3D"anchor" href=
-=3D"https://docs.vulkan.org/tutorial/latest/Building_a_Simple_Engine/Engine=
-_Architecture/02_architectural_patterns.html?__cf_chl_tk=3DzmMG998l.n8kH.L.=
-yRJcPAKx7V2RR9IiALx7yJSMWf0-1786880506-1.0.1.1-e7uo7pEKdfN6UJTV3PyjmTpBm4rp=
-tbgO3RIPy202RB0#_why_were_focusing_on_component_systems"></a>Why We=E2=80=
-=99re Focusing on Component Systems</h3>
+<h3 id=3D"_component_communication"><a class=3D"anchor" href=3D"https://doc=
+s.vulkan.org/tutorial/latest/Building_a_Simple_Engine/Engine_Architecture/0=
+3_component_systems.html#_component_communication"></a>Component Communicat=
+ion</h3>
 <div class=3D"paragraph">
-<p>For our Vulkan rendering engine, we=E2=80=99ve chosen to focus on compon=
-ent-based architecture for several key reasons:</p>
+<p>Components often need to communicate with each other. There are several =
+approaches to component communication:</p>
 </div>
-<div class=3D"olist arabic">
-<ol class=3D"arabic">
-<li>
-<p><strong>Flexibility for Graphics Features</strong>: Component systems al=
-low us to easily add, remove, or swap rendering features (like different sh=
-ading models, post-processing effects, or lighting techniques) without majo=
-r refactoring.</p>
-</li>
-<li>
-<p><strong>Separation of Rendering Concerns</strong>: Components naturally =
-separate different aspects of rendering (geometry, materials, lighting, cam=
-eras) into manageable, reusable pieces.</p>
-</li>
-<li>
-<p><strong>Industry Standard</strong>: Most modern rendering engines and gr=
-aphics frameworks use component-based approaches because they provide the r=
-ight balance of flexibility, maintainability, and performance.</p>
-</li>
-<li>
-<p><strong>Extensibility</strong>: As graphics technology evolves rapidly, =
-component systems make it easier to incorporate new Vulkan features or rend=
-ering techniques.</p>
-</li>
-<li>
-<p><strong>Compatibility with Data-Oriented Optimizations</strong>: While w=
-e=E2=80=99re using a component-based approach, we can still apply data-orie=
-nted design principles within our components for performance-critical rende=
-ring paths.</p>
-</li>
-</ol>
+<div class=3D"sect3">
+<h4 id=3D"_direct_references"><a class=3D"anchor" href=3D"https://docs.vulk=
+an.org/tutorial/latest/Building_a_Simple_Engine/Engine_Architecture/03_comp=
+onent_systems.html#_direct_references"></a>Direct References</h4>
+<div class=3D"paragraph">
+<p>The simplest approach is to use direct references:</p>
+</div>
+<div class=3D"listingblock">
+<div class=3D"content">
+<pre class=3D"highlightjs highlight"><code class=3D"language-cpp hljs" data=
+-lang=3D"cpp"><span class=3D"hljs-function"><span class=3D"hljs-keyword">vo=
+id</span> <span class=3D"hljs-title">MeshComponent::Update</span><span clas=
+s=3D"hljs-params">(<span class=3D"hljs-keyword">float</span> deltaTime)</sp=
+an> </span>{
+    <span class=3D"hljs-keyword">auto</span> transform =3D GetOwner()-&gt;G=
+etComponent&lt;TransformComponent&gt;();
+    <span class=3D"hljs-keyword">if</span> (transform) {
+        <span class=3D"hljs-comment">// Use transform data</span>
+    }
+}</code></pre>
+<div class=3D"source-toolbox"><span class=3D"source-lang">cpp</span><button=
+ class=3D"copy-button" title=3D"Copy to clipboard"><img src=3D"https://docs=
+.vulkan.org/_/img/octicons-16.svg#view-clippy" alt=3D"copy icon" class=3D"c=
+opy-icon" width=3D"13" height=3D"13"><span class=3D"copy-toast">Copied!</sp=
+an></button></div></div>
 </div>
 <div class=3D"paragraph">
-<p>While other architectural patterns have their merits, component-based ar=
-chitecture provides the best foundation for a modern, flexible rendering en=
-gine. That said, we=E2=80=99ll incorporate aspects of other patterns where =
-appropriate - using layered architecture for our overall engine structure, =
-data-oriented design for performance-critical systems, and service locators=
- for cross-cutting concerns.</p>
+<p>This approach is straightforward but creates tight coupling between
+components.  Tight coupling makes it challenging or impossible to create
+unit tests and properly test the engine, so this approach should be avoided
+in production code.</p>
+</div>
+</div>
+<div class=3D"sect3">
+<h4 id=3D"_event_system"><a class=3D"anchor" href=3D"https://docs.vulkan.or=
+g/tutorial/latest/Building_a_Simple_Engine/Engine_Architecture/03_component=
+_systems.html#_event_system"></a>Event System</h4>
+<div class=3D"paragraph">
+<p>A more flexible approach is to use an event system:</p>
+</div>
+<div class=3D"listingblock">
+<div class=3D"content">
+<pre class=3D"highlightjs highlight"><code class=3D"language-cpp hljs" data=
+-lang=3D"cpp"><span class=3D"hljs-comment">// Event base class</span>
+<span class=3D"hljs-class"><span class=3D"hljs-keyword">class</span> <span =
+class=3D"hljs-title">Event</span> {</span>
+<span class=3D"hljs-keyword">public</span>:
+    <span class=3D"hljs-keyword">virtual</span> ~Event() =3D <span class=3D=
+"hljs-keyword">default</span>;
+};
+
+<span class=3D"hljs-comment">// Specific event types</span>
+<span class=3D"hljs-class"><span class=3D"hljs-keyword">class</span> <span =
+class=3D"hljs-title">CollisionEvent</span> :</span> <span class=3D"hljs-key=
+word">public</span> Event {
+<span class=3D"hljs-keyword">private</span>:
+    Entity* entity1;
+    Entity* entity2;
+
+<span class=3D"hljs-keyword">public</span>:
+    CollisionEvent(Entity* e1, Entity* e2) : entity1(e1), entity2(e2) {}
+
+    <span class=3D"hljs-function">Entity* <span class=3D"hljs-title">GetEnt=
+ity1</span><span class=3D"hljs-params">()</span> <span class=3D"hljs-keywor=
+d">const</span> </span>{ <span class=3D"hljs-keyword">return</span> entity1=
+; }
+    <span class=3D"hljs-function">Entity* <span class=3D"hljs-title">GetEnt=
+ity2</span><span class=3D"hljs-params">()</span> <span class=3D"hljs-keywor=
+d">const</span> </span>{ <span class=3D"hljs-keyword">return</span> entity2=
+; }
+};
+
+<span class=3D"hljs-comment">// Event listener interface</span>
+<span class=3D"hljs-class"><span class=3D"hljs-keyword">class</span> <span =
+class=3D"hljs-title">EventListener</span> {</span>
+<span class=3D"hljs-keyword">public</span>:
+    <span class=3D"hljs-keyword">virtual</span> ~EventListener() =3D <span =
+class=3D"hljs-keyword">default</span>;
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">virtual</spa=
+n> <span class=3D"hljs-keyword">void</span> <span class=3D"hljs-title">OnEv=
+ent</span><span class=3D"hljs-params">(<span class=3D"hljs-keyword">const</=
+span> Event&amp; event)</span> </span>=3D <span class=3D"hljs-number">0</sp=
+an>;
+};
+
+<span class=3D"hljs-comment">// Event system</span>
+<span class=3D"hljs-class"><span class=3D"hljs-keyword">class</span> <span =
+class=3D"hljs-title">EventSystem</span> {</span>
+<span class=3D"hljs-keyword">private</span>:
+    <span class=3D"hljs-built_in">std</span>::<span class=3D"hljs-built_in"=
+>vector</span>&lt;EventListener*&gt; listeners;
+
+<span class=3D"hljs-keyword">public</span>:
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">void</span> =
+<span class=3D"hljs-title">AddListener</span><span class=3D"hljs-params">(E=
+ventListener* listener)</span> </span>{
+        listeners.push_back(listener);
+    }
+
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">void</span> =
+<span class=3D"hljs-title">RemoveListener</span><span class=3D"hljs-params"=
+>(EventListener* listener)</span> </span>{
+        <span class=3D"hljs-keyword">auto</span> it =3D <span class=3D"hljs=
+-built_in">std</span>::find(listeners.begin(), listeners.end(), listener);
+        <span class=3D"hljs-keyword">if</span> (it !=3D listeners.end()) {
+            listeners.erase(it);
+        }
+    }
+
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">void</span> =
+<span class=3D"hljs-title">DispatchEvent</span><span class=3D"hljs-params">=
+(<span class=3D"hljs-keyword">const</span> Event&amp; event)</span> </span>=
+{
+        <span class=3D"hljs-keyword">for</span> (<span class=3D"hljs-keywor=
+d">auto</span> listener : listeners) {
+            listener-&gt;OnEvent(event);
+        }
+    }
+};
+
+<span class=3D"hljs-comment">// Component that listens for events</span>
+<span class=3D"hljs-comment">// Handles physics-related behavior and respon=
+ds to collision events through the event system</span>
+<span class=3D"hljs-class"><span class=3D"hljs-keyword">class</span> <span =
+class=3D"hljs-title">PhysicsComponent</span> :</span> <span class=3D"hljs-k=
+eyword">public</span> Component, <span class=3D"hljs-keyword">public</span>=
+ EventListener {
+<span class=3D"hljs-keyword">public</span>:
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">void</span> =
+<span class=3D"hljs-title">Initialize</span><span class=3D"hljs-params">()<=
+/span> <span class=3D"hljs-keyword">override</span> </span>{
+        <span class=3D"hljs-comment">// Register as event listener</span>
+        GetEventSystem().AddListener(<span class=3D"hljs-keyword">this</spa=
+n>);
+    }
+
+    ~PhysicsComponent() <span class=3D"hljs-keyword">override</span> {
+        <span class=3D"hljs-comment">// Unregister as event listener</span>
+        GetEventSystem().RemoveListener(<span class=3D"hljs-keyword">this</=
+span>);
+    }
+
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">void</span> =
+<span class=3D"hljs-title">OnEvent</span><span class=3D"hljs-params">(<span=
+ class=3D"hljs-keyword">const</span> Event&amp; event)</span> <span class=
+=3D"hljs-keyword">override</span> </span>{
+        <span class=3D"hljs-keyword">if</span> (<span class=3D"hljs-keyword=
+">auto</span> collisionEvent =3D <span class=3D"hljs-keyword">dynamic_cast<=
+/span>&lt;<span class=3D"hljs-keyword">const</span> CollisionEvent*&gt;(&am=
+p;event)) {
+            <span class=3D"hljs-comment">// Handle collision event</span>
+        }
+    }
+
+<span class=3D"hljs-keyword">private</span>:
+    <span class=3D"hljs-function">EventSystem&amp; <span class=3D"hljs-titl=
+e">GetEventSystem</span><span class=3D"hljs-params">()</span> </span>{
+        <span class=3D"hljs-comment">// Get event system from somewhere (e.=
+g., service locator)</span>
+        <span class=3D"hljs-keyword">static</span> EventSystem eventSystem;
+        <span class=3D"hljs-keyword">return</span> eventSystem;
+    }
+};</code></pre>
+<div class=3D"source-toolbox"><span class=3D"source-lang">cpp</span><button=
+ class=3D"copy-button" title=3D"Copy to clipboard"><img src=3D"https://docs=
+.vulkan.org/_/img/octicons-16.svg#view-clippy" alt=3D"copy icon" class=3D"c=
+opy-icon" width=3D"13" height=3D"13"><span class=3D"copy-toast">Copied!</sp=
+an></button></div></div>
+</div>
+<div class=3D"paragraph">
+<p>This approach decouples components but adds complexity.  Crucially, a
+decoupled component is a component that can be tested independently of any
+other component.</p>
+</div>
+</div>
+</div>
+<div class=3D"sect2">
+<h3 id=3D"_component_lifecycle_management"><a class=3D"anchor" href=3D"http=
+s://docs.vulkan.org/tutorial/latest/Building_a_Simple_Engine/Engine_Archite=
+cture/03_component_systems.html#_component_lifecycle_management"></a>Compon=
+ent Lifecycle Management</h3>
+<div class=3D"paragraph">
+<p>Managing the lifecycle of components is crucial for a robust component s=
+ystem:</p>
+</div>
+<div class=3D"listingblock">
+<div class=3D"content">
+<pre class=3D"highlightjs highlight"><code class=3D"language-cpp hljs" data=
+-lang=3D"cpp"><span class=3D"hljs-class"><span class=3D"hljs-keyword">class=
+</span> <span class=3D"hljs-title">Component</span> {</span>
+<span class=3D"hljs-keyword">public</span>:
+    <span class=3D"hljs-keyword">enum</span> <span class=3D"hljs-class"><sp=
+an class=3D"hljs-keyword">class</span> <span class=3D"hljs-title">State</sp=
+an> {</span>
+        Uninitialized,
+        Initializing,
+        Active,
+        Destroying,
+        Destroyed
+    };
+
+<span class=3D"hljs-keyword">private</span>:
+    State state =3D State::Uninitialized;
+    Entity* owner =3D <span class=3D"hljs-literal">nullptr</span>;
+
+<span class=3D"hljs-keyword">public</span>:
+    <span class=3D"hljs-keyword">virtual</span> ~Component() {
+        <span class=3D"hljs-keyword">if</span> (state !=3D State::Destroyed=
+) {
+            OnDestroy();
+            state =3D State::Destroyed;
+        }
+    }
+
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">void</span> =
+<span class=3D"hljs-title">Initialize</span><span class=3D"hljs-params">()<=
+/span> </span>{
+        <span class=3D"hljs-keyword">if</span> (state =3D=3D State::Uniniti=
+alized) {
+            state =3D State::Initializing;
+            OnInitialize();
+            state =3D State::Active;
+        }
+    }
+
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">void</span> =
+<span class=3D"hljs-title">Destroy</span><span class=3D"hljs-params">()</sp=
+an> </span>{
+        <span class=3D"hljs-keyword">if</span> (state =3D=3D State::Active)=
+ {
+            state =3D State::Destroying;
+            OnDestroy();
+            state =3D State::Destroyed;
+        }
+    }
+
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">bool</span> =
+<span class=3D"hljs-title">IsActive</span><span class=3D"hljs-params">()</s=
+pan> <span class=3D"hljs-keyword">const</span> </span>{ <span class=3D"hljs=
+-keyword">return</span> state =3D=3D State::Active; }
+
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">void</span> =
+<span class=3D"hljs-title">SetOwner</span><span class=3D"hljs-params">(Enti=
+ty* entity)</span> </span>{ owner =3D entity; }
+    <span class=3D"hljs-function">Entity* <span class=3D"hljs-title">GetOwn=
+er</span><span class=3D"hljs-params">()</span> <span class=3D"hljs-keyword"=
+>const</span> </span>{ <span class=3D"hljs-keyword">return</span> owner; }
+
+<span class=3D"hljs-keyword">protected</span>:
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">virtual</spa=
+n> <span class=3D"hljs-keyword">void</span> <span class=3D"hljs-title">OnIn=
+itialize</span><span class=3D"hljs-params">()</span> </span>{}
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">virtual</spa=
+n> <span class=3D"hljs-keyword">void</span> <span class=3D"hljs-title">OnDe=
+stroy</span><span class=3D"hljs-params">()</span> </span>{}
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">virtual</spa=
+n> <span class=3D"hljs-keyword">void</span> <span class=3D"hljs-title">Upda=
+te</span><span class=3D"hljs-params">(<span class=3D"hljs-keyword">float</s=
+pan> deltaTime)</span> </span>{}
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">virtual</spa=
+n> <span class=3D"hljs-keyword">void</span> <span class=3D"hljs-title">Rend=
+er</span><span class=3D"hljs-params">()</span> </span>{}
+
+    <span class=3D"hljs-keyword">friend</span> <span class=3D"hljs-class"><=
+span class=3D"hljs-keyword">class</span> <span class=3D"hljs-title">Entity<=
+/span>;</span> <span class=3D"hljs-comment">// Allow Entity to call protect=
+ed methods</span>
+};</code></pre>
+<div class=3D"source-toolbox"><span class=3D"source-lang">cpp</span><button=
+ class=3D"copy-button" title=3D"Copy to clipboard"><img src=3D"https://docs=
+.vulkan.org/_/img/octicons-16.svg#view-clippy" alt=3D"copy icon" class=3D"c=
+opy-icon" width=3D"13" height=3D"13"><span class=3D"copy-toast">Copied!</sp=
+an></button></div></div>
+</div>
+</div>
+<div class=3D"sect2">
+<h3 id=3D"_optimizing_component_access"><a class=3D"anchor" href=3D"https:/=
+/docs.vulkan.org/tutorial/latest/Building_a_Simple_Engine/Engine_Architectu=
+re/03_component_systems.html#_optimizing_component_access"></a>Optimizing C=
+omponent Access</h3>
+<div class=3D"paragraph">
+<p>The <code>GetComponent&lt;T&gt;()</code> method shown earlier uses dynam=
+ic_cast, which can be slow. Here=E2=80=99s an optimized approach using comp=
+onent type IDs:</p>
+</div>
+<div class=3D"listingblock">
+<div class=3D"content">
+<pre class=3D"highlightjs highlight"><code class=3D"language-cpp hljs" data=
+-lang=3D"cpp"><span class=3D"hljs-comment">// Component type ID system</spa=
+n>
+<span class=3D"hljs-class"><span class=3D"hljs-keyword">class</span> <span =
+class=3D"hljs-title">ComponentTypeIDSystem</span> {</span>
+<span class=3D"hljs-keyword">private</span>:
+    <span class=3D"hljs-keyword">static</span> <span class=3D"hljs-keyword"=
+>size_t</span> nextTypeID;
+
+<span class=3D"hljs-keyword">public</span>:
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">template</sp=
+an>&lt;<span class=3D"hljs-keyword">typename</span> T&gt;
+    <span class=3D"hljs-keyword">static</span> <span class=3D"hljs-keyword"=
+>size_t</span> <span class=3D"hljs-title">GetTypeID</span><span class=3D"hl=
+js-params">()</span> </span>{
+        <span class=3D"hljs-keyword">static</span> <span class=3D"hljs-keyw=
+ord">size_t</span> typeID =3D nextTypeID++;
+        <span class=3D"hljs-keyword">return</span> typeID;
+    }
+};
+
+<span class=3D"hljs-keyword">size_t</span> ComponentTypeIDSystem::nextTypeI=
+D =3D <span class=3D"hljs-number">0</span>;
+
+<span class=3D"hljs-comment">// Component base class with type ID</span>
+<span class=3D"hljs-class"><span class=3D"hljs-keyword">class</span> <span =
+class=3D"hljs-title">Component</span> {</span>
+<span class=3D"hljs-keyword">public</span>:
+    <span class=3D"hljs-keyword">virtual</span> ~Component() =3D <span clas=
+s=3D"hljs-keyword">default</span>;
+
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">template</sp=
+an>&lt;<span class=3D"hljs-keyword">typename</span> T&gt;
+    <span class=3D"hljs-keyword">static</span> <span class=3D"hljs-keyword"=
+>size_t</span> <span class=3D"hljs-title">GetTypeID</span><span class=3D"hl=
+js-params">()</span> </span>{
+        <span class=3D"hljs-keyword">return</span> ComponentTypeIDSystem::G=
+etTypeID&lt;T&gt;();
+    }
+};
+
+<span class=3D"hljs-comment">// Entity with optimized component access</spa=
+n>
+<span class=3D"hljs-class"><span class=3D"hljs-keyword">class</span> <span =
+class=3D"hljs-title">Entity</span> {</span>
+<span class=3D"hljs-keyword">private</span>:
+    <span class=3D"hljs-built_in">std</span>::<span class=3D"hljs-built_in"=
+>vector</span>&lt;<span class=3D"hljs-built_in">std</span>::<span class=3D"=
+hljs-built_in">unique_ptr</span>&lt;Component&gt;&gt; components;
+    <span class=3D"hljs-built_in">std</span>::<span class=3D"hljs-built_in"=
+>unordered_map</span>&lt;<span class=3D"hljs-keyword">size_t</span>, Compon=
+ent*&gt; componentMap;
+
+<span class=3D"hljs-keyword">public</span>:
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">template</sp=
+an>&lt;<span class=3D"hljs-keyword">typename</span> T, <span class=3D"hljs-=
+keyword">typename</span>... Args&gt;
+    T* <span class=3D"hljs-title">AddComponent</span><span class=3D"hljs-pa=
+rams">(Args&amp;&amp;... args)</span> </span>{
+        <span class=3D"hljs-keyword">static_assert</span>(<span class=3D"hl=
+js-built_in">std</span>::is_base_of&lt;Component, T&gt;::value, <span class=
+=3D"hljs-string">"T must derive from Component"</span>);
+
+        <span class=3D"hljs-keyword">size_t</span> typeID =3D Component::Ge=
+tTypeID&lt;T&gt;();
+
+        <span class=3D"hljs-comment">// Check if component of this type alr=
+eady exists</span>
+        <span class=3D"hljs-keyword">auto</span> it =3D componentMap.find(t=
+ypeID);
+        <span class=3D"hljs-keyword">if</span> (it !=3D componentMap.end())=
+ {
+            <span class=3D"hljs-keyword">return</span> <span class=3D"hljs-=
+keyword">static_cast</span>&lt;T*&gt;(it-&gt;second);
+        }
+
+        <span class=3D"hljs-comment">// Create new component</span>
+        <span class=3D"hljs-keyword">auto</span> component =3D <span class=
+=3D"hljs-built_in">std</span>::make_unique&lt;T&gt;(<span class=3D"hljs-bui=
+lt_in">std</span>::forward&lt;Args&gt;(args)...);
+        T* componentPtr =3D component.get();
+        componentMap[typeID] =3D componentPtr;
+        components.push_back(<span class=3D"hljs-built_in">std</span>::move=
+(component));
+        <span class=3D"hljs-keyword">return</span> componentPtr;
+    }
+
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">template</sp=
+an>&lt;<span class=3D"hljs-keyword">typename</span> T&gt;
+    T* <span class=3D"hljs-title">GetComponent</span><span class=3D"hljs-pa=
+rams">()</span> </span>{
+        <span class=3D"hljs-keyword">size_t</span> typeID =3D Component::Ge=
+tTypeID&lt;T&gt;();
+        <span class=3D"hljs-keyword">auto</span> it =3D componentMap.find(t=
+ypeID);
+        <span class=3D"hljs-keyword">if</span> (it !=3D componentMap.end())=
+ {
+            <span class=3D"hljs-keyword">return</span> <span class=3D"hljs-=
+keyword">static_cast</span>&lt;T*&gt;(it-&gt;second);
+        }
+        <span class=3D"hljs-keyword">return</span> <span class=3D"hljs-lite=
+ral">nullptr</span>;
+    }
+
+    <span class=3D"hljs-function"><span class=3D"hljs-keyword">template</sp=
+an>&lt;<span class=3D"hljs-keyword">typename</span> T&gt;
+    <span class=3D"hljs-keyword">bool</span> <span class=3D"hljs-title">Rem=
+oveComponent</span><span class=3D"hljs-params">()</span> </span>{
+        <span class=3D"hljs-keyword">size_t</span> typeID =3D Component::Ge=
+tTypeID&lt;T&gt;();
+        <span class=3D"hljs-keyword">auto</span> it =3D componentMap.find(t=
+ypeID);
+        <span class=3D"hljs-keyword">if</span> (it !=3D componentMap.end())=
+ {
+            Component* componentPtr =3D it-&gt;second;
+            componentMap.erase(it);
+
+            <span class=3D"hljs-keyword">for</span> (<span class=3D"hljs-ke=
+yword">auto</span> compIt =3D components.begin(); compIt !=3D components.en=
+d(); ++compIt) {
+                <span class=3D"hljs-keyword">if</span> (compIt-&gt;get() =
+=3D=3D componentPtr) {
+                    components.erase(compIt);
+                    <span class=3D"hljs-keyword">return</span> <span class=
+=3D"hljs-literal">true</span>;
+                }
+            }
+        }
+        <span class=3D"hljs-keyword">return</span> <span class=3D"hljs-lite=
+ral">false</span>;
+    }
+};</code></pre>
+<div class=3D"source-toolbox"><span class=3D"source-lang">cpp</span><button=
+ class=3D"copy-button" title=3D"Copy to clipboard"><img src=3D"https://docs=
+.vulkan.org/_/img/octicons-16.svg#view-clippy" alt=3D"copy icon" class=3D"c=
+opy-icon" width=3D"13" height=3D"13"><span class=3D"copy-toast">Copied!</sp=
+an></button></div></div>
 </div>
 </div>
 <div class=3D"sect2">
 <h3 id=3D"_conclusion"><a class=3D"anchor" href=3D"https://docs.vulkan.org/=
-tutorial/latest/Building_a_Simple_Engine/Engine_Architecture/02_architectur=
-al_patterns.html?__cf_chl_tk=3DzmMG998l.n8kH.L.yRJcPAKx7V2RR9IiALx7yJSMWf0-=
-1786880506-1.0.1.1-e7uo7pEKdfN6UJTV3PyjmTpBm4rptbgO3RIPy202RB0#_conclusion"=
-></a>Conclusion</h3>
+tutorial/latest/Building_a_Simple_Engine/Engine_Architecture/03_component_s=
+ystems.html#_conclusion"></a>Conclusion</h3>
 <div class=3D"paragraph">
-<p>We=E2=80=99ve provided a brief overview of common architectural patterns=
-, with a focus on Component-Based Architecture which we=E2=80=99ll use thro=
-ughout this tutorial. For more detailed information about other architectur=
-al patterns, including implementation examples and comparative analysis, se=
-e the <a href=3D"https://docs.vulkan.org/tutorial/latest/Building_a_Simple_=
-Engine/Appendix/appendix.html" class=3D"xref page">Appendix: Detailed Archi=
-tectural Patterns</a>.</p>
+<p>Component systems provide a flexible and modular approach to building ga=
+me objects in your engine. By following the principles outlined in this sec=
+tion, you can create a robust component system that:</p>
+</div>
+<div class=3D"olist arabic">
+<ol class=3D"arabic">
+<li>
+<p>Promotes code reuse through composition</p>
+</li>
+<li>
+<p>Reduces coupling between different parts of your engine</p>
+</li>
+<li>
+<p>Allows for flexible entity creation without deep inheritance hierarchies=
+</p>
+</li>
+<li>
+<p>Can be optimized for performance</p>
+</li>
+</ol>
 </div>
 <div class=3D"paragraph">
-<p>In the next section, we=E2=80=99ll dive deeper into component systems an=
-d how to implement them effectively in your engine.</p>
+<p>In the next section, we=E2=80=99ll explore resource management systems, =
+which are crucial for efficiently handling assets in your engine.</p>
 </div>
 <div class=3D"paragraph">
 <p><a href=3D"https://docs.vulkan.org/tutorial/latest/Building_a_Simple_Eng=
-ine/Engine_Architecture/01_introduction.html" class=3D"xref page">Previous:=
- Introduction</a> | <a href=3D"https://docs.vulkan.org/tutorial/latest/Buil=
-ding_a_Simple_Engine/Engine_Architecture/03_component_systems.html" class=
-=3D"xref page">Next: Component Systems</a></p>
+ine/Engine_Architecture/02_architectural_patterns.html" class=3D"xref page"=
+>Previous: Architectural Patterns</a> | <a href=3D"https://docs.vulkan.org/=
+tutorial/latest/Building_a_Simple_Engine/Engine_Architecture/04_resource_ma=
+nagement.html" class=3D"xref page">Next: Resource Management</a></p>
 </div>
 </div>
 </div>
@@ -3538,9 +4065,8 @@ ding_a_Simple_Engine/Engine_Architecture/03_component_systems.html" class=
 </div>
 <footer class=3D"footer">
   <p><a href=3D"https://docs.vulkan.org/tutorial/latest/Building_a_Simple_E=
-ngine/Engine_Architecture/02_architectural_patterns.html?__cf_chl_tk=3DzmMG=
-998l.n8kH.L.yRJcPAKx7V2RR9IiALx7yJSMWf0-1786880506-1.0.1.1-e7uo7pEKdfN6UJTV=
-3PyjmTpBm4rptbgO3RIPy202RB0#">Manage cookie preferences</a></p>
+ngine/Engine_Architecture/03_component_systems.html#">Manage cookie prefere=
+nces</a></p>
 </footer>
 
 
@@ -3628,7 +4154,7 @@ FefOyn7bb1eCekLo5pYB66ePPrlrUujCvX3T/BtgavxRQ79U9E7XMHt36vMLWAOEZFAgKBAX+sQ=
 I/AKCs44IfkxH4AAAAAElFTkSuQmCC" alt=3D"" aria-hidden=3D"true"><span class=
 =3D"tooltip" role=3D"tooltip">=E5=8F=8D=E9=A6=88</span></button><!----></di=
 v><!----></template></yd-floating-ball></body></html>
-------MultipartBoundary--jYCm2tbor94wnC4vBMHuEqzZfjgr2ic8E157QRhAVZ----
+------MultipartBoundary--GtO4HQLyA3aXeQny9i5YVdJCVvJ7pY93rjaXiV1ntu----
 Content-Type: image/png
 Content-Transfer-Encoding: base64
 Content-Location: chrome-extension://memhacajcfhmibggbgilihlmiiddeggo/icon.png
@@ -3691,522 +4217,7 @@ chVQcQzlmAnYRBiLu5miLSXWLvsU1LIKeMbN8Cu4G+8SJWnR7v1MC1bDd/uOFXi8xGdQFJkS/K4U
 3O6Mm+5w4LbRqbRFE6Rf4JcFRkP5CfHvU/+rDfgidbyg7fJ/AAAA//+29ONOAAAABklEQVQDAPdq
 Zcv8r49cAAAAAElFTkSuQmCC
 
-------MultipartBoundary--jYCm2tbor94wnC4vBMHuEqzZfjgr2ic8E157QRhAVZ----
-Content-Type: image/png
-Content-Transfer-Encoding: base64
-Content-Location: https://docs.vulkan.org/tutorial/latest/_images/images/component_based_architecture_diagram.png
-
-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
-BEEQtGh9AQp5R9jFb/DBAAAAAElFTkSuQmCC
-
-------MultipartBoundary--jYCm2tbor94wnC4vBMHuEqzZfjgr2ic8E157QRhAVZ----
-Content-Type: image/svg+xml
-Content-Transfer-Encoding: quoted-printable
-Content-Location: https://docs.vulkan.org/tutorial/latest/_images/images/service_locator_pattern_diagram.svg
-
-<?xml version=3D"1.0" encoding=3D"UTF-8"?>
-<svg width=3D"600" height=3D"450" xmlns=3D"http://www.w3.org/2000/svg">
-  <!-- Service Locator Pattern Diagram -->
-  <style>
-    .interface { fill: #e6f2ff; stroke: #0066cc; stroke-width: 2; }
-    .implementation { fill: #fff2e6; stroke: #ff8c1a; stroke-width: 2; }
-    .locator { fill: #e6ffe6; stroke: #339933; stroke-width: 2; }
-    .client { fill: #f2e6ff; stroke: #8c1aff; stroke-width: 2; }
-    .text { font-family: Arial; font-size: 14px; text-anchor: middle; }
-    .small-text { font-family: Arial; font-size: 12px; text-anchor: middle;=
- }
-    .title-text { font-family: Arial; font-size: 16px; font-weight: bold; t=
-ext-anchor: middle; }
-    .main-title { font-family: Arial; font-size: 20px; font-weight: bold; t=
-ext-anchor: middle; }
-    .arrow { stroke: #555; stroke-width: 2; marker-end: url(#arrowhead); }
-    .dashed { stroke-dasharray: 5,5; }
-  </style>
-
-  <!-- Arrow marker definition -->
-  <defs>
-    <marker id=3D"arrowhead" markerWidth=3D"10" markerHeight=3D"7" refX=3D"=
-9" refY=3D"3.5" orient=3D"auto">
-      <polygon points=3D"0 0, 10 3.5, 0 7" fill=3D"#555" />
-    </marker>
-  </defs>
-
-  <text x=3D"300" y=3D"30" class=3D"main-title">Service Locator Pattern</te=
-xt>
-
-  <!-- Service Interface -->
-  <rect x=3D"200" y=3D"60" width=3D"200" height=3D"60" rx=3D"5" class=3D"in=
-terface" />
-  <text x=3D"300" y=3D"85" class=3D"title-text">IAudioService</text>
-  <text x=3D"300" y=3D"105" class=3D"small-text">+ PlaySound(soundName)</te=
-xt>
-
-  <!-- Service Implementations -->
-  <rect x=3D"50" y=3D"170" width=3D"180" height=3D"60" rx=3D"5" class=3D"im=
-plementation" />
-  <text x=3D"140" y=3D"195" class=3D"title-text">OpenALAudioService</text>
-  <text x=3D"140" y=3D"215" class=3D"small-text">implements IAudioService</=
-text>
-
-  <rect x=3D"250" y=3D"170" width=3D"180" height=3D"60" rx=3D"5" class=3D"i=
-mplementation" />
-  <text x=3D"340" y=3D"195" class=3D"title-text">NullAudioService</text>
-  <text x=3D"340" y=3D"215" class=3D"small-text">implements IAudioService</=
-text>
-
-  <rect x=3D"450" y=3D"170" width=3D"100" height=3D"60" rx=3D"5" class=3D"i=
-mplementation" />
-  <text x=3D"500" y=3D"195" class=3D"title-text">...</text>
-  <text x=3D"500" y=3D"215" class=3D"small-text">Other services</text>
-
-  <!-- Service Locator -->
-  <rect x=3D"200" y=3D"280" width=3D"200" height=3D"80" rx=3D"5" class=3D"l=
-ocator" />
-  <text x=3D"300" y=3D"305" class=3D"title-text">ServiceLocator</text>
-  <text x=3D"300" y=3D"325" class=3D"small-text">+ GetAudioService()</text>
-  <text x=3D"300" y=3D"345" class=3D"small-text">+ ProvideAudioService(serv=
-ice)</text>
-
-  <!-- Client -->
-  <rect x=3D"200" y=3D"390" width=3D"200" height=3D"50" rx=3D"5" class=3D"c=
-lient" />
-  <text x=3D"300" y=3D"420" class=3D"title-text">Client Code</text>
-
-  <!-- Implementation to Interface arrows -->
-  <line x1=3D"140" y1=3D"170" x2=3D"250" y2=3D"120" class=3D"arrow" />
-  <line x1=3D"340" y1=3D"170" x2=3D"300" y2=3D"120" class=3D"arrow" />
-  <line x1=3D"500" y1=3D"170" x2=3D"350" y2=3D"120" class=3D"arrow" />
-
-  <!-- Service Locator to Interface arrow -->
-  <line x1=3D"300" y1=3D"280" x2=3D"300" y2=3D"120" class=3D"arrow" />
-
-  <!-- Service Locator to Implementations arrows -->
-  <line x1=3D"250" y1=3D"280" x2=3D"140" y2=3D"230" class=3D"arrow dashed" =
-/>
-  <line x1=3D"300" y1=3D"280" x2=3D"340" y2=3D"230" class=3D"arrow dashed" =
-/>
-  <line x1=3D"350" y1=3D"280" x2=3D"500" y2=3D"230" class=3D"arrow dashed" =
-/>
-
-  <!-- Client to Service Locator arrow -->
-  <line x1=3D"300" y1=3D"390" x2=3D"300" y2=3D"360" class=3D"arrow" />
-
-  <!-- Explanation -->
-  <text x=3D"140" y=3D"150" class=3D"small-text">Concrete Implementations</=
-text>
-  <text x=3D"300" y=3D"50" class=3D"small-text">Service Interface</text>
-  <text x=3D"300" y=3D"270" class=3D"small-text">Global Access Point</text>
-  <text x=3D"300" y=3D"380" class=3D"small-text">Uses services via locator<=
-/text>
-</svg>=0A
-------MultipartBoundary--jYCm2tbor94wnC4vBMHuEqzZfjgr2ic8E157QRhAVZ----
-Content-Type: image/svg+xml
-Content-Transfer-Encoding: quoted-printable
-Content-Location: https://docs.vulkan.org/tutorial/latest/_images/images/data_oriented_design_diagram.svg
-
-<?xml version=3D"1.0" encoding=3D"UTF-8"?>
-<svg width=3D"600" height=3D"450" xmlns=3D"http://www.w3.org/2000/svg">
-  <!-- Data-Oriented Design Diagram -->
-  <style>
-    .data-array { fill: #e6f2ff; stroke: #0066cc; stroke-width: 2; }
-    .system { fill: #e6ffe6; stroke: #339933; stroke-width: 2; }
-    .oop-class { fill: #ffe6e6; stroke: #cc0000; stroke-width: 2; }
-    .text { font-family: Arial; font-size: 14px; text-anchor: middle; }
-    .small-text { font-family: Arial; font-size: 12px; text-anchor: middle;=
- }
-    .title-text { font-family: Arial; font-size: 16px; font-weight: bold; t=
-ext-anchor: middle; }
-    .main-title { font-family: Arial; font-size: 20px; font-weight: bold; t=
-ext-anchor: middle; }
-    .arrow { stroke: #555; stroke-width: 2; marker-end: url(#arrowhead); }
-    .vs-text { font-family: Arial; font-size: 18px; font-weight: bold; text=
--anchor: middle; }
-  </style>
-
-  <!-- Arrow marker definition -->
-  <defs>
-    <marker id=3D"arrowhead" markerWidth=3D"10" markerHeight=3D"7" refX=3D"=
-9" refY=3D"3.5" orient=3D"auto">
-      <polygon points=3D"0 0, 10 3.5, 0 7" fill=3D"#555" />
-    </marker>
-  </defs>
-
-  <text x=3D"300" y=3D"30" class=3D"main-title">Data-Oriented Design</text>
-
-  <!-- Left side: Object-Oriented Approach -->
-  <text x=3D"150" y=3D"60" class=3D"title-text">Object-Oriented Approach</t=
-ext>
-
-  <!-- OOP Classes -->
-  <rect x=3D"50" y=3D"80" width=3D"200" height=3D"100" rx=3D"5" class=3D"oo=
-p-class" />
-  <text x=3D"150" y=3D"100" class=3D"title-text">GameObject 1</text>
-  <text x=3D"150" y=3D"125" class=3D"small-text">position: (10, 20, 30)</te=
-xt>
-  <text x=3D"150" y=3D"145" class=3D"small-text">rotation: (0, 45, 0)</text=
->
-  <text x=3D"150" y=3D"165" class=3D"small-text">scale: (1, 1, 1)</text>
-
-  <rect x=3D"50" y=3D"190" width=3D"200" height=3D"100" rx=3D"5" class=3D"o=
-op-class" />
-  <text x=3D"150" y=3D"210" class=3D"title-text">GameObject 2</text>
-  <text x=3D"150" y=3D"235" class=3D"small-text">position: (50, 0, 10)</tex=
-t>
-  <text x=3D"150" y=3D"255" class=3D"small-text">rotation: (90, 0, 0)</text=
->
-  <text x=3D"150" y=3D"275" class=3D"small-text">scale: (2, 2, 2)</text>
-
-  <rect x=3D"50" y=3D"300" width=3D"200" height=3D"100" rx=3D"5" class=3D"o=
-op-class" />
-  <text x=3D"150" y=3D"320" class=3D"title-text">GameObject 3</text>
-  <text x=3D"150" y=3D"345" class=3D"small-text">position: (0, 10, 50)</tex=
-t>
-  <text x=3D"150" y=3D"365" class=3D"small-text">rotation: (0, 180, 0)</tex=
-t>
-  <text x=3D"150" y=3D"385" class=3D"small-text">scale: (1, 3, 1)</text>
-
-  <!-- VS text -->
-  <text x=3D"300" y=3D"225" class=3D"vs-text">VS</text>
-
-  <!-- Right side: Data-Oriented Approach -->
-  <text x=3D"450" y=3D"60" class=3D"title-text">Data-Oriented Approach</tex=
-t>
-
-  <!-- Data Arrays -->
-  <rect x=3D"350" y=3D"80" width=3D"200" height=3D"60" rx=3D"5" class=3D"da=
-ta-array" />
-  <text x=3D"450" y=3D"100" class=3D"title-text">Positions Array</text>
-  <text x=3D"450" y=3D"125" class=3D"small-text">[10,20,30, 50,0,10, 0,10,5=
-0, ...]</text>
-
-  <rect x=3D"350" y=3D"150" width=3D"200" height=3D"60" rx=3D"5" class=3D"d=
-ata-array" />
-  <text x=3D"450" y=3D"170" class=3D"title-text">Rotations Array</text>
-  <text x=3D"450" y=3D"195" class=3D"small-text">[0,45,0, 90,0,0, 0,180,0, =
-...]</text>
-
-  <rect x=3D"350" y=3D"220" width=3D"200" height=3D"60" rx=3D"5" class=3D"d=
-ata-array" />
-  <text x=3D"450" y=3D"240" class=3D"title-text">Scales Array</text>
-  <text x=3D"450" y=3D"265" class=3D"small-text">[1,1,1, 2,2,2, 1,3,1, ...]=
-</text>
-
-  <!-- Systems -->
-  <rect x=3D"350" y=3D"300" width=3D"200" height=3D"40" rx=3D"5" class=3D"s=
-ystem" />
-  <text x=3D"450" y=3D"325" class=3D"title-text">Transform System</text>
-
-  <rect x=3D"350" y=3D"350" width=3D"200" height=3D"40" rx=3D"5" class=3D"s=
-ystem" />
-  <text x=3D"450" y=3D"375" class=3D"title-text">Physics System</text>
-
-  <!-- Arrows from data to systems -->
-  <line x1=3D"450" y1=3D"140" x2=3D"450" y2=3D"300" class=3D"arrow" />
-  <line x1=3D"450" y1=3D"210" x2=3D"450" y2=3D"300" class=3D"arrow" />
-  <line x1=3D"450" y1=3D"280" x2=3D"450" y2=3D"300" class=3D"arrow" />
-
-  <!-- Explanation -->
-  <text x=3D"150" y=3D"420" class=3D"text">Objects with mixed data types</t=
-ext>
-  <text x=3D"450" y=3D"420" class=3D"text">Contiguous arrays of same data t=
-ype</text>
-</svg>=0A
-------MultipartBoundary--jYCm2tbor94wnC4vBMHuEqzZfjgr2ic8E157QRhAVZ----
-Content-Type: image/png
-Content-Transfer-Encoding: base64
-Content-Location: https://docs.vulkan.org/tutorial/latest/_images/images/layered_architecture_diagram.png
-
-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
-8QAAAABJRU5ErkJggg==
-
-------MultipartBoundary--jYCm2tbor94wnC4vBMHuEqzZfjgr2ic8E157QRhAVZ----
+------MultipartBoundary--GtO4HQLyA3aXeQny9i5YVdJCVvJ7pY93rjaXiV1ntu----
 Content-Type: image/svg+xml
 Content-Transfer-Encoding: quoted-printable
 Content-Location: https://docs.vulkan.org/_/Vulkan_Docs.svg
@@ -4355,7 +4366,7 @@ L118,36.6h17.8L109.7,115z"/>
 	</g>
 </g>
 </svg>=0A
-------MultipartBoundary--jYCm2tbor94wnC4vBMHuEqzZfjgr2ic8E157QRhAVZ----
+------MultipartBoundary--GtO4HQLyA3aXeQny9i5YVdJCVvJ7pY93rjaXiV1ntu----
 Content-Type: text/css
 Content-Transfer-Encoding: quoted-printable
 Content-Location: https://docs.vulkan.org/_/css/search.css
@@ -4432,7 +4443,7 @@ enter; padding: 0px 0.5rem; white-space: nowrap; overflow: hidden; }
 #search-field.has-filter > input { border-right-width: medium; border-right=
 -style: none; border-right-color: currentcolor; border-radius: 0.1em 0px 0p=
 x 0.1em; }
-------MultipartBoundary--jYCm2tbor94wnC4vBMHuEqzZfjgr2ic8E157QRhAVZ----
+------MultipartBoundary--GtO4HQLyA3aXeQny9i5YVdJCVvJ7pY93rjaXiV1ntu----
 Content-Type: text/css
 Content-Transfer-Encoding: quoted-printable
 Content-Location: https://cdn.khronos.org/cookies/v1/klaro.css
@@ -4504,7 +4515,7 @@ ne; }
 ground: transparent; border-width: medium; border-style: none; border-color=
 : currentcolor; border-image: none; color: rgb(255, 255, 255); font-size: 1=
 8px; cursor: pointer; padding: 0px; line-height: 1; }
-------MultipartBoundary--jYCm2tbor94wnC4vBMHuEqzZfjgr2ic8E157QRhAVZ----
+------MultipartBoundary--GtO4HQLyA3aXeQny9i5YVdJCVvJ7pY93rjaXiV1ntu----
 Content-Type: text/css
 Content-Transfer-Encoding: quoted-printable
 Content-Location: https://docs.vulkan.org/_/css/vendor/tabs.css
@@ -4559,7 +4570,7 @@ st-child { margin-bottom: 0px; }
 #content .tablecontainer { margin-bottom: 1.25em; }
 
 #content .tablecontainer > table.tableblock { margin-bottom: 0px; }
-------MultipartBoundary--jYCm2tbor94wnC4vBMHuEqzZfjgr2ic8E157QRhAVZ----
+------MultipartBoundary--GtO4HQLyA3aXeQny9i5YVdJCVvJ7pY93rjaXiV1ntu----
 Content-Type: image/svg+xml
 Content-Transfer-Encoding: quoted-printable
 Content-Location: https://docs.vulkan.org/_/img/home-o.svg
@@ -4569,7 +4580,7 @@ Content-Location: https://docs.vulkan.org/_/img/home-o.svg
 8 25.54-.02 47.345h21.506l.025-25.166H57.05l.025 25.166H78.62l.02-47.31-28.=
 62-25.575z"/><path d=3D"M63.815 25.904v-9.217h8.657V33.64zM21.439 39.116l-9=
 .982 8.92m77.125 0l-9.943-8.885"/></g></svg>
-------MultipartBoundary--jYCm2tbor94wnC4vBMHuEqzZfjgr2ic8E157QRhAVZ----
+------MultipartBoundary--GtO4HQLyA3aXeQny9i5YVdJCVvJ7pY93rjaXiV1ntu----
 Content-Type: image/svg+xml
 Content-Transfer-Encoding: quoted-printable
 Content-Location: https://docs.vulkan.org/_/img/chevron.svg
@@ -4577,7 +4588,7 @@ Content-Location: https://docs.vulkan.org/_/img/chevron.svg
 <svg xmlns=3D"http://www.w3.org/2000/svg" width=3D"30" height=3D"30" viewBo=
 x=3D"0 0 30 30"><path d=3D"M3.67 6.59L1.455 8.615 15 23.375l13.545-14.76L26=
 .33 6.59 15 18.76z" fill=3D"#5d5d5d"/></svg>
-------MultipartBoundary--jYCm2tbor94wnC4vBMHuEqzZfjgr2ic8E157QRhAVZ----
+------MultipartBoundary--GtO4HQLyA3aXeQny9i5YVdJCVvJ7pY93rjaXiV1ntu----
 Content-Type: image/svg+xml
 Content-Transfer-Encoding: quoted-printable
 Content-Location: https://docs.vulkan.org/_/img/caret.svg
@@ -4586,7 +4597,7 @@ Content-Location: https://docs.vulkan.org/_/img/caret.svg
 x=3D"0 0 30 30"><path d=3D"M10.187 3l14 12-14 12z" fill=3D"#c1c1c1" stroke=
 =3D"#c1c1c1" stroke-width=3D"2" stroke-linecap=3D"round" stroke-linejoin=3D=
 "round"/></svg>
-------MultipartBoundary--jYCm2tbor94wnC4vBMHuEqzZfjgr2ic8E157QRhAVZ----
+------MultipartBoundary--GtO4HQLyA3aXeQny9i5YVdJCVvJ7pY93rjaXiV1ntu----
 Content-Type: image/svg+xml
 Content-Transfer-Encoding: quoted-printable
 Content-Location: https://docs.vulkan.org/_/img/octicons-16.svg#view-clippy
@@ -4620,7 +4631,7 @@ th=3D"16" height=3D"16"/><view id=3D"view-clippy" viewBox=3D"0 0 16 16"/><u=
 se href=3D"#icon-fold" width=3D"16" height=3D"16" y=3D"16"/><view id=3D"vie=
 w-fold" viewBox=3D"0 16 16 16"/><use href=3D"#icon-unfold" width=3D"16" hei=
 ght=3D"16" y=3D"32"/><view id=3D"view-unfold" viewBox=3D"0 32 16 16"/></svg>
-------MultipartBoundary--jYCm2tbor94wnC4vBMHuEqzZfjgr2ic8E157QRhAVZ----
+------MultipartBoundary--GtO4HQLyA3aXeQny9i5YVdJCVvJ7pY93rjaXiV1ntu----
 Content-Type: text/css
 Content-Transfer-Encoding: quoted-printable
 Content-Location: https://docs.vulkan.org/_/css/site.css
@@ -6179,10 +6190,10 @@ on: normal; flex-direction: row; }
   & .gutter { background-color: rgb(17, 17, 17); box-shadow: rgb(0, 0, 0) 4=
 px 0px 4px inset; }
 }
-------MultipartBoundary--jYCm2tbor94wnC4vBMHuEqzZfjgr2ic8E157QRhAVZ----
+------MultipartBoundary--GtO4HQLyA3aXeQny9i5YVdJCVvJ7pY93rjaXiV1ntu----
 Content-Type: text/css
 Content-Transfer-Encoding: quoted-printable
-Content-Location: cid:css-df246e5f-48dd-4d53-9489-f8a205a88b34@mhtml.blink
+Content-Location: cid:css-39ab22d6-b2d2-46b4-ac5f-639c0845e6f3@mhtml.blink
 
 @charset "utf-8";
 
@@ -6599,10 +6610,10 @@ osition: relative; margin: 0px auto; max-width: 400px; height: auto; width:=
 -content: space-between; align-items: center; margin-top: 1em; }
 
 .klaro .cookie-notice-hidden { display: none !important; }
-------MultipartBoundary--jYCm2tbor94wnC4vBMHuEqzZfjgr2ic8E157QRhAVZ----
+------MultipartBoundary--GtO4HQLyA3aXeQny9i5YVdJCVvJ7pY93rjaXiV1ntu----
 Content-Type: text/css
 Content-Transfer-Encoding: quoted-printable
-Content-Location: cid:css-bbaf6caa-25a4-473e-bdf2-23241bfc7b7b@mhtml.blink
+Content-Location: cid:css-2f5e0776-7683-4dac-9b75-05734c4f4957@mhtml.blink
 
 @charset "utf-8";
 
@@ -6610,4 +6621,4 @@ body { transition: opacity 0.2s ease-in; }
 
 body[unresolved] { opacity: 0; display: block; overflow: hidden; position: =
 relative; }
-------MultipartBoundary--jYCm2tbor94wnC4vBMHuEqzZfjgr2ic8E157QRhAVZ------
+------MultipartBoundary--GtO4HQLyA3aXeQny9i5YVdJCVvJ7pY93rjaXiV1ntu------
