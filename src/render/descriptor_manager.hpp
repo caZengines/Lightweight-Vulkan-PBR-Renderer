@@ -11,27 +11,27 @@
 #include "render_context.hpp"
 
 namespace Binding {
-    constexpr std::uint32_t kUbo           = 0;
-    constexpr std::uint32_t kAlbedoTexture = 0;
-    constexpr std::uint32_t kNormalTexture = 1;   // (sic) legacy typo kept — shader-facing naming
+    constexpr uint32_t kUbo           = 0;
+    constexpr uint32_t kAlbedoTexture = 0;
+    constexpr uint32_t kNormalTexture = 1;   // (sic) legacy typo kept — shader-facing naming
 }  // namespace Binding
 
 struct ReflectBinding {
-    std::uint32_t        binding;
-    std::uint32_t        set;
+    uint32_t        binding;
+    uint32_t        set;
     vk::DescriptorType   descriptorType;
-    std::uint32_t        count;
+    uint32_t        count;
     vk::ShaderStageFlags stageFlags;
     std::string          name;       // entry-point name
-    std::uint32_t        blockSize;  // only meaningful for UBO/SSBO
+    uint32_t        blockSize;  // only meaningful for UBO/SSBO
 
-    ReflectBinding& setBinding(std::uint32_t v) { binding = v; return *this; }
-    ReflectBinding& setDescriptorSet(std::uint32_t v) { set = v; return *this; }
+    ReflectBinding& setBinding(uint32_t v) { binding = v; return *this; }
+    ReflectBinding& setDescriptorSet(uint32_t v) { set = v; return *this; }
     ReflectBinding& setDescriptorType(vk::DescriptorType v) { descriptorType = v; return *this; }
-    ReflectBinding& setDescriptorCount(std::uint32_t v) { count = v; return *this; }
+    ReflectBinding& setDescriptorCount(uint32_t v) { count = v; return *this; }
     ReflectBinding& setShaderStage(vk::ShaderStageFlags v) { stageFlags = v; return *this; }
     ReflectBinding& setEntryPoint(std::string v) { name = std::move(v); return *this; }
-    ReflectBinding& setBlockSize(std::uint32_t v) { blockSize = v; return *this; }
+    ReflectBinding& setBlockSize(uint32_t v) { blockSize = v; return *this; }
 };
 
 namespace render {
@@ -41,7 +41,7 @@ namespace render {
 // (Set 0 scaled by kMaxFramesInFlight, per-object sets by an upper bound).
 class DescriptorSetLayout final {
 public:
-    static constexpr std::uint32_t kDefaultObjectMultiplier = 8;
+    static constexpr uint32_t kDefaultObjectMultiplier = 8;
 
     explicit DescriptorSetLayout(RenderContext& rct, const std::vector<std::uint8_t>& spvCode);
     ~DescriptorSetLayout() = default;
@@ -53,7 +53,7 @@ public:
     [[nodiscard]] int                                               getSetCount()            const { return setCount_; }
     [[nodiscard]] const std::vector<vk::DescriptorPoolSize>&        getPoolSize()            const { return poolSizes_; }
 
-    int computePoolMaxSets(std::uint32_t objectCount) const;
+    int computePoolMaxSets(uint32_t objectCount) const;
 
 private:
     void autoCreateDSL(const std::vector<std::uint8_t>& spvCode);

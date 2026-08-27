@@ -32,7 +32,7 @@ Swapchain::Swapchain(RenderContext& rct,
 void Swapchain::createSwapChain(const vk::raii::SurfaceKHR& surface, platform::Window& window) {
     const vk::SurfaceCapabilitiesKHR caps = rct_.physicalDevice.getSurfaceCapabilitiesKHR(*surface);
     extent_                 = chooseExtent(caps, window);
-    const std::uint32_t minCount = chooseMinImageCount(caps);
+    const uint32_t minCount = chooseMinImageCount(caps);
 
     const auto availableFormats   = rct_.physicalDevice.getSurfaceFormatsKHR(*surface);
     surfaceFormat_                = chooseFormat(availableFormats);
@@ -61,15 +61,15 @@ void Swapchain::createSwapChain(const vk::raii::SurfaceKHR& surface, platform::W
 }
 
 vk::Extent2D Swapchain::chooseExtent(const Capabilities& caps, platform::Window& window) {
-    if (caps.currentExtent.width != std::numeric_limits<std::uint32_t>::max()) {
+    if (caps.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
         return caps.currentExtent;
     }
     const int w = static_cast<int>(window.framebufferWidth());
     const int h = static_cast<int>(window.framebufferHeight());
     return {
-        std::clamp<std::uint32_t>(static_cast<std::uint32_t>(w), caps.minImageExtent.width,
+        std::clamp<uint32_t>(static_cast<uint32_t>(w), caps.minImageExtent.width,
                                   caps.maxImageExtent.width),
-        std::clamp<std::uint32_t>(static_cast<std::uint32_t>(h), caps.minImageExtent.height,
+        std::clamp<uint32_t>(static_cast<uint32_t>(h), caps.minImageExtent.height,
                                   caps.maxImageExtent.height),
     };
 }
@@ -153,8 +153,8 @@ void Swapchain::cleanupSwapChain() {
     // dies (known pre-existing trait; not silently "fixed" here).
 }
 
-std::uint32_t Swapchain::chooseMinImageCount(const Capabilities& caps) {
-    std::uint32_t count = std::max(3u, caps.minImageCount);
+uint32_t Swapchain::chooseMinImageCount(const Capabilities& caps) {
+    uint32_t count = std::max(3u, caps.minImageCount);
     if (caps.maxImageCount > 0 && caps.maxImageCount < count) {
         count = caps.maxImageCount;
     }

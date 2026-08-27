@@ -11,8 +11,6 @@
 
 #include "camera.hpp"
 #include "command_manager.hpp"
-#include "platform/window.hpp"
-#include "rhi/rhi_factory.hpp"
 #include "rhi/swapchain.hpp"
 #include "render/command_recorder.hpp"
 #include "render/frame_resources.hpp"
@@ -43,7 +41,7 @@ Renderer::Renderer(Dependencies deps, const RenderSettings& settings)
                   deps.alloc,
                   deps.set0Pool,
                   setLayouts_[0],
-                  static_cast<std::uint32_t>(swapchain_->Image_.images.size()));
+                  static_cast<uint32_t>(swapchain_->Image_.images.size()));
     createPipeline();
 }
 
@@ -157,10 +155,10 @@ void Renderer::recreateAfterResize() {
     rct_.device.waitIdle();
     frameCursor_ = 0;
     swapchain_->recreateSwapChain(surface_, window_);
-    frames_->recreateSync(static_cast<std::uint32_t>(swapchain_->Image_.images.size()));
+    frames_->recreateSync(static_cast<uint32_t>(swapchain_->Image_.images.size()));
 }
 
-void Renderer::fillUniformBuffer(std::uint32_t frame) {
+void Renderer::fillUniformBuffer(uint32_t frame) {
     UniformBufferObject ubo{};
     ubo.view = camera_.viewMatrix();
     ubo.proj = glm::perspective(
@@ -178,7 +176,7 @@ void Renderer::fillUniformBuffer(std::uint32_t frame) {
     std::memcpy(frames_->uniformBuffer(frame).mappedData(), &ubo, sizeof(ubo));
 }
 
-void Renderer::writeFrameSet(std::uint32_t frame) {
+void Renderer::writeFrameSet(uint32_t frame) {
     vk::DescriptorBufferInfo bufferInfo{};
     bufferInfo.setBuffer(frames_->uniformBuffer(frame).getHandle())
               .setOffset(0)

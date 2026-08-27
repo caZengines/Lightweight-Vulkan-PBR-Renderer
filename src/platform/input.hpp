@@ -6,6 +6,7 @@
 // mapped to engine enums here; no GLFW type appears in the interface.
 // ============================================================================
 
+#include <array>
 #include <cstdint>
 
 namespace platform {
@@ -44,8 +45,8 @@ public:
     double scrollDelta() const { return scroll_; }
 
 private:
-    uint32_t keys_[static_cast<uint32_t>(Key::Count)]    = {};
-    uint32_t buttons_[3]                                 = {};
+    std::array<uint32_t, static_cast<uint32_t>(Key::Count)> keys_{};
+    std::array<uint32_t, 3> buttons_{};
     double   lastX_ = 0.0, lastY_ = 0.0;
     double   deltaX_ = 0.0, deltaY_ = 0.0;
     double   scroll_ = 0.0;

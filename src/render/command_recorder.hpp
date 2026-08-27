@@ -30,7 +30,7 @@ public:
                     const rhi::RhiFactory& factory) noexcept;
 
     void record(vk::raii::CommandBuffer& cmd,
-                std::uint32_t imageIndex,
+                uint32_t imageIndex,
                 const vk::DescriptorSet& frameSet,
                 std::span<const RenderItem> items);
 

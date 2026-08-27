@@ -49,7 +49,7 @@ public:
     // Creates the OS window surface; caller wraps it in a vk::raii::SurfaceKHR.
     VkSurfaceKHR createSurface(VkInstance instance) const;
 
-    // --- Event hooks (replaces CEngine static GLFW callbacks) ---
+    // --- Event hooks ---
     std::function<void(uint32_t /*width*/, uint32_t /*height*/)>             onFramebufferResize;
     std::function<void(ButtonAction, MouseButton, double /*x*/, double /*y*/)> onMouseButton;
     std::function<void(double /*x*/, double /*y*/)>                          onCursorPos;

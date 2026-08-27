@@ -24,8 +24,8 @@ struct RenderItem {
     const resource::MeshGPU* mesh         = nullptr;
     const Material*          material     = nullptr;
     vk::Buffer               instanceBuffer{};  // raw VkBuffer handle
-    std::uint32_t            instanceCount = 0;
-    std::uint32_t            firstInstance = 0;
+    uint32_t            instanceCount = 0;
+    uint32_t            firstInstance = 0;
 };
 
 }  // namespace render

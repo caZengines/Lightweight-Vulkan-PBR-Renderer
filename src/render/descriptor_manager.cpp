@@ -13,18 +13,18 @@ namespace render {DescriptorSetLayout::DescriptorSetLayout(RenderContext& rct, c
 void DescriptorSetLayout::autoCreateDSL(const std::vector<std::uint8_t>& spvCode) {
     spv_reflect::ShaderModule module(spvCode);
 
-    std::uint32_t setCountRaw = 0;
+    uint32_t setCountRaw = 0;
     module.EnumerateDescriptorSets(&setCountRaw, nullptr);
     setCount_ = static_cast<int>(setCountRaw);
     std::vector<SpvReflectDescriptorSet*> sets(setCountRaw);
     module.EnumerateDescriptorSets(&setCountRaw, sets.data());
 
-    std::map<std::pair<std::uint32_t, std::uint32_t>, vk::ShaderStageFlags> stageMap;
-    for (std::uint32_t ep = 0; ep < module.GetEntryPointCount(); ++ep) {
+    std::map<std::pair<uint32_t, uint32_t>, vk::ShaderStageFlags> stageMap;
+    for (uint32_t ep = 0; ep < module.GetEntryPointCount(); ++ep) {
         const auto epName  = module.GetEntryPointName(ep);
         const auto epStage = module.GetEntryPointShaderStage(ep);
 
-        std::uint32_t bindCount = 0;
+        uint32_t bindCount = 0;
         module.EnumerateEntryPointDescriptorBindings(epName, &bindCount, nullptr);
         std::vector<SpvReflectDescriptorBinding*> epBindings(bindCount);
         module.EnumerateEntryPointDescriptorBindings(epName, &bindCount, epBindings.data());
@@ -36,13 +36,13 @@ void DescriptorSetLayout::autoCreateDSL(const std::vector<std::uint8_t>& spvCode
     }
 
     // set index → type → unmultiplied descriptor count
-    std::map<std::uint32_t, std::map<vk::DescriptorType, std::uint32_t>> perSetDescCounts;
+    std::map<uint32_t, std::map<vk::DescriptorType, uint32_t>> perSetDescCounts;
 
     for (const auto* set : sets) {
         std::vector<vk::DescriptorSetLayoutBinding> layoutBindings;
         vk::DescriptorSetLayoutCreateInfo layoutInfo{};
 
-        for (std::uint32_t bi = 0; bi < set->binding_count; ++bi) {
+        for (uint32_t bi = 0; bi < set->binding_count; ++bi) {
             const auto* b   = set->bindings[bi];
             const auto  key = std::make_pair(b->set, b->binding);
 
@@ -79,11 +79,11 @@ void DescriptorSetLayout::autoCreateDSL(const std::vector<std::uint8_t>& spvCode
 
     // Pool sizing: Set 0 is per-frame (× frames in flight), Set 1+ is
     // per-object (× upper bound for simultaneous materials).
-    std::map<vk::DescriptorType, std::uint32_t> totalDescriptors;
+    std::map<vk::DescriptorType, uint32_t> totalDescriptors;
     poolMaxSets_ = 0;
 
     for (const auto& [setIdx, descCounts] : perSetDescCounts) {
-        const std::uint32_t multiplier =
+        const uint32_t multiplier =
             (setIdx == 0) ? render::kMaxFramesInFlight
                           : DescriptorSetLayout::kDefaultObjectMultiplier;
         poolMaxSets_ += static_cast<int>(multiplier);
@@ -99,7 +99,7 @@ void DescriptorSetLayout::autoCreateDSL(const std::vector<std::uint8_t>& spvCode
     }
 }
 
-int DescriptorSetLayout::computePoolMaxSets(std::uint32_t objectCount) const {
+int DescriptorSetLayout::computePoolMaxSets(uint32_t objectCount) const {
     int total = static_cast<int>(render::kMaxFramesInFlight);  // Set 0
     for (int i = 1; i < setCount_; ++i) {
         total += static_cast<int>(objectCount);

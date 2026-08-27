@@ -1,7 +1,5 @@
 #include "platform/window.hpp"
 
-// glfwCreateWindowSurface needs the Vulkan headers; GLFW_INCLUDE_VULKAN makes
-// glfw3.h pull them in (matching the rest of the codebase).
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 

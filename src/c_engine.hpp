@@ -48,7 +48,7 @@ class CEngine final {
         platform::Input                              input{};
         Camera                                       camera{};
         rhi::VulkanDevice                            vulkanDevice_{};
-        std::unique_ptr<rhi::VmaContext>                  vmaContext_        = nullptr;
+        std::unique_ptr<rhi::VmaContext>             vmaContext_        = nullptr;
         // Phase 3 cleanup: the former god-config Context split in two.
         std::unique_ptr<rhi::DebugMessenger>         debugMessenger     = nullptr;
         std::unique_ptr<rhi::Surface>                surface            = nullptr;

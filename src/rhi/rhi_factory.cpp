@@ -8,7 +8,7 @@ namespace rhi {
 vk::raii::ImageView RhiFactory::createImageView(const VmaImage& image,
                                                 vk::Format format,
                                                 vk::ImageAspectFlags aspectFlags,
-                                                std::uint32_t mipLevels) const {
+                                                uint32_t mipLevels) const {
     assert(physicalDevice_ && device_);
     vk::ImageViewCreateInfo viewInfo{};
     viewInfo.setImage(image.getHandle())
@@ -21,8 +21,8 @@ vk::raii::ImageView RhiFactory::createImageView(const VmaImage& image,
 void RhiFactory::copyBufferToImage(vk::raii::CommandBuffer& cmd,
                                    const VmaBuffer& buffer,
                                    const VmaImage& image,
-                                   std::uint32_t width,
-                                   std::uint32_t height) const {
+                                   uint32_t width,
+                                   uint32_t height) const {
     assert(physicalDevice_ && device_);
     vk::BufferImageCopy region;
     vk::ImageSubresourceLayers subresource;
@@ -76,7 +76,7 @@ void RhiFactory::transitionImageLayout(vk::raii::CommandBuffer& cmd,
                                        const VmaImage& image,
                                        vk::ImageLayout oldLayout,
                                        vk::ImageLayout newLayout,
-                                       std::uint32_t mipLevels) const {
+                                       uint32_t mipLevels) const {
     assert(physicalDevice_ && device_);
     // Ported 1:1 from the legacy implementation — upload semantics unchanged.
     vk::ImageMemoryBarrier barrier;
