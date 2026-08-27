@@ -31,6 +31,7 @@
 - 重复 `loadMesh(同一路径)` 只上传一次（`AssetLibrary: mesh cache hit (no re-upload)`）
 - `../` 相对路径从代码中消失（grep 仅注释）；glfw 仅出现在 `src/platform/`
 - Phase 3：Debug + Release 双配置构建通过；带验证层启动渲染循环稳定运行（同基线协议）；resize 路径沿用原时序逻辑（帧间跳过语义保留）
+- rhi 迁移：`Swapchain/VulkanDevice` 移入 `src/rhi/` 并命名空间化；`Context` 拆为 `DebugMessenger`+`Surface` 后删除；双配置构建通过 + 渲染循环冒烟复测存活
 
 ---
 
@@ -52,7 +53,7 @@ Layer 1  Platform      — 窗口/输入/日志/路径（platform::）  ✅ Phas
 |---|---|---|
 | Layer 1 | `platform/*`、`app/config.hpp` | ✅ 已成型 |
 | Layer 2 | `resource/*` | ✅ 已成型 |
-| Layer 3 | `render/*`（renderer、swapchain、frame_resources、command_recorder、pipeline*、shader_manager、descriptor_manager、render_item 等） | ✅ Phase 3 已拆分：Renderer 只剩编排 |
+| Layer 3 | `render/*`（renderer、frame_resources、command_recorder、pipeline*、shader_manager、descriptor_manager、render_item 等；swapchain 已迁 rhi/） | ✅ Phase 3 已拆分：Renderer 只剩编排 |
 | Layer 4 | `generic/scene.*`、`generic/renderobject.*`、`generic/transform.*` | 仍带 Vulkan 类型，Phase 4 纯数据化 |
 | Layer 5 | `c_engine.*` + `main/main.cpp` | CEngine 即 App 雏形 |
 
@@ -85,15 +86,17 @@ Layer 1  Platform      — 窗口/输入/日志/路径（platform::）  ✅ Phas
 | `resource::ResourceRegistry` | `resource_registry.hpp/cpp` | 持有全部 GPU 资产（id→unique_ptr）、`createMeshGPU/createTextureGPU`、`mesh/texture(handle)` 查找、`unregister(id)`；**内建 1×1 默认纹理**（白/平坦法线，Null Object 回落） |
 | `resource::AssetLibrary` | `asset_library.hpp/cpp` | 路径缓存 + 引用计数：`loadMesh/loadImage`（get-or-load，重复加载不重传）、`findMesh/findImage`（未命中返回空句柄）、`retain/release`（归零卸载 GPU 资源）。替换旧 `AssetManager` |
 
-### Vulkan 基础设施（介于 Layer 1–3 之间，Phase 3 将归位）
+### rhi 层基础设施（`src/rhi/`，Phase 3 起全部归位；根级仅余 `command_manager.*`、`render_context.hpp` 待 Phase 6 收尾）
 
 | 模块 | 文件 | 职责 |
 |---|---|---|
-| `VulkanDevice` | `vulkandevice.hpp/cpp` | Instance / PhysicalDevice / LogicalDevice 创建、扩展/验证层装配、队列索引（graphics/transfer）、MSAA 采样数探测、`renderContext()` |
-| `VmaContext` / `VmaBuffer` / `VmaImage` | `vma_allocator.hpp/cpp` | VMA RAII 封装（移动语义、映射、`mappedData()`），创建失败抛异常 |
-| `rhi::RhiFactory` | `rhi/rhi_factory.hpp/cpp` | **非单例**（Phase 3 改造）：图像视图、sync2 图像屏障核心、上传路径的 sync1 过渡包装、`copyBufferToImage`、深度格式探测；由组合根构造并注入 resource/render 各层 |
-| `CommandPool` | `command_manager.hpp/cpp` | 命令池 + 队列句柄，`beginSingleTimeCommands/endSingleTimeCommands`（单次提交 + fence 等待） |
-| `Context` | `context.hpp/cpp` | Debug messenger（验证层回调解耦）+ 窗口 surface |
+| `rhi::VulkanDevice` | `rhi/vulkan_device.hpp/cpp` | Instance / PhysicalDevice / LogicalDevice 创建、扩展/验证层装配、队列索引、MSAA 采样数探测、`renderContext()` |
+| `rhi::VmaContext` / `VmaBuffer` / `VmaImage` | `rhi/vma_allocator.hpp/cpp` | VMA RAII 封装（移动语义、映射、`mappedData()`） |
+| `rhi::RhiFactory` | `rhi/rhi_factory.hpp/cpp` | 非单例：图像视图、sync2 屏障核心、上传路径 sync1 过渡包装、格式探测 |
+| `rhi::DebugMessenger` | `rhi/debug_messenger.hpp/cpp` | 验证层回调节耦（原 Context 拆分件之一，按开关惰性创建） |
+| `rhi::Surface` | `rhi/surface.hpp/cpp` | 窗口表面（原 Context 拆分件之二，经 `Window::createSurface` 保持 GLFW 封闭在 platform/） |
+| `rhi::Swapchain` | `rhi/swapchain.hpp/cpp` | Swapchain + MSAA color/depth 资源；注入 RhiFactory；深度格式单一探测定点；surface 引用 const 正确化 |
+| `rhi::CommandPool` | `command_manager.hpp/cpp`（根级，暂留） | 命令池 + 队列句柄，单次提交辅助 |
 
 ### Layer 3 · 渲染（`src/render/`，Phase 3 完成拆分）
 

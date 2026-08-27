@@ -10,12 +10,12 @@
 
 namespace rhi {
 class RhiFactory;
+class Swapchain;
 }  // namespace rhi
 
 namespace render {
 
 class Pipeline;
-class Swapchain;
 
 // Stateless command recording (extracted verbatim from the pre-split
 // Renderer::recordCommandBuffer). Binds the graphics pipeline, per-frame
@@ -25,7 +25,7 @@ class Swapchain;
 // them in at construction.
 class CommandRecorder final {
 public:
-    CommandRecorder(const Swapchain& swapchain,
+    CommandRecorder(const rhi::Swapchain& swapchain,
                     const Pipeline& pipeline,
                     const rhi::RhiFactory& factory) noexcept;
 
@@ -35,7 +35,7 @@ public:
                 std::span<const RenderItem> items);
 
 private:
-    const Swapchain&     swapchain_;
+    const rhi::Swapchain& swapchain_;
     const Pipeline&      pipeline_;
     const rhi::RhiFactory& factory_;
 };

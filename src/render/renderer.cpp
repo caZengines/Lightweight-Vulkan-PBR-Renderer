@@ -13,6 +13,7 @@
 #include "command_manager.hpp"
 #include "platform/window.hpp"
 #include "rhi/rhi_factory.hpp"
+#include "rhi/swapchain.hpp"
 #include "render/command_recorder.hpp"
 #include "render/frame_resources.hpp"
 #include "render/frame_uniforms.hpp"
@@ -20,7 +21,6 @@
 #include "render/pipeline_cache.hpp"
 #include "render/pipeline_spec.hpp"
 #include "render/shader_manager.hpp"
-#include "render/swapchain.hpp"
 #include "render_context.hpp"
 
 namespace render {
@@ -35,8 +35,8 @@ Renderer::Renderer(Dependencies deps, const RenderSettings& settings)
       settings_(settings),
       spirvPath_(deps.spirvPath),
       setLayouts_(std::move(deps.setLayouts)) {
-    swapchain_ = std::make_unique<Swapchain>(rct_, deps.alloc, surface_, window_,
-                                             rhiFactory_, settings_);
+    swapchain_ = std::make_unique<rhi::Swapchain>(rct_, deps.alloc, surface_, window_,
+                                                  rhiFactory_, settings_);
     frames_ = std::make_unique<FrameResources>();
     frames_->init(rct_,
                   graphicsPool_,

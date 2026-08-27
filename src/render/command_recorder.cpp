@@ -3,11 +3,11 @@
 #include "generic/material.hpp"
 #include "rhi/rhi_factory.hpp"
 #include "render/pipeline.hpp"
-#include "render/swapchain.hpp"
+#include "rhi/swapchain.hpp"
 
 namespace render {
 
-CommandRecorder::CommandRecorder(const Swapchain& swapchain,
+CommandRecorder::CommandRecorder(const rhi::Swapchain& swapchain,
                                  const Pipeline& pipeline,
                                  const rhi::RhiFactory& factory) noexcept
     : swapchain_(swapchain), pipeline_(pipeline), factory_(factory) {}

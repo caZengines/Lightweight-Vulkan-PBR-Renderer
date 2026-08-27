@@ -13,28 +13,28 @@ namespace platform {
 class Window;
 }  // namespace platform
 
-namespace rhi {
-class RhiFactory;
-}  // namespace rhi
-
 struct RenderContext;
 
-namespace render {
+namespace rhi {
+
+// forward declarations within the rhi namespace
+class RhiFactory;
 
 // Swapchain + MSAA color resolve target + depth attachment.
 // Phase 3: image-view creation and depth-format probing go through the
 // injected rhi::RhiFactory (singleton removed); present-mode preference and
 // MSAA sample count come from RenderSettings instead of hardcodes.
+// (Moved render/ → rhi/ with its owning namespace, Phase 3 cleanup.)
 class Swapchain final {
 public:
     explicit Swapchain(RenderContext& rct,
                        VmaAllocator alloc,
-                       vk::raii::SurfaceKHR& surface,
+                       const vk::raii::SurfaceKHR& surface,
                        platform::Window& window,
                        const rhi::RhiFactory& factory,
-                       const RenderSettings& settings);
+                       const render::RenderSettings& settings);
 
-    void recreateSwapChain(vk::raii::SurfaceKHR& surface, platform::Window& window);
+    void recreateSwapChain(const vk::raii::SurfaceKHR& surface, platform::Window& window);
     void cleanupSwapChain();
 
     ~Swapchain() = default;
@@ -66,14 +66,14 @@ private:
     static vk::PresentModeKHR choosePresentMode(std::vector<vk::PresentModeKHR> const& available,
                                                vk::PresentModeKHR preferred);
 
-    void createSwapChain(vk::raii::SurfaceKHR& surface, platform::Window& window);
+    void createSwapChain(const vk::raii::SurfaceKHR& surface, platform::Window& window);
     void createImageViews();
     void createColorAndDepthResources();
 
     RenderContext&          rct_;
     VmaAllocator            allocator_;
     const rhi::RhiFactory&  factory_;
-    RenderSettings          settings_;
+    render::RenderSettings  settings_;
 
     vk::raii::SwapchainKHR  swapChain_     = nullptr;
     vk::SurfaceFormatKHR    surfaceFormat_{};
@@ -86,4 +86,4 @@ private:
     vk::raii::ImageView     depthImageView_ = nullptr;
 };
 
-}  // namespace render
+}  // namespace rhi
