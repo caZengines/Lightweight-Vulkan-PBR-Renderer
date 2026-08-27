@@ -27,7 +27,7 @@ vk::raii::ShaderModule ShaderManager::createModule(
     const std::vector<std::uint8_t>& code) const {
     vk::ShaderModuleCreateInfo ci{};
     ci.setCodeSize(code.size())
-      .setPCode(reinterpret_cast<const std::uint32_t*>(code.data()));
+      .setPCode(reinterpret_cast<const uint32_t*>(code.data()));
     return vk::raii::ShaderModule(device, ci);
 }
 

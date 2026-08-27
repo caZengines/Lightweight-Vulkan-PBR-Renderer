@@ -60,10 +60,10 @@ public:
 private:
     using Capabilities = vk::SurfaceCapabilitiesKHR;
 
-    static vk::Extent2D       chooseExtent(const Capabilities&, platform::Window&);
-    static std::uint32_t      chooseMinImageCount(const Capabilities&);
+    static vk::Extent2D         chooseExtent(const Capabilities&, platform::Window&);
+    static uint32_t             chooseMinImageCount(const Capabilities&);
     static vk::SurfaceFormatKHR chooseFormat(const std::vector<vk::SurfaceFormatKHR>&);
-    static vk::PresentModeKHR choosePresentMode(std::vector<vk::PresentModeKHR> const& available,
+    static vk::PresentModeKHR   choosePresentMode(std::vector<vk::PresentModeKHR> const& available,
                                                vk::PresentModeKHR preferred);
 
     void createSwapChain(const vk::raii::SurfaceKHR& surface, platform::Window& window);

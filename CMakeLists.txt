@@ -15,7 +15,7 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
     # Debug/Release compiler flags
     set(CMAKE_CXX_FLAGS_DEBUG   "-g -O0 "                 CACHE STRING "Flags for Debug"   FORCE)
-    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -DNDEBUG"                     CACHE STRING "Flags for Release" FORCE)
+    set(CMAKE_CXX_FLAGS_RELEASE "-O2 -march=native -DNDEBUG"                     CACHE STRING "Flags for Release" FORCE)
     set(CMAKE_C_FLAGS_DEBUG     "-g -O0 "                 CACHE STRING "C Flags Debug"     FORCE)
     set(CMAKE_C_FLAGS_RELEASE   "-O2 -DNDEBUG"                     CACHE STRING "C Flags Release"   FORCE)
 endif()

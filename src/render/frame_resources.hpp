@@ -7,7 +7,6 @@
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
 
-#include "render/frame_uniforms.hpp"
 #include "rhi/vma_allocator.hpp"
 
 class CommandPool;
@@ -18,7 +17,7 @@ namespace render {
 
 // Frames allowed to be in flight simultaneously. Owned by this component as
 // of Phase 3 (was a loose constant in render_context.hpp).
-inline constexpr std::uint32_t kMaxFramesInFlight = 2;
+inline constexpr uint32_t kMaxFramesInFlight = 2;
 
 // Owns everything that lives for kMaxFramesInFlight rotations: per-frame UBO
 // buffers, per-frame Set-0 descriptor sets, command buffers, and all
@@ -35,19 +34,19 @@ public:
               VmaAllocator alloc,
               const vk::DescriptorPool& set0Pool,
               const vk::DescriptorSetLayout& set0Layout,
-              std::uint32_t imageCount);
+              uint32_t imageCount);
 
     // Swapchain rebuilt: re-create sync objects against the new image count.
     // Uniform buffers / descriptor sets / command buffers survive untouched.
-    void recreateSync(std::uint32_t newImageCount);
+    void recreateSync(uint32_t newImageCount);
 
-    [[nodiscard]] vk::raii::CommandBuffer& commandBuffer(std::uint32_t frame) { return commandBuffers_[frame]; }
-    [[nodiscard]] const vk::raii::Fence&     inFlightFence(std::uint32_t frame) const { return inFlightFences_[frame]; }
-    [[nodiscard]] const vk::raii::Semaphore& presentComplete(std::uint32_t frame) const { return presentComplete_[frame]; }
-    [[nodiscard]] const vk::raii::Semaphore& presentWait(std::uint32_t imageIndex) const { return presentWait_[imageIndex]; }
+    [[nodiscard]] vk::raii::CommandBuffer& commandBuffer(uint32_t frame) { return commandBuffers_[frame]; }
+    [[nodiscard]] const vk::raii::Fence&     inFlightFence(uint32_t frame) const { return inFlightFences_[frame]; }
+    [[nodiscard]] const vk::raii::Semaphore& presentComplete(uint32_t frame) const { return presentComplete_[frame]; }
+    [[nodiscard]] const vk::raii::Semaphore& presentWait(uint32_t imageIndex) const { return presentWait_[imageIndex]; }
     [[nodiscard]] const vk::raii::Semaphore& renderTimeline() const { return renderTimeline_; }
 
-    [[nodiscard]] rhi::VmaBuffer& uniformBuffer(std::uint32_t frame) { return uniformBuffers_[frame]; }
+    [[nodiscard]] rhi::VmaBuffer& uniformBuffer(uint32_t frame) { return uniformBuffers_[frame]; }
     [[nodiscard]] const std::vector<vk::DescriptorSet>& frameSetHandles() const { return perFrameSetHandles_; }
 
     // Monotonic timeline payload; resets on sync recreation (same behavior as
@@ -57,7 +56,7 @@ public:
 private:
     void createUniformBuffers(VmaAllocator alloc);
     void createCommandBuffers(CommandPool& graphicsPool);
-    void createSyncObjects(std::uint32_t imageCount);
+    void createSyncObjects(uint32_t imageCount);
     void createPerFrameSets(const vk::DescriptorPool& set0Pool,
                             const vk::DescriptorSetLayout& set0Layout);
 

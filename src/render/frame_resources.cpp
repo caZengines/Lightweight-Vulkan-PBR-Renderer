@@ -1,5 +1,6 @@
 #include "render/frame_resources.hpp"
 
+#include "render/frame_uniforms.hpp"
 #include "command_manager.hpp"
 #include "render_context.hpp"
 
@@ -10,7 +11,7 @@ void FrameResources::init(RenderContext& rct,
                           VmaAllocator alloc,
                           const vk::DescriptorPool& set0Pool,
                           const vk::DescriptorSetLayout& set0Layout,
-                          std::uint32_t imageCount) {
+                          uint32_t imageCount) {
     device_ = &rct.device;
     createUniformBuffers(alloc);
     createPerFrameSets(set0Pool, set0Layout);
@@ -18,7 +19,7 @@ void FrameResources::init(RenderContext& rct,
     createSyncObjects(imageCount);
 }
 
-void FrameResources::recreateSync(std::uint32_t newImageCount) {
+void FrameResources::recreateSync(uint32_t newImageCount) {
     // Mirrors the pre-split Renderer::recreateAfterResize / destroySyncObjects
     // pair exactly: counter resets, everything but UBOs/sets/cmds rebuilt.
     device_->waitIdle();
@@ -43,7 +44,7 @@ void FrameResources::createUniformBuffers(VmaAllocator alloc) {
 
     uniformBuffers_.clear();
     uniformBuffers_.reserve(kMaxFramesInFlight);
-    for (std::uint32_t i = 0; i < kMaxFramesInFlight; ++i) {
+    for (uint32_t i = 0; i < kMaxFramesInFlight; ++i) {
         uniformBuffers_.emplace_back(alloc, static_cast<const VkBufferCreateInfo&>(bufferCI), allocCI);
     }
 }
@@ -56,14 +57,14 @@ void FrameResources::createCommandBuffers(CommandPool& graphicsPool) {
     commandBuffers_ = vk::raii::CommandBuffers(*device_, allocInfo);
 }
 
-void FrameResources::createSyncObjects(std::uint32_t imageCount) {
+void FrameResources::createSyncObjects(uint32_t imageCount) {
     vk::StructureChain<vk::SemaphoreCreateInfo, vk::SemaphoreTypeCreateInfo> timelineChain;
     timelineChain.get<vk::SemaphoreTypeCreateInfo>()
                  .setSemaphoreType(vk::SemaphoreType::eTimeline)
                  .setInitialValue(0);
     renderTimeline_ = vk::raii::Semaphore(*device_, timelineChain.get<vk::SemaphoreCreateInfo>());
 
-    for (std::uint32_t i = 0; i < kMaxFramesInFlight; ++i) {
+    for (uint32_t i = 0; i < kMaxFramesInFlight; ++i) {
         vk::FenceCreateInfo fenceCI{};
         fenceCI.setFlags(vk::FenceCreateFlagBits::eSignaled);
         inFlightFences_.emplace_back(*device_, fenceCI);
@@ -71,7 +72,7 @@ void FrameResources::createSyncObjects(std::uint32_t imageCount) {
     }
 
     presentWait_.reserve(imageCount);
-    for (std::uint32_t i = 0; i < imageCount; ++i) {
+    for (uint32_t i = 0; i < imageCount; ++i) {
         presentWait_.emplace_back(*device_, vk::SemaphoreCreateInfo());
     }
 }

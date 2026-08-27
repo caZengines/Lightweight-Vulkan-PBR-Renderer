@@ -13,7 +13,7 @@ CommandRecorder::CommandRecorder(const rhi::Swapchain& swapchain,
     : swapchain_(swapchain), pipeline_(pipeline), factory_(factory) {}
 
 void CommandRecorder::record(vk::raii::CommandBuffer& cmd,
-                             std::uint32_t imageIndex,
+                             uint32_t imageIndex,
                              const vk::DescriptorSet& frameSet,
                              std::span<const RenderItem> items) {
     cmd.begin({});
@@ -87,8 +87,8 @@ void CommandRecorder::record(vk::raii::CommandBuffer& cmd,
                                    *pipeline_.layout(), 1,
                                    item.material->getDescriptorSet(), nullptr);
             // Push constants: per-material render flags bitmask.
-            const std::uint32_t flags = to_uint32(item.material->getFlags());
-            cmd.pushConstants<std::uint32_t>(*pipeline_.layout(),
+            const uint32_t flags = to_uint32(item.material->getFlags());
+            cmd.pushConstants<uint32_t>(*pipeline_.layout(),
                                              vk::ShaderStageFlagBits::eFragment, 0, flags);
 
             const std::array<vk::Buffer, 2> vertexBuffers{

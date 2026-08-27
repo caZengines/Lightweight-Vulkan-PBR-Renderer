@@ -42,8 +42,8 @@ class ShaderManager;
 class Renderer final {
 public:
     struct FrameContext {
-        std::uint32_t imageIndex = 0;  // swapchain image acquired this frame
-        std::uint32_t frameIndex = 0;  // frame-in-flight slot (UBO / set / cmd)
+        uint32_t imageIndex = 0;  // swapchain image acquired this frame
+        uint32_t frameIndex = 0;  // frame-in-flight slot (UBO / set / cmd)
     };
 
     struct Dependencies {
@@ -75,8 +75,8 @@ public:
 
 private:
     void createPipeline();
-    void fillUniformBuffer(std::uint32_t frame);
-    void writeFrameSet(std::uint32_t frame);
+    void fillUniformBuffer(uint32_t frame);
+    void writeFrameSet(uint32_t frame);
     void recreateAfterResize();
 
     platform::Window&             window_;
@@ -95,7 +95,7 @@ private:
     std::unique_ptr<PipelineCache>   pipelineCache_;
     std::unique_ptr<CommandRecorder> recorder_;
 
-    std::uint32_t frameCursor_ = 0;   // mirrors legacy frameIndex semantics
+    uint32_t frameCursor_ = 0;   // mirrors legacy frameIndex semantics
     bool          cleaned_     = false;
 };
 

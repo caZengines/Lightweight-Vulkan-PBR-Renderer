@@ -109,7 +109,7 @@ void Pipeline::create(const std::vector<vk::DescriptorSetLayout>& setLayouts,
     vk::PushConstantRange pushConstantRange{};
     pushConstantRange.setStageFlags(vk::ShaderStageFlagBits::eFragment)
                      .setOffset(0)
-                     .setSize(sizeof(std::uint32_t));
+                     .setSize(sizeof(uint32_t));
 
     vk::PipelineLayoutCreateInfo layoutInfo{};
     layoutInfo.setSetLayouts(setLayouts).setPushConstantRanges(pushConstantRange);

@@ -26,7 +26,7 @@ struct Config {
 
     // Rendering quality knob fed into render::RenderSettings by the
     // composition root; clamped to device-supported sample counts there.
-    std::uint32_t msaaSamples = 4;
+    uint32_t msaaSamples = 4;
 
     Config() {
         assetRoot         = platform::PlatformUtils::assetRoot();

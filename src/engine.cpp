@@ -15,10 +15,10 @@ namespace {
 
 // Clamp a requested MSAA count to what the device supports for color targets.
 vk::SampleCountFlagBits pickMsaaCount(const vk::raii::PhysicalDevice& physicalDevice,
-                                      std::uint32_t requested) {
+                                      uint32_t requested) {
     const auto supported =
         physicalDevice.getProperties().limits.framebufferColorSampleCounts;
-    for (const std::uint32_t candidate : {64u, 32u, 16u, 8u, 4u, 2u}) {
+    for (const uint32_t candidate : {64u, 32u, 16u, 8u, 4u, 2u}) {
         if (requested >= candidate &&
             (supported & static_cast<vk::SampleCountFlagBits>(candidate))) {
             return static_cast<vk::SampleCountFlagBits>(candidate);

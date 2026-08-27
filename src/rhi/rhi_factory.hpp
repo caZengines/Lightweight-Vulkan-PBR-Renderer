@@ -2,7 +2,6 @@
 
 #include <cstdint>
 #include <span>
-#include <vector>
 
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
@@ -28,14 +27,14 @@ public:
     vk::raii::ImageView createImageView(const VmaImage& image,
                                         vk::Format format,
                                         vk::ImageAspectFlags aspectFlags,
-                                        std::uint32_t mipLevels = 1) const;
+                                        uint32_t mipLevels = 1) const;
 
     // Upload-path copy (staging buffer → TransferDst-optimized image).
     void copyBufferToImage(vk::raii::CommandBuffer& cmd,
                            const VmaBuffer& buffer,
                            const VmaImage& image,
-                           std::uint32_t width,
-                           std::uint32_t height) const;
+                           uint32_t width,
+                           uint32_t height) const;
 
     // Single sync2 image-barrier implementation used by command recording.
     void imageBarrier(vk::raii::CommandBuffer& cmd,
@@ -54,7 +53,7 @@ public:
                                const VmaImage& image,
                                vk::ImageLayout oldLayout,
                                vk::ImageLayout newLayout,
-                               std::uint32_t mipLevels) const;
+                               uint32_t mipLevels) const;
 
     [[nodiscard]] vk::Format findSupportedFormat(
         std::span<const vk::Format> candidates,
