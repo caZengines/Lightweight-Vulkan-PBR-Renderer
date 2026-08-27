@@ -13,7 +13,7 @@
 | Phase 0 基线 | `3cd9eeb` + tag `pre-refactor` | ✅ 完成 | glTF 加载器 WIP、新资源、架构文档、platform 骨架 |
 | Phase 1 平台抽象层 | `b50867b` | ✅ 完成 | `platform::Window/Input/Log`（首个 Service Locator），GLFW 收进 `src/platform/` |
 | Phase 2 资源管理层 | `e2b9385` | ✅ 完成 | 资源句柄化、导入器、上传队列、注册表；Mesh/Texture 不再自建 buffer |
-| Phase 3 渲染层拆分 | — | ⏳ 未开始 | Renderer 只剩帧编排；管线/描述符/录制各归其位 |
+| Phase 3 渲染层拆分 | 本提交 | ✅ 完成 | `render::FrameResources/CommandRecorder/PipelineCache/PipelineSpec/ShaderManager/RenderSettings/FrameUniforms`；RhiFactory 去单例化注入；死代码清除 |
 | Phase 4 场景层纯数据化 | — | ⏳ 未开始 | RenderItem、SceneObject、Transform 激活、剔除预留 |
 | Phase 5 应用层成形 | — | ⏳ 未开始 | `app::App`、GameLoop、CameraController、DemoScene |
 | Phase 6 构建层与工程纪律 | — | ⏳ 未开始 | CMake 拆 5 个静态库、命名空间落地、头文件卫生 |
@@ -30,6 +30,7 @@
 - 同进程两帧像素级一致（`diffRatio = 0`，确定性）
 - 重复 `loadMesh(同一路径)` 只上传一次（`AssetLibrary: mesh cache hit (no re-upload)`）
 - `../` 相对路径从代码中消失（grep 仅注释）；glfw 仅出现在 `src/platform/`
+- Phase 3：Debug + Release 双配置构建通过；带验证层启动渲染循环稳定运行（同基线协议）；resize 路径沿用原时序逻辑（帧间跳过语义保留）
 
 ---
 
@@ -51,7 +52,7 @@ Layer 1  Platform      — 窗口/输入/日志/路径（platform::）  ✅ Phas
 |---|---|---|
 | Layer 1 | `platform/*`、`app/config.hpp` | ✅ 已成型 |
 | Layer 2 | `resource/*` | ✅ 已成型 |
-| Layer 3 | `renderer/*`、`pipeline_layout.*`、`descriptor_manager.*`、`swapchain.*` | Renderer 仍臃肿，Phase 3 拆分 |
+| Layer 3 | `render/*`（renderer、swapchain、frame_resources、command_recorder、pipeline*、shader_manager、descriptor_manager、render_item 等） | ✅ Phase 3 已拆分：Renderer 只剩编排 |
 | Layer 4 | `generic/scene.*`、`generic/renderobject.*`、`generic/transform.*` | 仍带 Vulkan 类型，Phase 4 纯数据化 |
 | Layer 5 | `c_engine.*` + `main/main.cpp` | CEngine 即 App 雏形 |
 
@@ -90,20 +91,24 @@ Layer 1  Platform      — 窗口/输入/日志/路径（platform::）  ✅ Phas
 |---|---|---|
 | `VulkanDevice` | `vulkandevice.hpp/cpp` | Instance / PhysicalDevice / LogicalDevice 创建、扩展/验证层装配、队列索引（graphics/transfer）、MSAA 采样数探测、`renderContext()` |
 | `VmaContext` / `VmaBuffer` / `VmaImage` | `vma_allocator.hpp/cpp` | VMA RAII 封装（移动语义、映射、`mappedData()`），创建失败抛异常 |
-| `ResourceFactory` | `resourcefactory.hpp/cpp` | **单例**：图像视图创建、布局过渡、`copyBufferToImage`、格式查询/查找（Phase 3 去单例化为 `RhiFactory`） |
+| `rhi::RhiFactory` | `rhi/rhi_factory.hpp/cpp` | **非单例**（Phase 3 改造）：图像视图、sync2 图像屏障核心、上传路径的 sync1 过渡包装、`copyBufferToImage`、深度格式探测；由组合根构造并注入 resource/render 各层 |
 | `CommandPool` | `command_manager.hpp/cpp` | 命令池 + 队列句柄，`beginSingleTimeCommands/endSingleTimeCommands`（单次提交 + fence 等待） |
 | `Context` | `context.hpp/cpp` | Debug messenger（验证层回调解耦）+ 窗口 surface |
 
-### Layer 3 · 渲染（`src/renderer/` 等，Phase 3 将拆分）
+### Layer 3 · 渲染（`src/render/`，Phase 3 完成拆分）
 
 | 模块 | 文件 | 职责 |
 |---|---|---|
-| `Renderer` | `renderer/renderer.hpp/cpp` | 帧编排：acquire→UBO 更新→录制→submit（timeline semaphore）→present；resize 重建；MSAA 颜色/深度资源。仍持有管线/描述符/同步对象（Phase 3 拆出） |
-| `Swapchain` | `renderer/swapchain.hpp/cpp` | Swapchain 创建/重建/清理、图像视图、MSAA 颜色+深度资源、extent/格式查询 |
-| `Pipeline` | `pipeline_layout.hpp/cpp` | 读取 SPIR-V → shader module → 图形管线（动态渲染、深度、混合、push constant） |
-| `DescriptorSetLayout` | `descriptor_manager.hpp/cpp` | SPIRV-Reflect 自动反射 shader → descriptor set layout + 池大小估算 |
-| `DescriptorPool` / `PerFrameDescriptorSet` | `descriptor_manager.hpp/cpp` | 描述符池分配；每帧 UBO 描述符集（`MAX_FRAMES_IN_FLIGHT` 份） |
-| `DescriptorSet`（类） | `descriptor_manager.hpp` | **死代码**，Phase 3 删除 |
+| `render::Renderer` | `render/renderer.hpp/cpp` | **仅帧编排**：`beginFrame()`（等 fence + acquire + UBO/Set0 更新）→ `record(ctx, span<RenderItem>)` → `endFrame()`（timeline submit + present）；swapchain 重建编排；持有 Deps 聚合注入 |
+| `render::FrameResources` | `render/frame_resources.hpp/cpp` | per-frame 状态唯一属主：UBO 缓冲、Set0 描述符集、命令缓冲、binary+timeline 同步对象；`kMaxFramesInFlight` 常量迁入 |
+| `render::CommandRecorder` | `render/command_recorder.hpp/cpp` | 录制：布局过渡 → beginRendering → 绑定管线/Set0/逐项 Set1+push flags+实例绘制；输入 `std::span<const RenderItem>` |
+| `render::RenderItem` | `render/render_item.hpp` | 场景↔渲染的扁平 POD 契约（本阶段由 app 桥接层从 DrawBatch 转换；Phase 4 起 Scene 直产） |
+| `render::GraphicsPipelineSpec` / `PipelineCache` | `render/pipeline_spec.hpp`、`pipeline_cache.hpp/cpp` | 管线状态 POD 化 + 按 spec 缓存创建（原硬编码消除） |
+| `render::ShaderManager` | `render/shader_manager.hpp/cpp` | SPIR-V 加载 + 缓存 + shader module 创建（反射输入与建管线共享一次磁盘读） |
+| `render::DescriptorSetLayout/Pool` | `render/descriptor_manager.hpp/cpp` | SPIRV-Reflect 自动布局与池大小估算；死代码 `DescriptorSet` 类、旧 `PerFrameDescriptorSet` 已删（职能并入 FrameResources） |
+| `render::FrameUniforms` | `render/frame_uniforms.hpp` | `UniformBufferObject/Light` 唯一定义处（含 static_assert 布局校验） |
+| `render::RenderSettings` | `render/render_settings.hpp` | MSAA 采样数（Config 注入并按设备上限钳制）与 present mode 偏好，替代硬编码 |
+| `Swapchain` | `render/swapchain.hpp/cpp` | swapchain + MSAA color/depth 资源；注入 `rhi::RhiFactory` 建 view/探深度格式；depthFormat 单一探测定点供管线复用 |
 
 ### Layer 4 · 场景（`src/generic/`，Phase 4 纯数据化）
 
@@ -157,11 +162,12 @@ loadImage(path)  → TextureImporter::load (stb)   → ImageData            → 
 
 ```
 CEngine::run
-  └─ pollEvents → input.poll → updateCamera(dt) → renderer->drawFrame(batches)
-       └─ acquire → updateUniformBuffer(UBO: view/proj/camPos/light) → updateDescriptorSet
-          → recordCommandBuffer: 过渡 → beginRendering → bind pipeline/Set0/Set1+push constants
-            → 逐 batch: bindVertexBuffers(meshGPU.vertexBuffer, instanceBuffer) + bindIndexBuffer → drawIndexed
-          → submit(timeline semaphore) → present → 检查 resize
+  ├─ pollEvents → input.poll → updateCamera(dt)
+  ├─ renderer->beginFrame()            // 空 optional ⇒ 本帧跳过（swapchain 重建中）
+  │    └─ waitFence → acquire(OOD⇒recreate) → fillUBO(camera) → writeSet0 → resetFence/cmdBuffer
+  ├─ fillRenderItems(items, batches)   // 过渡桥：DrawBatch→RenderItem（Phase 4 移除）
+  ├─ renderer->record(*frame, items)   // CommandRecorder：过渡→Rendering→逐 item 绘制
+  └─ renderer->endFrame(*frame)        // timeline+binary submit → present → resize/OOD 处理
 ```
 
 ---
@@ -186,22 +192,18 @@ VK_LAYER_PATH=$VULKAN_SDK/Bin VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation ./m
 
 ## 六、已知遗留与债务
 
-1. `ResourceFactory` 仍是单例（Phase 3 去单例化为 `RhiFactory`，构造顺序由 App 装配控制）
-2. 两处 `findSupportedFormat`、两处布局过渡实现（Phase 3 合并）
-3. `Renderer` 仍持有管线/描述符/同步对象，`recordCommandBuffer` 逻辑冗长（Phase 3 拆 `FrameResources`/`CommandRecorder`/`PipelineSpec`）
-4. 死代码：`instanceText`、`DescriptorSet` 类（Phase 3 删）；`Transform`（Phase 4 激活）
-5. `VulkanDevice::transferQueueIndex/transferQueue` 已无使用者（Phase 2 后 transient pool 改挂 graphics 队列）
-6. `Scene::buildDrawBatches` 不真正合并实例（firstInstance 恒 0）
-7. 1000 岩石用 `std::random_device` 种子 → 跨运行画面不可复现（黄金帧对比协议采用"同进程帧差=0"）
-8. MSAA 硬编码 4x（Phase 3 的 `RenderSettings` 解决）
-9. `generic/` 命名空间未落地；`MAX_FRAMES_IN_FLIGHT` 在 `render_context.hpp`（Phase 3/6 归位）
-10. Material 的 RenderFlags 恒为"双纹理全开"，暂无按需开关
+1. `Transform` 仍为死代码（Phase 4 激活；`instanceText` 与 `DescriptorSet` 包装类已在 Phase 3 删除）
+2. `VulkanDevice::transferQueueIndex/transferQueue` 已无使用者（Phase 2 后 transient pool 改挂 graphics 队列）
+3. `Scene::buildDrawBatches` 不真正合并实例（firstInstance 恒 0）；RenderItem 目前由 app 层桥接转换（Phase 4 由 Scene 直产）
+4. 1000 岩石用 `std::random_device` 种子 → 跨运行画面不可复现（黄金帧对比协议采用"同进程帧差=0"）
+5. `generic/` 命名空间与场景层 Vulkan 类型未纯化（Phase 4）；灯光常量/相机数学仍在 Renderer 内（Phase 5 外移）
+6. Material 的 RenderFlags 恒为"双纹理全开"，暂无按需开关
+7. `VULKAN_HPP_*` 宏仍在各 TU 头部重复定义，待收敛到单一公共头（工程纪律项）
 
 ---
 
 ## 七、下一步
 
-- **Phase 3 · 渲染层拆分**：清理死代码、`FrameResources`/`FrameUniforms`/`CommandRecorder`/`PipelineSpec`/`ShaderManager`/`RenderSettings`，Renderer 只剩编排
-- **Phase 4 · 场景层纯数据化**：`RenderItem` 契约、`collectRenderItems`、`SceneObject`、激活 `Transform`（采用官方组件系统章的 dirty-flag 模式）、相机迁入 scene 命名空间、剔除预留
-- **Phase 5 · 应用层成形**：`app::App`/`GameLoop`/`CameraController`/`DemoScene`/`Config` 扩充
-- **Phase 6 · 工程纪律**：CMake 拆 5 个静态库（依赖方向即链接方向）、命名空间落地、头文件卫生、CI/测试可选
+- **Phase 4 · 场景层纯数据化**：`RenderItem` 生产者移入 `Scene::collectRenderItems`（撤掉 app 桥接）、`SceneObject`、激活 `Transform`（dirty-flag 模式）、相机迁入 scene 命名空间、剔除预留——Recorder 接口已为此备好
+- **Phase 5 · 应用层成形**：`app::App`/`GameLoop`/`CameraController`/`DemoScene`（灯光常量随迁）/Config 扩充
+- **Phase 6 · 工程纪律**：CMake 拆静态库、命名空间全面落地、`VULKAN_HPP_*` 宏收编单一头、头文件卫生、CI/测试可选

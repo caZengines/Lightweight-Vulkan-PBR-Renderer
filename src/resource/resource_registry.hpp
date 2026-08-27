@@ -2,7 +2,7 @@
 #include "resource/image_data.hpp"
 #include "resource/mesh_data.hpp"
 #include "resource/upload_queue.hpp"
-#include "vma_allocator.hpp"
+#include "rhi/vma_allocator.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -11,6 +11,10 @@
 #define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
+
+namespace rhi {
+class RhiFactory;
+}  // namespace rhi
 
 namespace resource {
 
@@ -68,10 +72,10 @@ class MeshGPU {
         friend class ResourceRegistry;
         MeshGPU() = default;
 
-        VmaBuffer vertexBuffer_;
-        VmaBuffer indexBuffer_;
-        uint32_t  vertexCount_ = 0;
-        uint32_t  indexCount_  = 0;
+        rhi::VmaBuffer vertexBuffer_;
+        rhi::VmaBuffer indexBuffer_;
+        uint32_t       vertexCount_ = 0;
+        uint32_t       indexCount_  = 0;
 };
 
 // ---------------------------------------------------------------------------
@@ -92,7 +96,7 @@ class TextureGPU {
         friend class ResourceRegistry;
         TextureGPU() = default;
 
-        VmaImage                 vmaImage_;
+        rhi::VmaImage            vmaImage_;
         vk::raii::ImageView      textureImageView_ = nullptr;
         vk::Format               format_           = vk::Format::eUndefined;
         uint32_t                 mipLevels_        = 1;
@@ -105,7 +109,8 @@ class TextureGPU {
 // ---------------------------------------------------------------------------
 class ResourceRegistry {
     public:
-        ResourceRegistry(VmaAllocator allocator, UploadQueue& uploadQueue);
+        ResourceRegistry(VmaAllocator allocator, UploadQueue& uploadQueue,
+                         const rhi::RhiFactory& rhiFactory);
         ResourceRegistry(const ResourceRegistry&) = delete;
         ResourceRegistry& operator=(const ResourceRegistry&) = delete;
 
@@ -135,6 +140,7 @@ class ResourceRegistry {
 
         VmaAllocator allocator_;
         UploadQueue& uploadQueue_;
+        const rhi::RhiFactory& rhiFactory_;
 
         std::unordered_map<uint32_t, std::unique_ptr<MeshGPU>>    meshes_;
         std::unordered_map<uint32_t, std::unique_ptr<TextureGPU>> textures_;

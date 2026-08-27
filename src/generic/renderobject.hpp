@@ -1,8 +1,8 @@
 #pragma once
-#include "descriptor_manager.hpp"
 #include "generic/buffer.hpp"
 #include "generic/material.hpp"
 #include "generic/vertex.hpp"
+#include "render/descriptor_manager.hpp"
 #include "resource/resource_registry.hpp"
 #include <memory>
 
@@ -22,7 +22,7 @@ class RenderObject {
                           resource::UploadQueue& queue);
         void initMaterialDescriptor(RenderContext& rct,
                                     const vk::DescriptorSetLayout& layout,
-                                    const DescriptorPool& pool);
+                                    const render::DescriptorPool& pool);
         
         const resource::MeshGPU& getMeshGPU() const { return *meshGPU_; }
         resource::AssetHandle getMeshHandle() const { return meshHandle_; }

@@ -1,6 +1,7 @@
 #pragma once
 #include "platform/utils.hpp"
 
+#include <cstdint>
 #include <string>
 
 namespace app {
@@ -22,6 +23,10 @@ struct Config {
     std::string marsTexturePath   = "textures/mars.png";
     std::string normalTexturePath = "textures/container_normal_OpenGL.png";
     std::string shaderPath        = "shaders/slang.spv";
+
+    // Rendering quality knob fed into render::RenderSettings by the
+    // composition root; clamped to device-supported sample counts there.
+    std::uint32_t msaaSamples = 4;
 
     Config() {
         assetRoot         = platform::PlatformUtils::assetRoot();

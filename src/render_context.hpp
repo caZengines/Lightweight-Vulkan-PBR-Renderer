@@ -4,7 +4,9 @@
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
 
-inline constexpr int MAX_FRAMES_IN_FLIGHT = 2;
+// Frames-in-flight constant moved to render/frame_resources.hpp (Phase 3);
+// note render_context.hpp keeps a COPY-by-value of msaaSamples — see
+// Renderer::Dependencies for how settings now flow.
 
 struct RenderContext {
     vk::raii::PhysicalDevice& physicalDevice;

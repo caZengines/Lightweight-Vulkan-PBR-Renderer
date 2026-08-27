@@ -1,17 +1,52 @@
 #include "c_engine.hpp"
 #include "context.hpp"
-#include "descriptor_manager.hpp"
 #include "generic/material.hpp"
 #include "generic/renderobject.hpp"
 #include "platform/log.hpp"
+#include "render/render_item.hpp"
 #include "render_context.hpp"
 #include "resource/resource_registry.hpp"
-#include "resourcefactory.hpp"
-#include "vma_allocator.hpp"
+
 #include <chrono>
 #include <cstddef>
-#include <random>
 #include <memory>
+#include <random>
+
+namespace {
+
+// Clamp a requested MSAA count to what the device supports for color targets.
+vk::SampleCountFlagBits pickMsaaCount(const vk::raii::PhysicalDevice& physicalDevice,
+                                      std::uint32_t requested) {
+    const auto supported =
+        physicalDevice.getProperties().limits.framebufferColorSampleCounts;
+    for (const std::uint32_t candidate : {64u, 32u, 16u, 8u, 4u, 2u}) {
+        if (requested >= candidate &&
+            (supported & static_cast<vk::SampleCountFlagBits>(candidate))) {
+            return static_cast<vk::SampleCountFlagBits>(candidate);
+        }
+    }
+    return vk::SampleCountFlagBits::e1;
+}
+
+// Transitional bridge (Phase 3): batches come from generic/Scene today; in
+// Phase 4 Scene::collectRenderItems produces RenderItems directly and this
+// disappears. Cheap POD copies of at most object-count size per frame.
+void fillRenderItems(std::vector<render::RenderItem>& out,
+                     const std::vector<DrawBatch>& batches) {
+    out.clear();
+    out.reserve(batches.size());
+    for (const auto& batch : batches) {
+        out.push_back(render::RenderItem{
+            .mesh           = batch.meshGPU,
+            .material       = batch.material.get(),
+            .instanceBuffer = batch.instanceBuffer,
+            .instanceCount  = batch.instanceCount,
+            .firstInstance  = batch.firstInstance,
+        });
+    }
+}
+
+}  // namespace
 
 CEngine::CEngine(){
     platform::LogLocator::initialize();   // default console logging provider
@@ -46,13 +81,19 @@ void CEngine::initVulkan() {
     deviceInfo.enableValidationLayers_= enableValidationLayers;
     deviceInfo.instanceExtensions_ = window->requiredInstanceExtensions();
     vulkanDevice_.init(deviceInfo);
-    vmaContext_ = std::make_unique<VmaContext>(*vulkanDevice_.physicalDevice, *vulkanDevice_.device, *vulkanDevice_.instance);
-    ResourceFactory::init(vulkanDevice_.physicalDevice, vulkanDevice_.device);
+
+    vmaContext_ = std::make_unique<rhi::VmaContext>(*vulkanDevice_.physicalDevice, *vulkanDevice_.device, *vulkanDevice_.instance);
+    // Phase 3: factories/managers are constructed once here and injected —
+    // no reachable globals left in the rendering path.
+    rhiFactory_   = std::make_unique<rhi::RhiFactory>(vulkanDevice_.physicalDevice, vulkanDevice_.device);
+    shaderManager_ = std::make_unique<render::ShaderManager>();
+
     Context::Config cfg;
     cfg.enableValidationLayers_ = enableValidationLayers;
     cfg.validationLayers_       = validationLayers;
     cfg.msaaSamples_            = vulkanDevice_.msaaSamples;
     context = std::make_unique<Context>(cfg, vulkanDevice_.physicalDevice, vulkanDevice_.device, vulkanDevice_.instance, *window);
+
     createCommandPools();
     initAssetLibrary();
     createSamplers();
@@ -64,7 +105,9 @@ void CEngine::initVulkan() {
 }
 
 void CEngine::run() {
-    const auto& batches = scene_.getDrawBatches();
+    const auto& batches = scene_.getDrawBatches();   // cached; kept alive below
+    std::vector<render::RenderItem> items;
+
     auto lastTime = std::chrono::high_resolution_clock::now();
     while(!window->shouldClose()) {
         window->pollEvents();
@@ -75,7 +118,12 @@ void CEngine::run() {
         lastTime = now;
 
         updateCamera(deltaTime);
-        renderer->drawFrame(batches);
+
+        if (auto frame = renderer->beginFrame()) {
+            fillRenderItems(items, batches);
+            renderer->record(*frame, items);
+            renderer->endFrame(*frame);
+        }
     }
     vulkanDevice_.device.waitIdle();
 }
@@ -105,9 +153,9 @@ void CEngine::initAssetLibrary() {
     // single-time submissions; ResourceRegistry owns the GPU assets and the
     // built-in default textures; AssetLibrary caches by path with refcounting.
     // (Kept inside the App prototype for now; Phase 5 moves this to app::App.)
-    uploadQueue_ = std::make_unique<resource::UploadQueue>(*transientCommandPool);
-    resourceRegistry_ = std::make_unique<resource::ResourceRegistry>(vmaContext_->getAllocator(), *uploadQueue_);
-    assetLibrary_ = std::make_unique<resource::AssetLibrary>(*resourceRegistry_);
+    uploadQueue_   = std::make_unique<resource::UploadQueue>(*transientCommandPool, *rhiFactory_);
+    resourceRegistry_ = std::make_unique<resource::ResourceRegistry>(vmaContext_->getAllocator(), *uploadQueue_, *rhiFactory_);
+    assetLibrary_  = std::make_unique<resource::AssetLibrary>(*resourceRegistry_);
 }
 
 void CEngine::createMaterials() {
@@ -126,30 +174,43 @@ void CEngine::createMaterials() {
 }
 
 void CEngine::createDescriptorSetLayout() {
-    auto spvCode = Pipeline::readFile(config_.shaderPath);
+    const auto& spvCode = shaderManager_->spirv(config_.shaderPath);
     RenderContext RCT = vulkanDevice_.renderContext();
-    descriptorSetLayout = std::make_unique<DescriptorSetLayout>(RCT, spvCode);
+    descriptorSetLayout = std::make_unique<render::DescriptorSetLayout>(RCT, spvCode);
 }
 
 void CEngine::createDescriptorSetPool() {
     RenderContext RCT = vulkanDevice_.renderContext();
-    descriptorPool = std::make_unique<DescriptorPool>(RCT,
-                                                      descriptorSetLayout->getPoolMaxSets(), 
+    descriptorPool = std::make_unique<render::DescriptorPool>(RCT,
+                                                      descriptorSetLayout->getPoolMaxSets(),
                                                       descriptorSetLayout->getPoolSize()
     );
 }
 
- void CEngine::initRenderer(){
-     RenderContext RCT = vulkanDevice_.renderContext();
-     renderer = std::make_unique<Renderer>(RCT,
-         vmaContext_->getAllocator(),
-         descriptorSetLayout->getLayoutHandles(),
-         *descriptorPool->getDescriptorPool(),
-         camera,
-         *graphicsCommandPool,
-         context->surface,
-         *window);
- }
+void CEngine::initRenderer(){
+    // MSAA: honor Config, clamped to device limits; keep the device-derived
+    // contexts in agreement with what the pipeline/attachments will use.
+    const vk::SampleCountFlagBits chosenMsaa =
+        pickMsaaCount(vulkanDevice_.physicalDevice, config_.msaaSamples);
+    vulkanDevice_.msaaSamples = chosenMsaa;
+    const render::RenderSettings settings{chosenMsaa,
+                                          /*preferredPresentMode*/ vk::PresentModeKHR::eMailbox};
+
+    RenderContext rct = vulkanDevice_.renderContext();  // keep alive for ctor
+    render::Renderer::Dependencies deps{
+        .rct          = rct,
+        .alloc        = vmaContext_->getAllocator(),
+        .setLayouts   = descriptorSetLayout->getLayoutHandles(),
+        .set0Pool     = *descriptorPool->getDescriptorPool(),
+        .graphicsPool = *graphicsCommandPool,
+        .camera       = camera,
+        .surface      = context->surface,
+        .window       = *window,
+        .spirvPath    = config_.shaderPath,
+        .factory      = *rhiFactory_,
+    };
+    renderer = std::make_unique<render::Renderer>(deps, settings);
+}
 
 void CEngine::createCommandPools() {
     graphicsCommandPool  = std::make_unique<CommandPool>(vulkanDevice_.device, vulkanDevice_.graphicsQueueIndex, std::move(vulkanDevice_.graphicsQueue), vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
@@ -225,10 +286,10 @@ void CEngine::initScene() {
         glm::mat4 model_ = glm::mat4(1.0f);
 
         float angle = (360.0f / amount) * i + phaseDist(gen);
-        float r = radius + radialDist(gen);      
+        float r = radius + radialDist(gen);
         float x = sin(glm::radians(angle)) * r;
         float z = cos(glm::radians(angle)) * r;
-        float y = heightDist(gen);   
+        float y = heightDist(gen);
         model_ = glm::translate(model_, glm::vec3(x, y, z));
 
         glm::vec3 axis = glm::normalize(glm::vec3(
