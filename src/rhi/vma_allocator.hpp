@@ -2,6 +2,8 @@
 #include "extern/vk_mem_alloc.h"
 #include "vulkan/vulkan.hpp"
 
+namespace rhi {
+
 class VmaContext {
     public:
         VmaContext(vk::PhysicalDevice pd, vk::Device device, vk::Instance instance);
@@ -91,3 +93,5 @@ class VmaImage {
 
         void destroy();
 };
+
+} //namespace rhi

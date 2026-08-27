@@ -1,13 +1,13 @@
 #include "resource/upload_queue.hpp"
 
-#include "resourcefactory.hpp"
+#include "rhi/rhi_factory.hpp"
 
 #include <cstring>
 #include <stdexcept>
 
 namespace resource {
 
-VmaBuffer UploadQueue::uploadBuffer(VmaAllocator alloc, const void* data,
+rhi::VmaBuffer UploadQueue::uploadBuffer(VmaAllocator alloc, const void* data,
                                     vk::DeviceSize size, vk::BufferUsageFlags usage) {
     // --- Host-visible staging buffer ---
     vk::BufferCreateInfo stagingInfo{};
@@ -15,7 +15,7 @@ VmaBuffer UploadQueue::uploadBuffer(VmaAllocator alloc, const void* data,
     VmaAllocationCreateInfo stagingCI{};
     stagingCI.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
     stagingCI.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-    VmaBuffer stagingBuffer(alloc, static_cast<const VkBufferCreateInfo&>(stagingInfo), stagingCI);
+    rhi::VmaBuffer stagingBuffer(alloc, static_cast<const VkBufferCreateInfo&>(stagingInfo), stagingCI);
 
     void* dataStaging = stagingBuffer.map();
     std::memcpy(dataStaging, data, size);
@@ -26,7 +26,7 @@ VmaBuffer UploadQueue::uploadBuffer(VmaAllocator alloc, const void* data,
     bufferInfo.setSize(size).setUsage(usage).setSharingMode(vk::SharingMode::eExclusive);
     VmaAllocationCreateInfo allocCI{};
     allocCI.usage = VMA_MEMORY_USAGE_AUTO;
-    VmaBuffer deviceBuffer(alloc, static_cast<const VkBufferCreateInfo&>(bufferInfo), allocCI);
+    rhi::VmaBuffer deviceBuffer(alloc, static_cast<const VkBufferCreateInfo&>(bufferInfo), allocCI);
 
     vk::raii::CommandBuffer commandBuffer = pool_.beginSingleTimeCommands();
     commandBuffer.copyBuffer(stagingBuffer.getHandle(), deviceBuffer.getHandle(),
@@ -36,17 +36,15 @@ VmaBuffer UploadQueue::uploadBuffer(VmaAllocator alloc, const void* data,
 }
 
 void UploadQueue::uploadImage(VmaAllocator alloc, const void* data, vk::DeviceSize size,
-                              VmaImage& image, uint32_t width, uint32_t height,
+                              rhi::VmaImage& image, uint32_t width, uint32_t height,
                               uint32_t mipLevels, vk::Format format, vk::Filter filter) {
-    auto& factory = ResourceFactory::get();
-
     // --- Host-visible staging buffer ---
     vk::BufferCreateInfo stagingInfo{};
     stagingInfo.setSize(size).setUsage(vk::BufferUsageFlagBits::eTransferSrc);
     VmaAllocationCreateInfo stagingCI{};
     stagingCI.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
     stagingCI.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-    VmaBuffer stagingBuffer(alloc, static_cast<const VkBufferCreateInfo&>(stagingInfo), stagingCI);
+    rhi::VmaBuffer stagingBuffer(alloc, static_cast<const VkBufferCreateInfo&>(stagingInfo), stagingCI);
 
     void* dataStaging = stagingBuffer.map();
     std::memcpy(dataStaging, data, size);
@@ -54,10 +52,10 @@ void UploadQueue::uploadImage(VmaAllocator alloc, const void* data, vk::DeviceSi
 
     // --- Undefined → TransferDst, copy base mip ---
     vk::raii::CommandBuffer commandBuffer = pool_.beginSingleTimeCommands();
-    factory.transitionImageLayout(commandBuffer, image,
+    factory_.transitionImageLayout(commandBuffer, image,
                                   vk::ImageLayout::eUndefined,
                                   vk::ImageLayout::eTransferDstOptimal, mipLevels);
-    factory.copyBufferToImage(commandBuffer, stagingBuffer, image, width, height);
+    factory_.copyBufferToImage(commandBuffer, stagingBuffer, image, width, height);
     pool_.endSingleTimeCommands(std::move(commandBuffer));
 
     // --- Mip chain (transitions to ShaderReadOnly along the way), or a plain
@@ -66,18 +64,17 @@ void UploadQueue::uploadImage(VmaAllocator alloc, const void* data, vk::DeviceSi
         generateMipmaps(image, format, filter, width, height, mipLevels);
     } else {
         vk::raii::CommandBuffer finalTransition = pool_.beginSingleTimeCommands();
-        factory.transitionImageLayout(finalTransition, image,
+        factory_.transitionImageLayout(finalTransition, image,
                                       vk::ImageLayout::eTransferDstOptimal,
                                       vk::ImageLayout::eShaderReadOnlyOptimal, mipLevels);
         pool_.endSingleTimeCommands(std::move(finalTransition));
     }
 }
 
-void UploadQueue::generateMipmaps(VmaImage& image, vk::Format imageFormat, vk::Filter filter_,
+void UploadQueue::generateMipmaps(rhi::VmaImage& image, vk::Format imageFormat, vk::Filter filter_,
                                   uint32_t texWidth_, uint32_t texHeight_,
                                   uint32_t mipLevels_) {
-    auto& factory = ResourceFactory::get();
-    vk::FormatProperties formatProperties = factory.getFormatProperties(imageFormat);
+    const vk::FormatProperties formatProperties = factory_.formatProperties(imageFormat);
     if (!(formatProperties.optimalTilingFeatures & vk::FormatFeatureFlagBits::eSampledImageFilterLinear)) {
         throw std::runtime_error("texture image format does not support linear blitting!");
     }

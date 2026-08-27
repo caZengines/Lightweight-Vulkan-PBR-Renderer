@@ -6,11 +6,14 @@
 #include "generic/scene.hpp"
 #include "platform/input.hpp"
 #include "platform/window.hpp"
-#include "renderer/renderer.hpp"
+#include "render/descriptor_manager.hpp"
+#include "render/renderer.hpp"
+#include "render/shader_manager.hpp"
 #include "resource/asset_library.hpp"
 #include "resource/resource_registry.hpp"
 #include "resource/upload_queue.hpp"
-#include "vma_allocator.hpp"
+#include "rhi/rhi_factory.hpp"
+#include "rhi/vma_allocator.hpp"
 #include "vulkandevice.hpp"
 #include <memory>
 #include <vector>
@@ -44,8 +47,12 @@ class CEngine final {
         platform::Input                              input{};
         Camera                                       camera{};
         VulkanDevice                                 vulkanDevice_{};
-        std::unique_ptr<VmaContext>                  vmaContext_        = nullptr;
+        std::unique_ptr<rhi::VmaContext>                  vmaContext_        = nullptr;
         std::unique_ptr<Context>                     context            = nullptr;
+
+        // Phase 3: explicit (non-singleton) RHI helper + shared shader cache.
+        std::unique_ptr<rhi::RhiFactory>             rhiFactory_        = nullptr;
+        std::unique_ptr<render::ShaderManager>       shaderManager_     = nullptr;
 
         std::unique_ptr<CommandPool>                 graphicsCommandPool  = nullptr;
         std::unique_ptr<CommandPool>                 transientCommandPool = nullptr;
@@ -57,11 +64,11 @@ class CEngine final {
         std::unique_ptr<Sampler>                     albedoSampler        = nullptr;
         std::unique_ptr<Sampler>                     normalSampler        = nullptr;
 
-        std::unique_ptr<DescriptorSetLayout>         descriptorSetLayout  = nullptr;
+        std::unique_ptr<render::DescriptorSetLayout> descriptorSetLayout  = nullptr;
         // Must be declared before any member that holds vk::raii::DescriptorSet
-        // (Materials, PerFrameDescriptorSet via Renderer) so the pool outlives
-        // its allocated sets.
-        std::unique_ptr<DescriptorPool>              descriptorPool       = nullptr;
+        // (Materials, per-frame sets inside Renderer) so the pool outlives its
+        // allocated sets.
+        std::unique_ptr<render::DescriptorPool>      descriptorPool       = nullptr;
 
         std::shared_ptr<Material>                    defaultMaterial      = nullptr;
         std::shared_ptr<Material>                    MarsMaterial         = nullptr;
@@ -69,7 +76,7 @@ class CEngine final {
 
         Scene                                        scene_{};
 
-        std::unique_ptr<Renderer>                    renderer             = nullptr;
+        std::unique_ptr<render::Renderer>            renderer             = nullptr;
 
         void initWindow();
         void initVulkan();

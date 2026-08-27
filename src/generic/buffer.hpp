@@ -1,6 +1,6 @@
 #pragma once
 #include "resource/upload_queue.hpp"
-#include "vma_allocator.hpp"
+#include "rhi/vma_allocator.hpp"
 
 #include <vector>
 
@@ -33,5 +33,5 @@ template<typename T> class Buffer{
         const VkBuffer getBuffer() const { return vmaBuffer_.getHandle(); }
 
     private:
-        VmaBuffer vmaBuffer_;
+        rhi::VmaBuffer vmaBuffer_;
 };

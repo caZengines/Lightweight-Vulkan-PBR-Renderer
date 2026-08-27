@@ -1,5 +1,5 @@
 #include "generic/renderobject.hpp"
-#include "vma_allocator.hpp"
+#include "rhi/vma_allocator.hpp"
 
 #include <stdexcept>
 
@@ -24,7 +24,7 @@ void RenderObject::setInstances(VmaAllocator alloc, const std::vector<InstanceDa
     instanceBuffer_ = std::make_unique<Buffer<InstanceData>>(alloc, instanceDatas_, instanceInfo, queue);
 }
 
-void RenderObject::initMaterialDescriptor(RenderContext& rct, const vk::DescriptorSetLayout& layout, const DescriptorPool& pool) {
+void RenderObject::initMaterialDescriptor(RenderContext& rct, const vk::DescriptorSetLayout& layout, const render::DescriptorPool& pool) {
     vk::DescriptorSetAllocateInfo allocInfo;
     allocInfo.setDescriptorPool(pool.getDescriptorPool())
              .setDescriptorSetCount(1)

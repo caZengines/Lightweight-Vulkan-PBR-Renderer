@@ -1,5 +1,7 @@
 #define VMA_IMPLEMENTATION
-#include "vma_allocator.hpp"
+#include "rhi/vma_allocator.hpp"
+
+namespace rhi {
 
 VmaContext::VmaContext(vk::PhysicalDevice pd, vk::Device device, vk::Instance instance) {
     VmaAllocatorCreateInfo allocInfo{};
@@ -62,4 +64,6 @@ void VmaImage::destroy() {
         image_ = VK_NULL_HANDLE;
         allocation_ = VK_NULL_HANDLE;
     }
+}
+
 }

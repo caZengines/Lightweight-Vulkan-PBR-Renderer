@@ -1,7 +1,7 @@
 #include "resource/resource_registry.hpp"
 
 #include "resource/asset_library.hpp"
-#include "resourcefactory.hpp"
+#include "rhi/rhi_factory.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -49,8 +49,9 @@ AssetHandle::~AssetHandle() {
 // ResourceRegistry
 // ===========================================================================
 
-ResourceRegistry::ResourceRegistry(VmaAllocator allocator, UploadQueue& uploadQueue)
-    : allocator_(allocator), uploadQueue_(uploadQueue) {}
+ResourceRegistry::ResourceRegistry(VmaAllocator allocator, UploadQueue& uploadQueue,
+                                   const rhi::RhiFactory& rhiFactory)
+    : allocator_(allocator), uploadQueue_(uploadQueue), rhiFactory_(rhiFactory) {}
 
 uint32_t ResourceRegistry::createMeshGPU(const MeshData& data) {
     if (data.empty()) {
@@ -86,7 +87,6 @@ uint32_t ResourceRegistry::createTextureGPU(const ImageData& image,
 std::unique_ptr<TextureGPU> ResourceRegistry::buildTextureGPU(const ImageData& image,
                                                               vk::Format format,
                                                               vk::Filter filter) const {
-    auto& factory = ResourceFactory::get();
     auto  gpu     = std::unique_ptr<TextureGPU>(new TextureGPU());
     gpu->format_ = format;
 
@@ -109,13 +109,13 @@ std::unique_ptr<TextureGPU> ResourceRegistry::buildTextureGPU(const ImageData& i
            .setImageType(vk::ImageType::e2D);
     VmaAllocationCreateInfo allocCI{};
     allocCI.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-    gpu->vmaImage_ = VmaImage(allocator_, static_cast<const VkImageCreateInfo&>(imageCI), allocCI);
+    gpu->vmaImage_ = rhi::VmaImage(allocator_, static_cast<const VkImageCreateInfo&>(imageCI), allocCI);
 
     uploadQueue_.uploadImage(allocator_, image.pixels().data(),
                              static_cast<vk::DeviceSize>(image.pixels().size()),
                              gpu->vmaImage_, width, height, gpu->mipLevels_, format, filter);
 
-    gpu->textureImageView_ = factory.createImageView(gpu->vmaImage_, format,
+    gpu->textureImageView_ = rhiFactory_.createImageView(gpu->vmaImage_, format,
                                                      vk::ImageAspectFlagBits::eColor,
                                                      gpu->mipLevels_);
     return gpu;
