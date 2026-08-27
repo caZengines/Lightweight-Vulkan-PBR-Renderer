@@ -1,4 +1,5 @@
 #include "resource/texture_importer.hpp"
+#include "resource/image_data.hpp"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "extern/stb_image.h"

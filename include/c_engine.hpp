@@ -2,6 +2,7 @@
 #include "app/config.hpp"
 #include "camera.hpp"
 #include "context.hpp"
+#include "generic/material.hpp"
 #include "generic/scene.hpp"
 #include "platform/input.hpp"
 #include "platform/window.hpp"
@@ -62,6 +63,7 @@ class CEngine final {
         // its allocated sets.
         std::unique_ptr<DescriptorPool>              descriptorPool       = nullptr;
 
+        std::shared_ptr<Material>                    defaultMaterial      = nullptr;
         std::shared_ptr<Material>                    MarsMaterial         = nullptr;
         std::shared_ptr<Material>                    rockMaterial         = nullptr;
 

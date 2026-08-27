@@ -76,7 +76,7 @@ void AssetLibrary::release(uint32_t id) {
         // Double release / release after an explicit unload — ignore.
         return;
     }
-    if (--it->second == 0) {
+    if (--it->second <= 0) {
         refCounts_.erase(it);
         registry_.unregister(id);
         auto p = pathById_.find(id);

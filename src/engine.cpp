@@ -1,8 +1,11 @@
 #include "c_engine.hpp"
 #include "context.hpp"
 #include "descriptor_manager.hpp"
+#include "generic/material.hpp"
+#include "generic/renderobject.hpp"
 #include "platform/log.hpp"
 #include "render_context.hpp"
+#include "resource/resource_registry.hpp"
 #include "resourcefactory.hpp"
 #include "vma_allocator.hpp"
 #include <chrono>
@@ -115,6 +118,7 @@ void CEngine::createMaterials() {
 
     // Empty (null) normal handle → Material falls back to the registry's
     // built-in flat-normal texture (Null Object semantics).
+    defaultMaterial = std::make_shared<Material>(resource::AssetHandle{}, resource::AssetHandle{}, *albedoSampler, *normalSampler, *resourceRegistry_);
     MarsMaterial = std::make_shared<Material>(marsAlbedo, resource::AssetHandle{},
                                               *albedoSampler, *normalSampler, *resourceRegistry_);
     rockMaterial = std::make_shared<Material>(rockAlbedo, resource::AssetHandle{},

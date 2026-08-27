@@ -1,9 +1,9 @@
 #include "resource/mesh_importer.hpp"
+#include "resource/mesh_data.hpp"
 
 #include "extern/tiny_gltf_v3.h"
 #include "platform/log.hpp"
 
-#include <algorithm>
 #include <cstdint>
 #include <cstring>
 #include <limits>
@@ -11,6 +11,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <filesystem>
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "extern/tiny_obj_loader.h"
@@ -626,19 +627,6 @@ void loadPrimitive(const tg3_model& model,
 
 namespace resource {
 
-bool MeshImporter::hasExtension(const std::string& path, const char* ext) {
-    if (path.size() < std::strlen(ext)) {
-        return false;
-    }
-    const size_t offset = path.size() - std::strlen(ext);
-    for (size_t i = 0; ext[i] != '\0'; ++i) {
-        if (std::tolower(static_cast<unsigned char>(path[offset + i])) != ext[i]) {
-            return false;
-        }
-    }
-    return true;
-}
-
 MeshData MeshImporter::loadObj(const std::string& modelPath) {
     tinyobj::attrib_t                attrib;
     std::vector<tinyobj::shape_t>    shapes;
@@ -741,7 +729,8 @@ MeshData MeshImporter::loadGlTF(const std::string& modelPath) {
 }
 
 MeshData MeshImporter::load(const std::string& path) {
-    if (hasExtension(path, ".gltf") || hasExtension(path, ".glb")) {
+    std::filesystem::path p(path);
+    if (p.extension() == ".gltf" || p.extension() == ".glb") {
         return loadGlTF(path);
     }
     return loadObj(path);

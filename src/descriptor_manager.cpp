@@ -13,7 +13,7 @@ DescriptorSetLayout::DescriptorSetLayout(RenderContext& rct, const std::vector<u
 
 void DescriptorSetLayout::autoCreateDSL( const std::vector<uint8_t>& spvCode_) {
     // Generate reflection data for a shader
-    spv_reflect:: ShaderModule module(spvCode_);
+    spv_reflect::ShaderModule module(spvCode_);
 
     //Enumerate all of Descriptorsets
     uint32_t sc = 0;

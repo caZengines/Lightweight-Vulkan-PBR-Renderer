@@ -1,9 +1,10 @@
 #pragma once
-#include "resource/image_data.hpp"
 
 #include <string>
 
 namespace resource {
+
+class ImageData;
 
 // stb_image-based CPU importer. Output is pure ImageData (RGBA8) — the GPU
 // image/view is created later by ResourceRegistry, so the importer never

@@ -1,9 +1,10 @@
 #pragma once
-#include "resource/mesh_data.hpp"
 
 #include <string>
 
 namespace resource {
+
+class MeshData;
 
 // Format-specific CPU importers. Output is pure MeshData (post-processed) —
 // GPU upload happens later in ResourceRegistry, so importers never touch
