@@ -88,7 +88,7 @@ target_link_libraries(
 target_include_directories(
     main
     PRIVATE
-    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
     ${Vulkan_INCLUDE_DIRS}
     ${GLFW3_INCLUDE_DIRS}
     ${GLM_INCLUDE_DIRS}

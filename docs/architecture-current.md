@@ -20,6 +20,8 @@
 
 **当前工作树**：干净。**构建环境**：VS Code tasks.json 使用 **Ninja** 生成器（`cmake-build-debug` / `cmake-build-release`），Debug + Release 双配置通过。
 
+> 2026-08-27：废除 `include/` 树，全部头文件经 `git mv` 并入 `src/` 与实现同目录（纯移动、零代码改动），编译期 include 根由 `-Iinclude` 改为 `-Isrc`；模块重命名（如 `generic/`→场景层命名）仍按计划留在后续 Phase。
+
 ### 已完成的验证（Phase 1/2 证据）
 
 - Debug + Release（Ninja）编译通过；运行 **0 validation 错误**
@@ -57,7 +59,7 @@ Layer 1  Platform      — 窗口/输入/日志/路径（platform::）  ✅ Phas
 
 ## 三、模块功能文档
 
-### Layer 1 · 平台抽象（`include/platform/`）
+### Layer 1 · 平台抽象（`src/platform/`）
 
 | 模块 | 文件 | 职责 |
 |---|---|---|
@@ -67,7 +69,7 @@ Layer 1  Platform      — 窗口/输入/日志/路径（platform::）  ✅ Phas
 | `platform::PlatformUtils` | `utils.hpp/cpp` | `assetRoot()`（cwd=bin 时取父目录作工程根）+ `assetPath(rel)`（相对路径解析为绝对路径），消灭 `../` 硬编码 |
 | `app::Config` | `app/config.hpp` | 组合根雏形：所有模型/纹理/shader 路径在构造时解析为绝对路径 |
 
-### Layer 2 · 资源管理（`include/resource/`）
+### Layer 2 · 资源管理（`src/resource/`）
 
 | 模块 | 文件 | 职责 |
 |---|---|---|
@@ -92,7 +94,7 @@ Layer 1  Platform      — 窗口/输入/日志/路径（platform::）  ✅ Phas
 | `CommandPool` | `command_manager.hpp/cpp` | 命令池 + 队列句柄，`beginSingleTimeCommands/endSingleTimeCommands`（单次提交 + fence 等待） |
 | `Context` | `context.hpp/cpp` | Debug messenger（验证层回调解耦）+ 窗口 surface |
 
-### Layer 3 · 渲染（`include/renderer/` 等，Phase 3 将拆分）
+### Layer 3 · 渲染（`src/renderer/` 等，Phase 3 将拆分）
 
 | 模块 | 文件 | 职责 |
 |---|---|---|
@@ -103,7 +105,7 @@ Layer 1  Platform      — 窗口/输入/日志/路径（platform::）  ✅ Phas
 | `DescriptorPool` / `PerFrameDescriptorSet` | `descriptor_manager.hpp/cpp` | 描述符池分配；每帧 UBO 描述符集（`MAX_FRAMES_IN_FLIGHT` 份） |
 | `DescriptorSet`（类） | `descriptor_manager.hpp` | **死代码**，Phase 3 删除 |
 
-### Layer 4 · 场景（`include/generic/`，Phase 4 纯数据化）
+### Layer 4 · 场景（`src/generic/`，Phase 4 纯数据化）
 
 | 模块 | 文件 | 职责 |
 |---|---|---|
@@ -124,7 +126,7 @@ Layer 1  Platform      — 窗口/输入/日志/路径（platform::）  ✅ Phas
 | `CEngine`（App 雏形） | `c_engine.hpp` + `engine.cpp` | 组合根：initVulkan 十步装配（device→VMA→factory→context→pool→**AssetLibrary**→sampler→material→DSL→pool→scene→renderer）、`run()` 主循环、场景内容（火星 + 1000 岩石，`std::random_device` 随机分布）、成员析构顺序纪律（池先于 set、库先于句柄） |
 | `main` | `main/main.cpp` | 入口：构造 CEngine → run，异常捕获 |
 
-### 外部依赖（`include/extern/` + `src/extern/`）
+### 外部依赖（`src/extern/`，头文件与实现单树共存）
 
 | 库 | 用途 |
 |---|---|
