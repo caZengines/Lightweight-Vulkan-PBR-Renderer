@@ -145,11 +145,11 @@ void Renderer::drawFrame(const std::vector<DrawBatch>& batches) {
     }();
     graphicsCommandPool.queue().submit(submitInfo, *inFlightFences[frameIndex]);
 
-    if(frameCount % 600 == 0){
-        glm::vec3 pos = camera_.position();
-        platform::LogLocator::get().write(platform::LogLevel::Info,
-            "camera position: (" + std::to_string(pos.x) + ", " + std::to_string(pos.y) + ", " + std::to_string(pos.z) + ")");
-    }
+    // if(frameCount % 600 == 0){
+    //     glm::vec3 pos = camera_.position();
+    //     platform::LogLocator::get().write(platform::LogLevel::Info,
+    //         "camera position: (" + std::to_string(pos.x) + ", " + std::to_string(pos.y) + ", " + std::to_string(pos.z) + ")");
+    // }
     const vk::PresentInfoKHR presentInfoKHR = [this, &imageIndex]() {
         vk::PresentInfoKHR info;
         info.setWaitSemaphores(*presentWaitSemaphores[imageIndex])

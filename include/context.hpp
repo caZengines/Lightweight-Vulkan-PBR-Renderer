@@ -1,15 +1,10 @@
 #pragma once
-#include <string>
 #include <vector>
 
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
-#include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_raii.hpp>
 
 #include "platform/window.hpp"
-#include "render_context.hpp"
-
-// Asset paths moved to app::Config (Phase 2) — no "../" relative paths here.
 
 class Context {
     public:
