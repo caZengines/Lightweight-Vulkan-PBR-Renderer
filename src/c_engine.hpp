@@ -1,8 +1,6 @@
 #pragma once
 #include "app/config.hpp"
-#include "camera.hpp"
 #include "generic/material.hpp"
-#include "generic/scene.hpp"
 #include "platform/input.hpp"
 #include "platform/window.hpp"
 #include "render/descriptor_manager.hpp"
@@ -16,6 +14,8 @@
 #include "rhi/surface.hpp"
 #include "rhi/vma_allocator.hpp"
 #include "rhi/vulkan_device.hpp"
+#include "scene/camera.hpp"
+#include "scene/scene.hpp"
 #include <memory>
 #include <vector>
 
@@ -46,7 +46,7 @@ class CEngine final {
 
         std::unique_ptr<platform::Window>            window             = nullptr;
         platform::Input                              input{};
-        Camera                                       camera{};
+        scene::Camera                                camera{};
         rhi::VulkanDevice                            vulkanDevice_{};
         std::unique_ptr<rhi::VmaContext>             vmaContext_        = nullptr;
         // Phase 3 cleanup: the former god-config Context split in two.
@@ -77,7 +77,7 @@ class CEngine final {
         std::shared_ptr<Material>                    MarsMaterial         = nullptr;
         std::shared_ptr<Material>                    rockMaterial         = nullptr;
 
-        Scene                                        scene_{};
+        scene::Scene                                 scene_{};
 
         std::unique_ptr<render::Renderer>            renderer             = nullptr;
 
@@ -88,12 +88,22 @@ class CEngine final {
         // Keyboard / scroll camera input — polled from platform::Input each frame
         void updateCamera(float deltaTime);
 
+        // Left-drag orbit state — raw input plumbing kept at the app boundary;
+        // scene::Camera stays math-only (Phase 5 extracts app::CameraController).
+        struct OrbitDrag {
+            bool   active = false;
+            double lastX  = 0.0;
+            double lastY  = 0.0;
+        };
+        OrbitDrag orbitDrag_{};
+
         void createCommandPools();
         void initAssetLibrary();
         void createSamplers();
         void createMaterials();
         void createDescriptorSetLayout();
         void createDescriptorSetPool();
+        void initMaterialDescriptors();
         void initScene();
         void initRenderer();
 };

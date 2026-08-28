@@ -8,12 +8,13 @@ The following are partially implemented or unimplemented functions:
 > - [x] Instanced Rendering
 > - [x] Separate Image and Sampler
 > - [ ] Dynamic Uniform Buffer
-> - [ ] Frustum Culling
+> - [~~] Frustum Culling (dropped: the project targets pure path tracing)
 > - [ ] Multithreaded command buffer generation
 > - [x] Shader-reflection automatically generates descriptorset
 > - [x] Normal Texture
 > - [ ] Metallic Texture
 > - [ ] Roughness Texture
+> - [ ] Vulkan Ray Tracing (Acceleration Structure + RT Pipeline, post-refactor; NVIDIA GPU)
 > - [ ] Final target: Path-Tracing
 
 ##

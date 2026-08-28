@@ -1,4 +1,6 @@
-#include "generic/transform.hpp"
+#include "scene/transform.hpp"
+
+namespace scene {
 
 glm::mat4 Transform::toMatrix() const {
     glm::mat4 m = glm::mat4(1.0f);
@@ -9,3 +11,5 @@ glm::mat4 Transform::toMatrix() const {
     m = glm::scale(m, scale);
     return m;
 }
+
+}  // namespace scene

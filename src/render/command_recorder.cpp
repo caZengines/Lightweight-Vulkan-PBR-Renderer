@@ -1,6 +1,7 @@
 #include "render/command_recorder.hpp"
 
 #include "generic/material.hpp"
+#include "render/instance_buffer.hpp"
 #include "rhi/rhi_factory.hpp"
 #include "render/pipeline.hpp"
 #include "rhi/swapchain.hpp"
@@ -93,7 +94,7 @@ void CommandRecorder::record(vk::raii::CommandBuffer& cmd,
 
             const std::array<vk::Buffer, 2> vertexBuffers{
                 item.mesh->vertexBuffer(),
-                item.instanceBuffer};
+                item.instances->handle()};
             constexpr std::array<vk::DeviceSize, 2> offsets{0, 0};
             cmd.bindVertexBuffers(0, vertexBuffers, offsets);
             cmd.bindIndexBuffer(item.mesh->indexBuffer(), 0, vk::IndexType::eUint32);

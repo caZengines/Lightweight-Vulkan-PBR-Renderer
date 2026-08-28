@@ -16,7 +16,6 @@
 #include "render_context.hpp"
 #include "rhi/vma_allocator.hpp"
 
-class Camera;
 class CommandPool;
 
 namespace platform {
@@ -27,6 +26,10 @@ namespace rhi {
 class RhiFactory;
 class Swapchain;
 }  // namespace rhi
+
+namespace scene {
+class Camera;
+}  // namespace scene
 
 namespace render {
 
@@ -52,7 +55,7 @@ public:
         std::vector<vk::DescriptorSetLayout> setLayouts;      // [0] per-frame, [1+] per-material
         const vk::DescriptorPool&            set0Pool;
         CommandPool&                         graphicsPool;
-        Camera&                              camera;
+        scene::Camera&                       camera;
         const vk::raii::SurfaceKHR&          surface;
         platform::Window&                    window;
         std::string_view                     spirvPath;       // absolute, from app::Config
@@ -82,7 +85,7 @@ private:
     platform::Window&             window_;
     const vk::raii::SurfaceKHR&   surface_;
     RenderContext                 rct_;
-    Camera&                       camera_;
+    scene::Camera&                camera_;
     CommandPool&                  graphicsPool_;
     const rhi::RhiFactory&        rhiFactory_;
     RenderSettings                settings_;

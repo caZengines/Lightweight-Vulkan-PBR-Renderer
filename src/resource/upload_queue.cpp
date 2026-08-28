@@ -7,7 +7,7 @@
 
 namespace resource {
 
-rhi::VmaBuffer UploadQueue::uploadBuffer(VmaAllocator alloc, const void* data,
+rhi::VmaBuffer UploadQueue::uploadBuffer(const void* data,
                                     vk::DeviceSize size, vk::BufferUsageFlags usage) {
     // --- Host-visible staging buffer ---
     vk::BufferCreateInfo stagingInfo{};
@@ -15,7 +15,7 @@ rhi::VmaBuffer UploadQueue::uploadBuffer(VmaAllocator alloc, const void* data,
     VmaAllocationCreateInfo stagingCI{};
     stagingCI.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
     stagingCI.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-    rhi::VmaBuffer stagingBuffer(alloc, static_cast<const VkBufferCreateInfo&>(stagingInfo), stagingCI);
+    rhi::VmaBuffer stagingBuffer(allocator_, static_cast<const VkBufferCreateInfo&>(stagingInfo), stagingCI);
 
     void* dataStaging = stagingBuffer.map();
     std::memcpy(dataStaging, data, size);
@@ -26,7 +26,7 @@ rhi::VmaBuffer UploadQueue::uploadBuffer(VmaAllocator alloc, const void* data,
     bufferInfo.setSize(size).setUsage(usage).setSharingMode(vk::SharingMode::eExclusive);
     VmaAllocationCreateInfo allocCI{};
     allocCI.usage = VMA_MEMORY_USAGE_AUTO;
-    rhi::VmaBuffer deviceBuffer(alloc, static_cast<const VkBufferCreateInfo&>(bufferInfo), allocCI);
+    rhi::VmaBuffer deviceBuffer(allocator_, static_cast<const VkBufferCreateInfo&>(bufferInfo), allocCI);
 
     vk::raii::CommandBuffer commandBuffer = pool_.beginSingleTimeCommands();
     commandBuffer.copyBuffer(stagingBuffer.getHandle(), deviceBuffer.getHandle(),
@@ -35,7 +35,7 @@ rhi::VmaBuffer UploadQueue::uploadBuffer(VmaAllocator alloc, const void* data,
     return deviceBuffer;
 }
 
-void UploadQueue::uploadImage(VmaAllocator alloc, const void* data, vk::DeviceSize size,
+void UploadQueue::uploadImage(const void* data, vk::DeviceSize size,
                               rhi::VmaImage& image, uint32_t width, uint32_t height,
                               uint32_t mipLevels, vk::Format format, vk::Filter filter) {
     // --- Host-visible staging buffer ---
@@ -44,7 +44,7 @@ void UploadQueue::uploadImage(VmaAllocator alloc, const void* data, vk::DeviceSi
     VmaAllocationCreateInfo stagingCI{};
     stagingCI.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
     stagingCI.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-    rhi::VmaBuffer stagingBuffer(alloc, static_cast<const VkBufferCreateInfo&>(stagingInfo), stagingCI);
+    rhi::VmaBuffer stagingBuffer(allocator_, static_cast<const VkBufferCreateInfo&>(stagingInfo), stagingCI);
 
     void* dataStaging = stagingBuffer.map();
     std::memcpy(dataStaging, data, size);

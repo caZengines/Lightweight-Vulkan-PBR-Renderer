@@ -9,7 +9,6 @@
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
 
-#include "camera.hpp"
 #include "command_manager.hpp"
 #include "rhi/swapchain.hpp"
 #include "render/command_recorder.hpp"
@@ -20,6 +19,7 @@
 #include "render/pipeline_spec.hpp"
 #include "render/shader_manager.hpp"
 #include "render_context.hpp"
+#include "scene/camera.hpp"
 
 namespace render {
 
@@ -109,11 +109,11 @@ void Renderer::record(FrameContext& ctx, std::span<const RenderItem> items) {
 }
 
 void Renderer::endFrame(const FrameContext& ctx) {
-    const std::uint64_t signalValue = frames_->nextSignalValue();
+    const uint64_t signalValue = frames_->nextSignalValue();
     std::array<vk::Semaphore, 2> signalSemaphores{
         *frames_->renderTimeline(),
         *frames_->presentWait(ctx.imageIndex)};
-    std::array<std::uint64_t, 2> signalValues{signalValue, 0};
+    std::array<uint64_t, 2> signalValues{signalValue, 0};
 
     vk::TimelineSemaphoreSubmitInfo timelineSubmitInfo;
     timelineSubmitInfo.setSignalSemaphoreValueCount(2)

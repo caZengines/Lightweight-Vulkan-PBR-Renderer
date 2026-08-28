@@ -1,19 +1,17 @@
 #include "c_engine.hpp"
 #include "generic/material.hpp"
-#include "generic/renderobject.hpp"
 #include "platform/log.hpp"
-#include "render/render_item.hpp"
 #include "render_context.hpp"
 #include "resource/resource_registry.hpp"
 
 #include <chrono>
-#include <cstddef>
 #include <memory>
 #include <random>
 
 namespace {
 
-// Clamp a requested MSAA count to what the device supports for color targets.
+// Clamp the requested MSAA count to what the device supports for color
+// attachments.
 vk::SampleCountFlagBits pickMsaaCount(const vk::raii::PhysicalDevice& physicalDevice,
                                       uint32_t requested) {
     const auto supported =
@@ -25,24 +23,6 @@ vk::SampleCountFlagBits pickMsaaCount(const vk::raii::PhysicalDevice& physicalDe
         }
     }
     return vk::SampleCountFlagBits::e1;
-}
-
-// Transitional bridge (Phase 3): batches come from generic/Scene today; in
-// Phase 4 Scene::collectRenderItems produces RenderItems directly and this
-// disappears. Cheap POD copies of at most object-count size per frame.
-void fillRenderItems(std::vector<render::RenderItem>& out,
-                     const std::vector<DrawBatch>& batches) {
-    out.clear();
-    out.reserve(batches.size());
-    for (const auto& batch : batches) {
-        out.push_back(render::RenderItem{
-            .mesh           = batch.meshGPU,
-            .material       = batch.material.get(),
-            .instanceBuffer = batch.instanceBuffer,
-            .instanceCount  = batch.instanceCount,
-            .firstInstance  = batch.firstInstance,
-        });
-    }
 }
 
 }  // namespace
@@ -65,11 +45,26 @@ void CEngine::initWindow() {
     window->onFramebufferResize = [this](uint32_t /*width*/, uint32_t /*height*/) {
         if (renderer) renderer->framebufferResized = true;
     };
+    // Left-drag orbit: raw input plumbing stays at the app boundary; the
+    // camera itself is pure math (scene::Camera).
     window->onMouseButton = [this](platform::ButtonAction action, platform::MouseButton button, double x, double y) {
-        camera.onMouseButton(button, action, x, y);
+        if (button != platform::MouseButton::Left) return;
+        if (action == platform::ButtonAction::Press) {
+            orbitDrag_.active = true;
+            orbitDrag_.lastX  = x;
+            orbitDrag_.lastY  = y;
+        } else if (action == platform::ButtonAction::Release) {
+            orbitDrag_.active = false;
+        }
     };
     window->onCursorPos = [this](double x, double y) {
-        camera.onCursorMove(x, y);
+        if (!orbitDrag_.active) return;
+        constexpr float sensitivity = 0.001f;   // legacy Camera default
+        const float dx = static_cast<float>(x - orbitDrag_.lastX);
+        const float dy = static_cast<float>(y - orbitDrag_.lastY);
+        orbitDrag_.lastX = x;
+        orbitDrag_.lastY = y;
+        camera.orbit(-dx * sensitivity, dy * sensitivity);
     };
 }
 
@@ -97,14 +92,12 @@ void CEngine::initVulkan() {
     createMaterials();
     createDescriptorSetLayout();
     createDescriptorSetPool();
+    initMaterialDescriptors();
     initScene();
     initRenderer();
 }
 
 void CEngine::run() {
-    const auto& batches = scene_.getDrawBatches();   // cached; kept alive below
-    std::vector<render::RenderItem> items;
-
     auto lastTime = std::chrono::high_resolution_clock::now();
     while(!window->shouldClose()) {
         window->pollEvents();
@@ -117,8 +110,8 @@ void CEngine::run() {
         updateCamera(deltaTime);
 
         if (auto frame = renderer->beginFrame()) {
-            fillRenderItems(items, batches);
-            renderer->record(*frame, items);
+            // Scene produces the draw list (cached; no per-frame allocation).
+            renderer->record(*frame, scene_.collectRenderItems());
             renderer->endFrame(*frame);
         }
     }
@@ -135,7 +128,7 @@ void CEngine::updateCamera(float deltaTime) {
     if (input.isKeyDown(platform::Key::LeftShift)) camera.moveVertical(-1.0f, deltaTime);
 
     const double scroll = input.scrollDelta();
-    if (scroll != 0.0) camera.Zoom(scroll);
+    if (scroll != 0.0) camera.zoom(scroll);
 }
 
 void CEngine::cleanup() {
@@ -150,7 +143,8 @@ void CEngine::initAssetLibrary() {
     // single-time submissions; ResourceRegistry owns the GPU assets and the
     // built-in default textures; AssetLibrary caches by path with refcounting.
     // (Kept inside the App prototype for now; Phase 5 moves this to app::App.)
-    uploadQueue_   = std::make_unique<resource::UploadQueue>(*transientCommandPool, *rhiFactory_);
+    uploadQueue_   = std::make_unique<resource::UploadQueue>(*transientCommandPool, *rhiFactory_,
+                                                             vmaContext_->getAllocator());
     resourceRegistry_ = std::make_unique<resource::ResourceRegistry>(vmaContext_->getAllocator(), *uploadQueue_, *rhiFactory_);
     assetLibrary_  = std::make_unique<resource::AssetLibrary>(*resourceRegistry_);
 }
@@ -162,8 +156,9 @@ void CEngine::createMaterials() {
     auto marsAlbedo = assetLibrary_->loadImage(config_.marsTexturePath, vk::Format::eR8G8B8A8Srgb, vk::Filter::eLinear);
 
     // Empty (null) normal handle → Material falls back to the registry's
-    // built-in flat-normal texture (Null Object semantics).
-    defaultMaterial = std::make_shared<Material>(resource::AssetHandle{}, resource::AssetHandle{}, *albedoSampler, *normalSampler, *resourceRegistry_);
+    // built-in default textures (Null Object semantics).
+    defaultMaterial = std::make_shared<Material>(resource::AssetHandle{}, resource::AssetHandle{},
+                                                 *albedoSampler, *normalSampler, *resourceRegistry_);
     MarsMaterial = std::make_shared<Material>(marsAlbedo, resource::AssetHandle{},
                                               *albedoSampler, *normalSampler, *resourceRegistry_);
     rockMaterial = std::make_shared<Material>(rockAlbedo, resource::AssetHandle{},
@@ -182,6 +177,21 @@ void CEngine::createDescriptorSetPool() {
                                                       descriptorSetLayout->getPoolMaxSets(),
                                                       descriptorSetLayout->getPoolSize()
     );
+}
+
+void CEngine::initMaterialDescriptors() {
+    // One Set-1 per material (not per object): shared materials draw with the
+    // same descriptor set no matter how many objects reference them. The set
+    // allocation used to live in RenderObject; Phase 4 made scene objects
+    // pure data, so the app wires GPU-side materials once, here.
+    RenderContext rct = vulkanDevice_.renderContext();
+    vk::DescriptorSetAllocateInfo allocInfo;
+    allocInfo.setDescriptorPool(descriptorPool->getDescriptorPool())
+             .setDescriptorSetCount(1)
+             .setSetLayouts(descriptorSetLayout->getLayoutHandles()[1]);
+    for (const auto& material : {defaultMaterial, MarsMaterial, rockMaterial}) {
+        material->createDescriptorSet(rct, allocInfo);
+    }
 }
 
 void CEngine::initRenderer(){
@@ -250,24 +260,22 @@ void CEngine::createSamplers() {
 }
 
 void CEngine::initScene() {
-    RenderContext RCT = vulkanDevice_.renderContext();
-    // Get-or-load mesh handles; the RenderObjects keep them alive (refcounted).
+    // Get-or-load mesh handles; the SceneObjects keep them alive (refcounted).
     auto marsMeshHandle = assetLibrary_->loadMesh(config_.planetPath);
-    std::shared_ptr<RenderObject> mars = std::make_shared<RenderObject>(marsMeshHandle, MarsMaterial, *resourceRegistry_);
+    auto mars = std::make_shared<scene::SceneObject>(marsMeshHandle, MarsMaterial, *resourceRegistry_);
     std::vector<InstanceData> instances(1);
     glm::mat4 marsmodel = glm::mat4(1.0f);
     marsmodel = glm::translate(marsmodel, glm::vec3(0.0f, -3.0f, 0.0f));
     marsmodel = glm::scale(marsmodel, glm::vec3(2.0f, 2.0f, 2.0f));
     instances[0].model = marsmodel;
-    mars->setInstances(vmaContext_->getAllocator(), instances, *uploadQueue_);
-    mars->initMaterialDescriptor(RCT, descriptorSetLayout->getLayoutHandles()[1], *descriptorPool);
+    mars->setInstances(*uploadQueue_, std::move(instances));
     scene_.addObject(std::move(mars));
 
     auto rockMeshHandle = assetLibrary_->loadMesh(config_.rockPath);
-    std::shared_ptr<RenderObject> rock = std::make_shared<RenderObject>(rockMeshHandle, rockMaterial, *resourceRegistry_);
-    unsigned int amount = 1000;
-    float radius = 40.0;
-    float offset = 2.5f;
+    auto rock = std::make_shared<scene::SceneObject>(rockMeshHandle, rockMaterial, *resourceRegistry_);
+    const uint32_t amount = 1000;
+    const float radius = 40.0f;
+    const float offset = 2.5f;
     std::vector<InstanceData> rocks(amount);
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -301,7 +309,6 @@ void CEngine::initScene() {
 
         rocks[i].model = model_;
     }
-    rock->setInstances(vmaContext_->getAllocator(), rocks, *uploadQueue_);
-    rock->initMaterialDescriptor(RCT, descriptorSetLayout->getLayoutHandles()[1], *descriptorPool);
+    rock->setInstances(*uploadQueue_, std::move(rocks));
     scene_.addObject(std::move(rock));
 }

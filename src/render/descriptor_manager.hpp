@@ -43,7 +43,7 @@ class DescriptorSetLayout final {
 public:
     static constexpr uint32_t kDefaultObjectMultiplier = 8;
 
-    explicit DescriptorSetLayout(RenderContext& rct, const std::vector<std::uint8_t>& spvCode);
+    explicit DescriptorSetLayout(RenderContext& rct, const std::vector<uint8_t>& spvCode);
     ~DescriptorSetLayout() = default;
 
     [[nodiscard]] const std::vector<vk::raii::DescriptorSetLayout>& getDescriptorSetLayouts() const { return descriptorSetLayouts_; }
@@ -56,7 +56,7 @@ public:
     int computePoolMaxSets(uint32_t objectCount) const;
 
 private:
-    void autoCreateDSL(const std::vector<std::uint8_t>& spvCode);
+    void autoCreateDSL(const std::vector<uint8_t>& spvCode);
 
     RenderContext                                 rct_;
     std::vector<vk::raii::DescriptorSetLayout>    descriptorSetLayouts_;

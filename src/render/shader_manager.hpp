@@ -20,15 +20,15 @@ public:
     ShaderManager() = default;
 
     // `absolutePath` comes pre-resolved from app::Config.
-    [[nodiscard]] const std::vector<std::uint8_t>& spirv(std::string_view absolutePath) const;
+    [[nodiscard]] const std::vector<uint8_t>& spirv(std::string_view absolutePath) const;
 
     [[nodiscard]] vk::raii::ShaderModule createModule(
         const vk::raii::Device& device,
-        const std::vector<std::uint8_t>& code) const;
+        const std::vector<uint8_t>& code) const;
 
 private:
     // mutable: lazy disk cache behind a logically const lookup.
-    mutable std::unordered_map<std::string, std::vector<std::uint8_t>> cache_;
+    mutable std::unordered_map<std::string, std::vector<uint8_t>> cache_;
 };
 
 }  // namespace render

@@ -63,11 +63,11 @@ uint32_t ResourceRegistry::createMeshGPU(const MeshData& data) {
     gpu->indexCount_  = static_cast<uint32_t>(data.indices().size());
 
     gpu->vertexBuffer_ = uploadQueue_.uploadBuffer(
-        allocator_, data.vertices().data(),
+        data.vertices().data(),
         sizeof(Vertex) * data.vertices().size(),
         vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst);
     gpu->indexBuffer_ = uploadQueue_.uploadBuffer(
-        allocator_, data.indices().data(),
+        data.indices().data(),
         sizeof(uint32_t) * data.indices().size(),
         vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst);
 
@@ -111,7 +111,7 @@ std::unique_ptr<TextureGPU> ResourceRegistry::buildTextureGPU(const ImageData& i
     allocCI.usage = VMA_MEMORY_USAGE_GPU_ONLY;
     gpu->vmaImage_ = rhi::VmaImage(allocator_, static_cast<const VkImageCreateInfo&>(imageCI), allocCI);
 
-    uploadQueue_.uploadImage(allocator_, image.pixels().data(),
+    uploadQueue_.uploadImage(image.pixels().data(),
                              static_cast<vk::DeviceSize>(image.pixels().size()),
                              gpu->vmaImage_, width, height, gpu->mipLevels_, format, filter);
 

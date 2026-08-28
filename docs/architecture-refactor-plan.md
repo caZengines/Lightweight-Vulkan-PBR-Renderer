@@ -584,9 +584,17 @@ GPP 原文要点：服务定位器 = **抽象服务接口 + 具体提供者 + �
 3. `RenderObject` 拆为 `scene::SceneObject`（CPU：mesh 句柄、material 句柄、实例数组、AABB）+ GPU 实例缓冲（由 render 侧 `InstanceBufferManager` 或 resource 层按需创建/更新）；
 4. 激活 `Transform`：新建 `SceneNode`（父/子、世界矩阵）；`SceneObject` 挂节点；实例矩阵由 transform 合成（现阶段保持每对象独立实例缓冲，行为不变）；
 5. `Camera` 迁入 scene 命名空间，删除输入相关成员（只留数学）；
-6. 预留 `Frustum`/`SpatialIndex` 接口与 `SceneView` 结构（本期只留空实现，`collectRenderItems` 全量返回，行为不变）。
+6. ~~预留 `Frustum`/`SpatialIndex` 接口与 `SceneView` 结构~~（**已取消**：项目最终目标为纯路径追踪离线渲染器，光栅剔除不再适用；见 §6 路线图）。
 
 **验证**：grep 确认 `scene/` 头文件无 `vulkan`/`GLFW` include；实例绘制数量不变（1001 个对象、1000+1 实例）。
+
+**实施记录（2026-08-28）**：
+- `Scene::collectRenderItems()` 直产 `std::span<const RenderItem>`——因剔除取消，签名不带 camera 参数；dirty 缓存保留，帧间零分配；
+- RenderItem 无 Vulkan 类型：实例段改为 `render::InstanceBuffer` 句柄（每对象 GPU 实例流，UploadQueue 一次性上传），`DrawBatch` 删除；
+- `AssetHandle` 拆出独立 CPU 侧头 `resource/asset_handle.hpp`；`Vertex/InstanceData` 纯数据化（Vulkan 输入布局描述移入 `pipeline.cpp`）；
+- 材质 Set-1 描述符改由引擎按材质分配一次（原 RenderObject 逐对象惰性分配，共享材质本就复用同一 set，行为不变）；
+- `UploadQueue` 自持 allocator，scene 层 API 不再出现 `VmaAllocator`；
+- AABB 未引入（随剔除一并取消）；`SceneNode` 父子层次暂缓——层次结构届时由 TLAS/BLAS 场景装配承接，`worldMatrix()`（dirty-flag 惰性缓存）已就位。
 
 ### Phase 5 · 应用层成形（1.5 天）
 
@@ -665,7 +673,21 @@ GPP 原文要点：服务定位器 = **抽象服务接口 + 具体提供者 + �
 
 ---
 
-## 6. 参考资料
+## 6. 重构后路线：光线追踪管线（Path Tracing，NVIDIA GPU）
+
+> 分层重构（Phase 0–6）完成后启动。目标形态：**纯路径追踪的离线渲染器**。
+> 运行硬件为 NVIDIA GPU（完整支持 Vulkan Ray Tracing 全套扩展）。
+
+1. **设备能力**：`rhi::VulkanDevice` 增查并启用 `VK_KHR_acceleration_structure`、`VK_KHR_ray_tracing_pipeline`、`VK_KHR_deferred_host_operations`（备选 `VK_KHR_ray_query`）；extension/feature 收进 `CreateInfo` 与 `Config`。
+2. **加速结构**：新增 `rhi::AccelerationStructure`（BLAS/TLAS 构建）。BLAS 几何直接引用 `resource::MeshGPU` 的顶点/索引缓冲；TLAS instance 的 transform 来自 `scene::SceneObject::worldMatrix()`——Phase 4 激活的 Transform/实例数据即为此铺路。
+3. **管线**：在 `GraphicsPipelineSpec` 之外新增 `RayTracingPipelineSpec`（raygen/closest-hit/miss 组 + SBT 布局），`PipelineCache` 按 spec 分派；`ShaderManager` 增加 RT SPIR-V 通道（slang 原生支持 ray tracing）。
+4. **录制**：新增 trace pass 组件（`cmd.traceRays`），复用现有帧编排（`FrameResources` 同步骨架、`Renderer::beginFrame/record/endFrame` 三段式不变）。
+5. **场景数据**：`Scene::collectRenderItems` 的数据面（mesh/材质/实例变换）即 TLAS instance 来源；材质由 GPU-backed `Material` 数据化为 BSDF 参数表（`generic/` 剩余件的最终归宿）。
+6. **离线渲染**：`app::GameLoop` 旁增加离线帧模式（固定相机、累积采样、PNG/EXR 输出），不依赖窗口循环——这也是"离线渲染器"目标的交付形态。
+
+---
+
+## 7. 参考资料
 
 - Vulkan 官方教程（docs.vulkan.org）《Building a Simple Engine》：
   - [Introduction](https://docs.vulkan.org/tutorial/latest/Building_a_Simple_Engine/Engine_Architecture/01_introduction.html)

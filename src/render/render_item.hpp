@@ -2,30 +2,30 @@
 
 #include <cstdint>
 
-#define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
-#include <vulkan/vulkan_raii.hpp>
-
 namespace resource {
 class MeshGPU;
 }  // namespace resource
 
-class Material;  // global until the Phase 4 domain sweep renames it render::
+class Material;  // global until materials become pure data (path tracing)
 
 namespace render {
 
-// Pure-data draw unit: the scene side fills these, CommandRecorder consumes
-// them. Kept as a flat POD on purpose — zero virtuals and no pointer chasing
-// inside the hot recording loop (plan §2.6, data-oriented design).
+class InstanceBuffer;
+
+// Pure-data draw unit: scene::Scene fills these, CommandRecorder consumes
+// them. Flat POD on purpose — zero virtuals and no pointer chasing in the hot
+// recording loop (plan §2.6, data-oriented design). No Vulkan types: instance
+// streams are referenced through render::InstanceBuffer.
 //
-// Transitional shape (Phase 3): raw mesh/material pointers plus the object's
-// instance buffer. Phase 4 replaces them with registry handles once
-// Scene::collectRenderItems becomes the producer.
+// Transitional shape: raw mesh/material pointers serve the current raster
+// path; the planned ray-tracing pipeline (post-refactor, see plan doc §6)
+// replaces draw items with TLAS instances built from the same scene data.
 struct RenderItem {
-    const resource::MeshGPU* mesh         = nullptr;
-    const Material*          material     = nullptr;
-    vk::Buffer               instanceBuffer{};  // raw VkBuffer handle
-    uint32_t            instanceCount = 0;
-    uint32_t            firstInstance = 0;
+    const resource::MeshGPU* mesh      = nullptr;
+    const Material*          material  = nullptr;
+    const InstanceBuffer*    instances = nullptr;
+    uint32_t                 firstInstance = 0;
+    uint32_t                 instanceCount = 0;
 };
 
 }  // namespace render

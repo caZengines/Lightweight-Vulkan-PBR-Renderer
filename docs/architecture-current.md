@@ -13,8 +13,8 @@
 | Phase 0 基线 | `3cd9eeb` + tag `pre-refactor` | ✅ 完成 | glTF 加载器 WIP、新资源、架构文档、platform 骨架 |
 | Phase 1 平台抽象层 | `b50867b` | ✅ 完成 | `platform::Window/Input/Log`（首个 Service Locator），GLFW 收进 `src/platform/` |
 | Phase 2 资源管理层 | `e2b9385` | ✅ 完成 | 资源句柄化、导入器、上传队列、注册表；Mesh/Texture 不再自建 buffer |
-| Phase 3 渲染层拆分 | 本提交 | ✅ 完成 | `render::FrameResources/CommandRecorder/PipelineCache/PipelineSpec/ShaderManager/RenderSettings/FrameUniforms`；RhiFactory 去单例化注入；死代码清除 |
-| Phase 4 场景层纯数据化 | — | ⏳ 未开始 | RenderItem、SceneObject、Transform 激活、剔除预留 |
+| Phase 3 渲染层拆分 | `9f15bdb` | ✅ 完成 | `render::FrameResources/CommandRecorder/PipelineCache/PipelineSpec/ShaderManager/RenderSettings/FrameUniforms`；RhiFactory 去单例化注入；死代码清除 |
+| Phase 4 场景层纯数据化 | 本提交 | ✅ 完成 | `src/scene/` 落地（`scene::Scene/SceneObject/Transform/Camera`）；`Scene::collectRenderItems` 直产 RenderItem（app 桥接删除）；Transform 激活（dirty-flag）；剔除预留按路径追踪目标取消 |
 | Phase 5 应用层成形 | — | ⏳ 未开始 | `app::App`、GameLoop、CameraController、DemoScene |
 | Phase 6 构建层与工程纪律 | — | ⏳ 未开始 | CMake 拆 5 个静态库、命名空间落地、头文件卫生 |
 
@@ -32,6 +32,7 @@
 - `../` 相对路径从代码中消失（grep 仅注释）；glfw 仅出现在 `src/platform/`
 - Phase 3：Debug + Release 双配置构建通过；带验证层启动渲染循环稳定运行（同基线协议）；resize 路径沿用原时序逻辑（帧间跳过语义保留）
 - rhi 迁移：`Swapchain/VulkanDevice` 移入 `src/rhi/` 并命名空间化；`Context` 拆为 `DebugMessenger`+`Surface` 后删除；双配置构建通过 + 渲染循环冒烟复测存活
+- Phase 4：`grep -rniE "vulkan|glfw|vk::|VkBuffer" src/scene/*.hpp` 零命中（仅注释提及）；双配置构建通过 + 渲染循环冒烟存活；实例绘制不变（1 火星 + 1000 岩石，identity transform ⇒ 合成矩阵与原数据一致）
 
 ---
 
@@ -47,15 +48,17 @@ Layer 2  Resource      — 资产导入、GPU 资源、句柄（resource::）✅
 Layer 1  Platform      — 窗口/输入/日志/路径（platform::）  ✅ Phase 1 落地
 ```
 
-当前实际放置（`generic/` 为历史遗留，将在 Phase 3/4 拆解）：
+当前实际放置：
 
 | 目标层 | 现状文件 | 说明 |
 |---|---|---|
 | Layer 1 | `platform/*`、`app/config.hpp` | ✅ 已成型 |
 | Layer 2 | `resource/*` | ✅ 已成型 |
-| Layer 3 | `render/*`（renderer、frame_resources、command_recorder、pipeline*、shader_manager、descriptor_manager、render_item 等；swapchain 已迁 rhi/） | ✅ Phase 3 已拆分：Renderer 只剩编排 |
-| Layer 4 | `generic/scene.*`、`generic/renderobject.*`、`generic/transform.*` | 仍带 Vulkan 类型，Phase 4 纯数据化 |
+| Layer 3 | `render/*`（renderer、frame_resources、command_recorder、pipeline*、shader_manager、descriptor_manager、render_item、instance_buffer 等） | ✅ Phase 3 已拆分：Renderer 只剩编排 |
+| Layer 4 | `scene/*` | ✅ Phase 4 已纯数据化：头文件零 Vulkan/GLFW 类型 |
 | Layer 5 | `c_engine.*` + `main/main.cpp` | CEngine 即 App 雏形 |
+
+`generic/` 仅剩 GPU 侧过渡件（material/sampler/vertex），随路径追踪改造一并数据化。
 
 ---
 
@@ -79,10 +82,10 @@ Layer 1  Platform      — 窗口/输入/日志/路径（platform::）  ✅ Phas
 | `resource::ImageData` | `image_data.hpp` | CPU 图像数据（RGBA8 像素 + 宽高） |
 | `resource::MeshImporter` | `mesh_importer.hpp/cpp` | OBJ（tinyobjloader）+ glTF 2.0（tinygltf3，含 sparse accessor/strip/fan 展开）→ `MeshData`。按扩展名分发 |
 | `resource::TextureImporter` | `texture_importer.hpp/cpp` | stb_image → `ImageData` |
-| `resource::UploadQueue` | `upload_queue.hpp/cpp` | 封装 transient pool 的单次提交 + staging 模板：`uploadBuffer`（staging→device buffer）、`uploadImage`（过渡+拷贝+**mipmap 生成**）。MeshGPU/TextureGPU/Buffer 都走它 |
+| `resource::UploadQueue` | `upload_queue.hpp/cpp` | 封装 transient pool 的单次提交 + staging 模板：`uploadBuffer`（staging→device buffer）、`uploadImage`（过渡+拷贝+**mipmap 生成**）。自持 `VmaAllocator`（构造注入，调用方不再逐次传递）。MeshGPU/TextureGPU/InstanceBuffer 都走它 |
 | `resource::MeshGPU` | `resource_registry.hpp` | GPU 网格半：顶点/索引缓冲（`VmaBuffer`），无 CPU 数据 |
 | `resource::TextureGPU` | `resource_registry.hpp` | GPU 纹理半：图像/图像视图/mip 数，无 CPU 像素 |
-| `resource::AssetHandle` | `resource_registry.hpp` | 不透明引用计数句柄（id=0 为空句柄 = Null Object），拷贝 retain / 析构 release |
+| `resource::AssetHandle` | `resource/asset_handle.hpp` | 不透明引用计数句柄（id=0 为空句柄 = Null Object），拷贝 retain / 析构 release。独立 CPU 侧头文件：跨层包含不牵连 GPU 声明 |
 | `resource::ResourceRegistry` | `resource_registry.hpp/cpp` | 持有全部 GPU 资产（id→unique_ptr）、`createMeshGPU/createTextureGPU`、`mesh/texture(handle)` 查找、`unregister(id)`；**内建 1×1 默认纹理**（白/平坦法线，Null Object 回落） |
 | `resource::AssetLibrary` | `asset_library.hpp/cpp` | 路径缓存 + 引用计数：`loadMesh/loadImage`（get-or-load，重复加载不重传）、`findMesh/findImage`（未命中返回空句柄）、`retain/release`（归零卸载 GPU 资源）。替换旧 `AssetManager` |
 
@@ -105,33 +108,33 @@ Layer 1  Platform      — 窗口/输入/日志/路径（platform::）  ✅ Phas
 | `render::Renderer` | `render/renderer.hpp/cpp` | **仅帧编排**：`beginFrame()`（等 fence + acquire + UBO/Set0 更新）→ `record(ctx, span<RenderItem>)` → `endFrame()`（timeline submit + present）；swapchain 重建编排；持有 Deps 聚合注入 |
 | `render::FrameResources` | `render/frame_resources.hpp/cpp` | per-frame 状态唯一属主：UBO 缓冲、Set0 描述符集、命令缓冲、binary+timeline 同步对象；`kMaxFramesInFlight` 常量迁入 |
 | `render::CommandRecorder` | `render/command_recorder.hpp/cpp` | 录制：布局过渡 → beginRendering → 绑定管线/Set0/逐项 Set1+push flags+实例绘制；输入 `std::span<const RenderItem>` |
-| `render::RenderItem` | `render/render_item.hpp` | 场景↔渲染的扁平 POD 契约（本阶段由 app 桥接层从 DrawBatch 转换；Phase 4 起 Scene 直产） |
+| `render::RenderItem` | `render/render_item.hpp` | 场景↔渲染的扁平 POD 契约（mesh/material 指针 + InstanceBuffer 指针 + 实例段），无 Vulkan 类型；Phase 4 起 `Scene::collectRenderItems` 直产 |
+| `render::InstanceBuffer` | `render/instance_buffer.hpp/cpp` | 单个 SceneObject 的 GPU 实例流（vertex binding 1，每实例一个 model 矩阵）；经 UploadQueue 一次性上传。过渡形态：路径追踪管线将以 TLAS instance 取代 |
 | `render::GraphicsPipelineSpec` / `PipelineCache` | `render/pipeline_spec.hpp`、`pipeline_cache.hpp/cpp` | 管线状态 POD 化 + 按 spec 缓存创建（原硬编码消除） |
 | `render::ShaderManager` | `render/shader_manager.hpp/cpp` | SPIR-V 加载 + 缓存 + shader module 创建（反射输入与建管线共享一次磁盘读） |
 | `render::DescriptorSetLayout/Pool` | `render/descriptor_manager.hpp/cpp` | SPIRV-Reflect 自动布局与池大小估算；死代码 `DescriptorSet` 类、旧 `PerFrameDescriptorSet` 已删（职能并入 FrameResources） |
 | `render::FrameUniforms` | `render/frame_uniforms.hpp` | `UniformBufferObject/Light` 唯一定义处（含 static_assert 布局校验） |
 | `render::RenderSettings` | `render/render_settings.hpp` | MSAA 采样数（Config 注入并按设备上限钳制）与 present mode 偏好，替代硬编码 |
-| `Swapchain` | `render/swapchain.hpp/cpp` | swapchain + MSAA color/depth 资源；注入 `rhi::RhiFactory` 建 view/探深度格式；depthFormat 单一探测定点供管线复用 |
 
-### Layer 4 · 场景（`src/generic/`，Phase 4 纯数据化）
+### Layer 4 · 场景（`src/scene/`，Phase 4 纯数据化完成）
+
+头文件零 Vulkan/GLFW 类型：接口只出现 GLM 数学、`resource::AssetHandle`、`render::RenderItem/InstanceBuffer`（均为无 Vulkan 依赖的头）。
 
 | 模块 | 文件 | 职责 |
 |---|---|---|
-| `Scene` | `generic/scene.hpp/cpp` | 对象列表 + `DrawBatch` 缓存（dirty 标记）。`buildDrawBatches` 目前不真正合并（firstInstance 恒 0） |
-| `DrawBatch` | `generic/scene.hpp` | `AssetHandle`（保活）+ `const MeshGPU*`（绘制访问）+ 材质 + 实例缓冲/数量 |
-| `RenderObject` | `generic/renderobject.hpp/cpp` | mesh 句柄 + 材质 + 实例数据 + 实例 GPU 缓冲（经 UploadQueue） |
-| `Material` | `generic/material.hpp/cpp` | 纹理句柄（空句柄回落注册表默认纹理）+ 描述符集 + RenderFlags |
+| `scene::Scene` | `scene/scene.hpp/cpp` | 对象列表属主；`collectRenderItems()` 直产 `std::span<const render::RenderItem>`（dirty 缓存，帧间零分配、零拷贝） |
+| `scene::SceneObject` | `scene/scene_object.hpp/cpp` | 纯数据可绘制体：mesh 句柄（保活）+ 材质 + `Transform` + 实例放置（CPU 本地副本）。`setInstances` 经 UploadQueue 上传 `render::InstanceBuffer`，world = transform × instance |
+| `scene::Transform` | `scene/transform.hpp/cpp` | TRS 结构 + `toMatrix()`；`SceneObject::worldMatrix()` 以 dirty-flag 惰性缓存（原死代码激活） |
+| `scene::Camera` | `scene/camera.hpp/cpp` | 球坐标相机纯数学：`viewMatrix/position/orbit/moveHorizontal/moveVertical/zoom`；输入接线（鼠标拖拽状态机）留在应用边界 |
+| `Material` | `generic/material.hpp/cpp` | 过渡件：纹理句柄（空句柄回落注册表默认纹理）+ 描述符集 + RenderFlags。Set-1 现按材质分配一次（引擎 `initMaterialDescriptors`），路径追踪时数据化为 BSDF 参数 |
 | `Sampler` | `generic/sampler.hpp/cpp` | vk::raii::Sampler 包装 |
-| `Buffer<T>` | `generic/buffer.hpp` | 模板 GPU 缓冲：staging 上传经 `UploadQueue`，设备本地缓冲 |
-| `Vertex` / `InstanceData` | `generic/vertex.hpp` | 顶点/实例布局（SNORM 法线/切线量化，`static_assert` 64B 实例） |
-| `Transform` | `generic/transform.hpp/cpp` | **死代码**，Phase 4 激活（dirty-flag 缓存模式见官方组件系统章节） |
+| `Vertex` / `InstanceData` | `generic/vertex.hpp` | 纯数据顶点/实例布局（SNORM 量化，`static_assert` 64B 实例）；Vulkan 输入布局描述已移入 `pipeline.cpp`（数据与管线关注点分离） |
 
 ### 其它
 
 | 模块 | 文件 | 职责 |
 |---|---|---|
-| `Camera` | `camera.hpp/cpp` | 球坐标相机：`viewMatrix`、轨道旋转（鼠标）、WASD/滚轮（经 `CEngine::updateCamera` 轮询 `platform::Input`） |
-| `CEngine`（App 雏形） | `c_engine.hpp` + `engine.cpp` | 组合根：initVulkan 十步装配（device→VMA→factory→context→pool→**AssetLibrary**→sampler→material→DSL→pool→scene→renderer）、`run()` 主循环、场景内容（火星 + 1000 岩石，`std::random_device` 随机分布）、成员析构顺序纪律（池先于 set、库先于句柄） |
+| `CEngine`（App 雏形） | `c_engine.hpp` + `engine.cpp` | 组合根：initVulkan 装配（device→VMA→factory→messenger/surface→pool→**AssetLibrary**→sampler→material→DSL→pool→材质 Set-1→scene→renderer）、`run()` 主循环（`scene_.collectRenderItems()` 直供 record）、鼠标左键拖拽轨道状态机（app 边界持有，Phase 5 迁 `CameraController`）、场景内容（火星 + 1000 岩石，`std::random_device` 随机分布）、成员析构顺序纪律（池先于 set、库先于句柄） |
 | `main` | `main/main.cpp` | 入口：构造 CEngine → run，异常捕获 |
 
 ### 外部依赖（`src/extern/`，头文件与实现单树共存）
@@ -153,12 +156,17 @@ Layer 1  Platform      — 窗口/输入/日志/路径（platform::）  ✅ Phas
 
 ```
 CEngine::initAssetLibrary()
-  └─ UploadQueue(transient pool) ── ResourceRegistry(allocator, queue) ── AssetLibrary(registry)
+  └─ UploadQueue(transient pool, allocator) ── ResourceRegistry(allocator, queue) ── AssetLibrary(registry)
 
 loadMesh(path)   → MeshImporter::load (OBJ/glTF) → MeshData::postProcess → registry.createMeshGPU (UploadQueue 上传)
 loadImage(path)  → TextureImporter::load (stb)   → ImageData            → registry.createTextureGPU (UploadQueue 上传+mipmap)
-句柄流：AssetHandle(id) → RenderObject/Material 持有 → 引用计数管理生命周期
+句柄流：AssetHandle(id) → SceneObject/Material 持有 → 引用计数管理生命周期
 默认纹理：registry.defaultAlbedo/defaultNormal（惰性创建，永不卸载，Null Object 回落）
+
+场景装配（初始化期，Phase 4 起）
+SceneObject(mesh handle, material, registry)
+  └─ setInstances(queue, locals)  // world = transform × instance → render::InstanceBuffer 一次性上传
+材质 Set-1：initMaterialDescriptors() 按材质各分配一次（共享材质不重复分配）
 ```
 
 ### 每帧渲染（运行期）
@@ -166,11 +174,10 @@ loadImage(path)  → TextureImporter::load (stb)   → ImageData            → 
 ```
 CEngine::run
   ├─ pollEvents → input.poll → updateCamera(dt)
-  ├─ renderer->beginFrame()            // 空 optional ⇒ 本帧跳过（swapchain 重建中）
+  ├─ renderer->beginFrame()                    // 空 optional ⇒ 本帧跳过（swapchain 重建中）
   │    └─ waitFence → acquire(OOD⇒recreate) → fillUBO(camera) → writeSet0 → resetFence/cmdBuffer
-  ├─ fillRenderItems(items, batches)   // 过渡桥：DrawBatch→RenderItem（Phase 4 移除）
-  ├─ renderer->record(*frame, items)   // CommandRecorder：过渡→Rendering→逐 item 绘制
-  └─ renderer->endFrame(*frame)        // timeline+binary submit → present → resize/OOD 处理
+  ├─ renderer->record(*frame, scene_.collectRenderItems())   // Scene 直产（dirty 缓存），CommandRecorder 过渡→Rendering→逐 item 绘制
+  └─ renderer->endFrame(*frame)                // timeline+binary submit → present → resize/OOD 处理
 ```
 
 ---
@@ -195,18 +202,18 @@ VK_LAYER_PATH=$VULKAN_SDK/Bin VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation ./m
 
 ## 六、已知遗留与债务
 
-1. `Transform` 仍为死代码（Phase 4 激活；`instanceText` 与 `DescriptorSet` 包装类已在 Phase 3 删除）
-2. `VulkanDevice::transferQueueIndex/transferQueue` 已无使用者（Phase 2 后 transient pool 改挂 graphics 队列）
-3. `Scene::buildDrawBatches` 不真正合并实例（firstInstance 恒 0）；RenderItem 目前由 app 层桥接转换（Phase 4 由 Scene 直产）
-4. 1000 岩石用 `std::random_device` 种子 → 跨运行画面不可复现（黄金帧对比协议采用"同进程帧差=0"）
-5. `generic/` 命名空间与场景层 Vulkan 类型未纯化（Phase 4）；灯光常量/相机数学仍在 Renderer 内（Phase 5 外移）
+1. `Material` 仍是 GPU 侧过渡件（`generic/`，含描述符集/RenderFlags）；路径追踪改造时数据化为 BSDF 参数表，`generic/` 剩余件（material/sampler/vertex）随之一并收编
+2. `SceneObject::setTransform` 后需重新 `setInstances` 才会更新 GPU 实例流（静态场景下无影响）；`SceneNode` 父子层次按计划暂缓——层次结构届时由 TLAS/BLAS 场景装配承接，`worldMatrix()`（dirty-flag）已就位
+3. 批合并不真正存在（每对象一个 InstanceBuffer，firstInstance 恒 0）；剔除（Frustum/SpatialIndex）**已取消**——项目目标为纯路径追踪离线渲染器，光栅剔除不再适用
+4. `VulkanDevice::transferQueueIndex/transferQueue` 已无使用者（Phase 2 后 transient pool 改挂 graphics 队列）
+5. 1000 岩石用 `std::random_device` 种子 → 跨运行画面不可复现（黄金帧对比协议采用"同进程帧差=0"）
 6. Material 的 RenderFlags 恒为"双纹理全开"，暂无按需开关
-7. `VULKAN_HPP_*` 宏仍在各 TU 头部重复定义，待收敛到单一公共头（工程纪律项）
+7. `VULKAN_HPP_*` 宏仍在各 TU 头部重复定义，待收敛到单一公共头（工程纪律项）；根级 `command_manager.*`、`render_context.hpp` 待 Phase 6 归位
 
 ---
 
 ## 七、下一步
 
-- **Phase 4 · 场景层纯数据化**：`RenderItem` 生产者移入 `Scene::collectRenderItems`（撤掉 app 桥接）、`SceneObject`、激活 `Transform`（dirty-flag 模式）、相机迁入 scene 命名空间、剔除预留——Recorder 接口已为此备好
-- **Phase 5 · 应用层成形**：`app::App`/`GameLoop`/`CameraController`/`DemoScene`（灯光常量随迁）/Config 扩充
-- **Phase 6 · 工程纪律**：CMake 拆静态库、命名空间全面落地、`VULKAN_HPP_*` 宏收编单一头、头文件卫生、CI/测试可选
+- **Phase 5 · 应用层成形**：`app::App`/`GameLoop`/`CameraController`（接管引擎里的拖拽状态机与键盘轮询）/`DemoScene`（灯光常量随迁）/Config 扩充
+- **Phase 6 · 工程纪律**：CMake 拆静态库（编译期强制依赖方向）、`VULKAN_HPP_*` 宏收编单一头、根级残留归位、头文件卫生、CI/测试可选
+- **重构完成后 · 光线追踪管线**（见计划文档 §6 路线图）：NVIDIA GPU 上启用 `VK_KHR_acceleration_structure`/`VK_KHR_ray_tracing_pipeline`，BLAS/TLAS 由 `SceneObject` 数据（mesh + worldMatrix）构建，`RenderItem` 数据面直接复用；最终形态为纯路径追踪离线渲染器

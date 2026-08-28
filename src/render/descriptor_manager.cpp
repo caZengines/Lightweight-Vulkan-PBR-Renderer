@@ -5,12 +5,12 @@
 
 #include "extern/spirv_reflect.h"
 
-namespace render {DescriptorSetLayout::DescriptorSetLayout(RenderContext& rct, const std::vector<std::uint8_t>& spvCode)
+namespace render {DescriptorSetLayout::DescriptorSetLayout(RenderContext& rct, const std::vector<uint8_t>& spvCode)
     : rct_(rct) {
     autoCreateDSL(spvCode);
 }
 
-void DescriptorSetLayout::autoCreateDSL(const std::vector<std::uint8_t>& spvCode) {
+void DescriptorSetLayout::autoCreateDSL(const std::vector<uint8_t>& spvCode) {
     spv_reflect::ShaderModule module(spvCode);
 
     uint32_t setCountRaw = 0;

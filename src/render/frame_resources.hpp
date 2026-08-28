@@ -51,7 +51,7 @@ public:
 
     // Monotonic timeline payload; resets on sync recreation (same behavior as
     // the pre-split Renderer, which zeroed frameCount on rebuild).
-    [[nodiscard]] std::uint64_t nextSignalValue() { return ++frameCount_; }
+    [[nodiscard]] uint64_t nextSignalValue() { return ++frameCount_; }
 
 private:
     void createUniformBuffers(VmaAllocator alloc);

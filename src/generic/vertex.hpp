@@ -1,12 +1,17 @@
 #pragma once
+
+#include <cstdint>
+#include <functional>
+
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/constants.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/hash.hpp>
-#include <vulkan/vulkan.hpp>
 
+// Pure vertex/instance data. The Vulkan binding/attribute descriptions that
+// used to live here moved to render/pipeline.cpp (Phase 4): layout is a
+// pipeline concern; these structs must stay GPU-free so the scene layer can
+// use them.
 struct Vertex {
     glm::vec3 pos;
     glm::vec2 texCoord;
@@ -15,9 +20,6 @@ struct Vertex {
 
     void setNormal(const glm::vec3& n);
     void setTangent(const glm::vec3& tangent_, const float& handedness_);
-
-    static vk::VertexInputBindingDescription getBindingDescription();
-    static std::array<vk::VertexInputAttributeDescription, 4> getAttributeDescription();
 
     bool operator==(const Vertex& other) const {
         return pos == other.pos && texCoord == other.texCoord && normal[0] == other.normal[0] && normal[1] == other.normal[1] && normal[2] == other.normal[2];
@@ -36,8 +38,5 @@ namespace std {
 
 struct InstanceData {
     glm::mat4 model;
-
-    static vk::VertexInputBindingDescription getBindingDescription();
-    static std::array<vk::VertexInputAttributeDescription, 4> getAttributeDescription();
 };
 static_assert(sizeof(InstanceData) == 64, "InstanceData must match shader layout");

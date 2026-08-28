@@ -4,7 +4,51 @@
 #include "render/shader_manager.hpp"
 #include "render_context.hpp"
 #include <array>
+#include <cstddef>
 #include <stdexcept>
+
+namespace {
+
+// Vertex layout consumed by the raster pipeline: binding 0 = mesh vertices,
+// binding 1 = per-instance model matrices. (Moved here from Vertex/
+// InstanceData in Phase 4 — the data structs stay GPU-free; input layout is a
+// pipeline concern.)
+vk::VertexInputBindingDescription meshVertexBinding() {
+    vk::VertexInputBindingDescription description;
+    description.setBinding(0).setStride(sizeof(Vertex)).setInputRate(vk::VertexInputRate::eVertex);
+    return description;
+}
+
+std::array<vk::VertexInputAttributeDescription, 4> meshVertexAttributes() {
+    vk::VertexInputAttributeDescription posAttribute;
+    posAttribute.setBinding(0).setLocation(0).setFormat(vk::Format::eR32G32B32Sfloat).setOffset(offsetof(Vertex, pos));
+    vk::VertexInputAttributeDescription uvAttribute;
+    uvAttribute.setBinding(0).setLocation(1).setFormat(vk::Format::eR32G32Sfloat).setOffset(offsetof(Vertex, texCoord));
+    vk::VertexInputAttributeDescription norAttribute;
+    norAttribute.setBinding(0).setLocation(2).setFormat(vk::Format::eR8G8B8A8Snorm).setOffset(offsetof(Vertex, normal));
+    vk::VertexInputAttributeDescription tanAttribute;
+    tanAttribute.setBinding(0).setLocation(3).setFormat(vk::Format::eR8G8B8A8Snorm).setOffset(offsetof(Vertex, tangent));
+
+    return {posAttribute, uvAttribute, norAttribute, tanAttribute};
+}
+
+vk::VertexInputBindingDescription instanceBinding() {
+    vk::VertexInputBindingDescription description;
+    description.setBinding(1).setStride(sizeof(InstanceData)).setInputRate(vk::VertexInputRate::eInstance);
+    return description;
+}
+
+std::array<vk::VertexInputAttributeDescription, 4> instanceAttributes() {
+    std::array<vk::VertexInputAttributeDescription, 4> attribute;
+    // mat4 model = 4 × vec4, locations 4-7
+    for (uint32_t i = 0; i < 4; ++i) {
+        attribute[i].setBinding(1).setLocation(4 + i).setFormat(vk::Format::eR32G32B32A32Sfloat)
+                    .setOffset(sizeof(glm::vec4) * i);
+    }
+    return attribute;
+}
+
+}  // namespace
 
 namespace render {
 
@@ -45,10 +89,10 @@ void Pipeline::create(const std::vector<vk::DescriptorSetLayout>& setLayouts,
     viewportState.setViewportCount(1).setScissorCount(1);
 
     // vertex input (mesh vertices + per-instance data)
-    const auto vertexBindingDesc   = Vertex::getBindingDescription();
-    const auto vertexAttribDesc    = Vertex::getAttributeDescription();
-    const auto instanceBindingDesc = InstanceData::getBindingDescription();
-    const auto instanceAttribDesc  = InstanceData::getAttributeDescription();
+    const auto vertexBindingDesc   = meshVertexBinding();
+    const auto vertexAttribDesc    = meshVertexAttributes();
+    const auto instanceBindingDesc = instanceBinding();
+    const auto instanceAttribDesc  = instanceAttributes();
     std::vector<vk::VertexInputBindingDescription> bindingDescriptions{
         vertexBindingDesc, instanceBindingDesc};
     std::vector<vk::VertexInputAttributeDescription> attributeDescriptions(
