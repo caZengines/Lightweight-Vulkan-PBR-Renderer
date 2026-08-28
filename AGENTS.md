@@ -130,9 +130,15 @@ pollEvents → input.poll → update(dt)（CameraController → scene::Camera）
 2. **固定宽度整型不加 `std::` 前缀**：写 `uint32_t`/`uint64_t`/`uint8_t`，不写 `std::uint32_t`。
 3. **依赖只向下**：`scene/` 头文件禁止 Vulkan/GLFW 类型（验收命令：`grep -rniE "vulkan|glfw|vk::|VkBuffer" src/scene/*.hpp` 应零命中，注释除外）；层间通信走契约类型（`RenderItem`/`AssetHandle`/`FrameContext`/`FrameParams`）。
 4. **无单例**：仅 `platform::LogLocator`（带 Null Object）；其余一律构造注入。
-5. **App 成员声明顺序 = 析构逆序纪律**：`DescriptorPool` 必须声明在一切持有 `vk::raii::DescriptorSet` 的成员（DemoScene 的材质、Renderer 的 per-frame set）之前。
+5. **App 成员声明顺序 = 析构逆序纪律（曾出过真实事故）**：一切（传递性地）持有 GPU 资源的成员——VMA 分配（`scene_` → InstanceBuffer → VmaBuffer）、`vk::raii` 句柄（材质描述符集、Renderer 的 per-frame set）——必须声明在其依赖的 rhi/resource 成员（`vulkanDevice_`/`vmaContext_`/`descriptorPool_`）**之后**。声明反了 = 分配器/池先死，退出时 VMA 断言 `Some allocations were not freed before destruction of this memory block`。新增持有 GPU 资源的成员时先检查声明位置。
 6. **vulkan-hpp RAII 语义**：raii 对象本身传参（如 `vulkanDevice_.instance`），不要 `*` 解引用成 plain handle；raii 创建方法可 const 调用。
-7. **每阶段/每次重构的验证协议**：Debug + Release 双配置构建 → `cd bin` 后运行（PowerShell `Start-Process -PassThru` 7 秒存活即通过，注意沙箱里 bash 直接拉起 exe 会静默 127）→ validation 无报错 → 用户做黄金帧目视对比。
+7. **每阶段/每次重构的验证协议**：Debug + Release 双配置构建 → **优雅关闭冒烟**（强杀进程不跑析构函数，测不出退出期资源错误，必须走 `CloseMainWindow`）：
+   ```powershell
+   Set-Location bin; $p = Start-Process -FilePath '.\main.exe' -PassThru
+   Start-Sleep -Seconds 6; $null = $p.CloseMainWindow()
+   if (-not $p.WaitForExit(15000)) { $p.Kill(); 'DID-NOT-EXIT' } else { "CLEAN-EXIT code=$($p.ExitCode)" }
+   ```
+   通过标准：`CLEAN-EXIT code=0` 且无 validation/VMA 断言输出（沙箱里 bash 直接拉起 exe 会静默 127，一律用 PowerShell）。→ 用户做黄金帧目视对比。
 8. **Git**：全局 `commit.gpgsign=true`（SSH key 带 passphrase），非交互提交用 `git -c commit.gpgsign=false commit ...`；事后补签：`git rebase <base>~1 --exec "git commit --amend --no-edit -S"`。
 
 ## 7. 当前状态与下一步

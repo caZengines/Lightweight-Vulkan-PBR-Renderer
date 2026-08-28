@@ -1,6 +1,6 @@
 #include "render/pipeline.hpp"
 
-#include "generic/vertex.hpp"
+#include "rhi/vertex.hpp"
 #include "render/shader_manager.hpp"
 #include "render_context.hpp"
 #include <array>
@@ -15,26 +15,26 @@ namespace {
 // pipeline concern.)
 vk::VertexInputBindingDescription meshVertexBinding() {
     vk::VertexInputBindingDescription description;
-    description.setBinding(0).setStride(sizeof(Vertex)).setInputRate(vk::VertexInputRate::eVertex);
+    description.setBinding(0).setStride(sizeof(rhi::Vertex)).setInputRate(vk::VertexInputRate::eVertex);
     return description;
 }
 
 std::array<vk::VertexInputAttributeDescription, 4> meshVertexAttributes() {
     vk::VertexInputAttributeDescription posAttribute;
-    posAttribute.setBinding(0).setLocation(0).setFormat(vk::Format::eR32G32B32Sfloat).setOffset(offsetof(Vertex, pos));
+    posAttribute.setBinding(0).setLocation(0).setFormat(vk::Format::eR32G32B32Sfloat).setOffset(offsetof(rhi::Vertex, pos));
     vk::VertexInputAttributeDescription uvAttribute;
-    uvAttribute.setBinding(0).setLocation(1).setFormat(vk::Format::eR32G32Sfloat).setOffset(offsetof(Vertex, texCoord));
+    uvAttribute.setBinding(0).setLocation(1).setFormat(vk::Format::eR32G32Sfloat).setOffset(offsetof(rhi::Vertex, texCoord));
     vk::VertexInputAttributeDescription norAttribute;
-    norAttribute.setBinding(0).setLocation(2).setFormat(vk::Format::eR8G8B8A8Snorm).setOffset(offsetof(Vertex, normal));
+    norAttribute.setBinding(0).setLocation(2).setFormat(vk::Format::eR8G8B8A8Snorm).setOffset(offsetof(rhi::Vertex, normal));
     vk::VertexInputAttributeDescription tanAttribute;
-    tanAttribute.setBinding(0).setLocation(3).setFormat(vk::Format::eR8G8B8A8Snorm).setOffset(offsetof(Vertex, tangent));
+    tanAttribute.setBinding(0).setLocation(3).setFormat(vk::Format::eR8G8B8A8Snorm).setOffset(offsetof(rhi::Vertex, tangent));
 
     return {posAttribute, uvAttribute, norAttribute, tanAttribute};
 }
 
 vk::VertexInputBindingDescription instanceBinding() {
     vk::VertexInputBindingDescription description;
-    description.setBinding(1).setStride(sizeof(InstanceData)).setInputRate(vk::VertexInputRate::eInstance);
+    description.setBinding(1).setStride(sizeof(rhi::InstanceData)).setInputRate(vk::VertexInputRate::eInstance);
     return description;
 }
 

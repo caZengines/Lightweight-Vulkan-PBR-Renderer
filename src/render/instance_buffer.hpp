@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <vector>
 
-#include "generic/vertex.hpp"
+#include "rhi/vertex.hpp"
 #include "rhi/vma_allocator.hpp"
 
 namespace resource {
@@ -18,7 +18,7 @@ namespace render {
 // replaces per-object streams with TLAS instance transforms.
 class InstanceBuffer {
 public:
-    InstanceBuffer(resource::UploadQueue& queue, const std::vector<InstanceData>& instances);
+    InstanceBuffer(resource::UploadQueue& queue, const std::vector<rhi::InstanceData>& instances);
 
     InstanceBuffer(const InstanceBuffer&) = delete;
     InstanceBuffer& operator=(const InstanceBuffer&) = delete;

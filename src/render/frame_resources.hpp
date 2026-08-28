@@ -15,8 +15,7 @@ struct RenderContext;
 
 namespace render {
 
-// Frames allowed to be in flight simultaneously. Owned by this component as
-// of Phase 3 (was a loose constant in render_context.hpp).
+// Frames allowed to be in flight simultaneously.
 inline constexpr uint32_t kMaxFramesInFlight = 2;
 
 // Owns everything that lives for kMaxFramesInFlight rotations: per-frame UBO

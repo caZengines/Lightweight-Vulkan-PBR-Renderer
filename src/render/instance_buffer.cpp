@@ -4,11 +4,11 @@
 
 namespace render {
 
-InstanceBuffer::InstanceBuffer(resource::UploadQueue& queue, const std::vector<InstanceData>& instances)
+InstanceBuffer::InstanceBuffer(resource::UploadQueue& queue, const std::vector<rhi::InstanceData>& instances)
     : count_(static_cast<uint32_t>(instances.size()))
 {
     buffer_ = queue.uploadBuffer(instances.data(),
-                                 sizeof(InstanceData) * instances.size(),
+                                 sizeof(rhi::InstanceData) * instances.size(),
                                  vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer);
 }
 

@@ -10,19 +10,16 @@
 
 namespace app {
 
-// Application configuration (Layer 5): every content-facing knob lives here —
+// every content-facing knob lives here —
 // window setup, validation/device extensions, presentation, quality, paths.
-// Every path is resolved to an absolute path against
-// platform::PlatformUtils::assetRoot() at construction, so no "../" relative
-// paths remain in the codebase (risk R5).
 struct Config {
-    // --- Window (was hardcoded in the old composition root) ---
+    // --- Window ---
     uint32_t    width     = 1920;
     uint32_t    height    = 1080;
     std::string title     = "C' Vulkan";
     bool        resizable = true;
 
-    // --- Device & validation (were global inline vars in c_engine.hpp) ---
+    // --- Device & validation ---
     bool enableValidationLayers =
 #ifdef NDEBUG
         false;
@@ -43,13 +40,13 @@ struct Config {
     std::string assetRoot;
 
     // Asset paths — stored relative, resolved to absolute in the constructor.
-    std::string modelPath         = "models/scene.gltf";
-    std::string rockPath          = "models/rock.obj";
-    std::string planetPath        = "models/planet.obj";
-    std::string texturePath       = "textures/container.png";
-    std::string rockTexturePath   = "textures/rock.png";
-    std::string marsTexturePath   = "textures/mars.png";
-    std::string normalTexturePath = "textures/container_normal_OpenGL.png";
+    std::string modelPath         = "assets/models/scene.gltf";
+    std::string rockPath          = "assets/models/rock.obj";
+    std::string planetPath        = "assets/models/planet.obj";
+    std::string texturePath       = "assets/textures/container.png";
+    std::string rockTexturePath   = "assets/textures/rock.png";
+    std::string marsTexturePath   = "assets/textures/mars.png";
+    std::string normalTexturePath = "assets/textures/container_normal_OpenGL.png";
     std::string shaderPath        = "shaders/slang.spv";
 
     Config() {

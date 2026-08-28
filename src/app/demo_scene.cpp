@@ -1,9 +1,9 @@
 #include "app/demo_scene.hpp"
 
 #include "app/config.hpp"
-#include "generic/material.hpp"
-#include "generic/sampler.hpp"
-#include "generic/vertex.hpp"
+#include "resource/material.hpp"
+#include "resource/sampler.hpp"
+#include "rhi/vertex.hpp"
 #include "resource/asset_library.hpp"
 #include "resource/resource_registry.hpp"
 #include "resource/upload_queue.hpp"
@@ -41,11 +41,11 @@ void DemoScene::build(const Sampler& albedoSampler, const Sampler& normalSampler
 
     // Empty (null) texture handles fall back to the registry's built-in
     // default textures (Null Object semantics).
-    materials_.push_back(std::make_shared<Material>(resource::AssetHandle{}, resource::AssetHandle{},
+    materials_.emplace_back(std::make_shared<Material>(resource::AssetHandle{}, resource::AssetHandle{},
                                                     albedoSampler, normalSampler, registry));
-    materials_.push_back(std::make_shared<Material>(marsAlbedo, resource::AssetHandle{},
+    materials_.emplace_back(std::make_shared<Material>(marsAlbedo, resource::AssetHandle{},
                                                     albedoSampler, normalSampler, registry));
-    materials_.push_back(std::make_shared<Material>(rockAlbedo, resource::AssetHandle{},
+    materials_.emplace_back(std::make_shared<Material>(rockAlbedo, resource::AssetHandle{},
                                                     albedoSampler, normalSampler, registry));
     const auto& defaultMaterial = materials_[0];
     const auto& marsMaterial    = materials_[1];
@@ -54,7 +54,7 @@ void DemoScene::build(const Sampler& albedoSampler, const Sampler& normalSampler
     // --- mars ---
     auto marsMeshHandle = assets.loadMesh(config_.planetPath);
     auto mars = std::make_shared<scene::SceneObject>(marsMeshHandle, marsMaterial, registry);
-    std::vector<InstanceData> marsInstances(1);
+    std::vector<rhi::InstanceData> marsInstances(1);
     glm::mat4 marsModel = glm::mat4(1.0f);
     marsModel = glm::translate(marsModel, glm::vec3(0.0f, -3.0f, 0.0f));
     marsModel = glm::scale(marsModel, glm::vec3(2.0f, 2.0f, 2.0f));
@@ -68,7 +68,7 @@ void DemoScene::build(const Sampler& albedoSampler, const Sampler& normalSampler
     const uint32_t amount = 1000;
     const float radius = 40.0f;
     const float offset = 2.5f;
-    std::vector<InstanceData> rocks(amount);
+    std::vector<rhi::InstanceData> rocks(amount);
     std::random_device rd;
     std::mt19937 gen(rd());
 

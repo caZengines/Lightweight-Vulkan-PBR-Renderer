@@ -1,4 +1,5 @@
 #pragma once
+#define VMA_LEAK_LOG_FORMAT(format, ...) printf(format, __VA_ARGS__)
 #include "extern/vk_mem_alloc.h"
 #include "vulkan/vulkan.hpp"
 

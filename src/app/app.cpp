@@ -2,13 +2,11 @@
 
 #include "app/game_loop.hpp"
 #include "command_manager.hpp"
-#include "generic/material.hpp"
-#include "generic/sampler.hpp"
+#include "resource/material.hpp"
+#include "resource/sampler.hpp"
 #include "platform/log.hpp"
 #include "render_context.hpp"
 #include "resource/resource_registry.hpp"
-
-#include <array>
 
 namespace {
 
@@ -42,6 +40,9 @@ App::App() {
 }
 
 App::~App() {
+    if (scene_.isValid()) {
+        scene_.clear();
+    }
     if (renderer_) {
         renderer_->cleanup();
     }

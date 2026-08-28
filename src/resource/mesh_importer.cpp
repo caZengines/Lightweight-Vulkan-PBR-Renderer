@@ -523,7 +523,7 @@ void appendPrimitiveIndices(const AccessorData* indexData,
 // the output containers.
 void loadPrimitive(const tg3_model& model,
                    const tg3_primitive& primitive,
-                   std::vector<Vertex>& outVertices,
+                   std::vector<rhi::Vertex>& outVertices,
                    std::vector<uint32_t>& outIndices) {
     // --- POSITION (mandatory) ---
     const int32_t positionIndex = findAttribute(&primitive, "POSITION");
@@ -606,7 +606,7 @@ void loadPrimitive(const tg3_model& model,
     const uint32_t baseVertex = static_cast<uint32_t>(outVertices.size());
     reserveAdditional(outVertices, vertexCount);
     for (uint64_t i = 0; i < vertexCount; ++i) {
-        Vertex vertex{};
+        rhi::Vertex vertex{};
         vertex.pos = glm::vec3(readAttributeElement(positionData, i));
         if (uvData) {
             vertex.texCoord = glm::vec2(readAttributeElement(*uvData, i));
@@ -638,7 +638,7 @@ MeshData MeshImporter::loadObj(const std::string& modelPath) {
     {
         throw std::runtime_error(err.empty() ? "Failed to load OBJ: " + modelPath : err);
     }
-    std::vector<Vertex>   vertices;
+    std::vector<rhi::Vertex>   vertices;
     std::vector<uint32_t> indices;
     size_t cornerCount = 0;
     for (const auto& shape : shapes) cornerCount += shape.mesh.indices.size();
@@ -647,7 +647,7 @@ MeshData MeshImporter::loadObj(const std::string& modelPath) {
     const bool hasFileNormals = !attrib.normals.empty();
     for (const auto& shape : shapes) {
         for (const auto& index : shape.mesh.indices) {
-            Vertex vertex{};
+            rhi::Vertex vertex{};
             vertex.pos = {
                 attrib.vertices[3 * index.vertex_index + 0],
                 attrib.vertices[3 * index.vertex_index + 1],
@@ -712,7 +712,7 @@ MeshData MeshImporter::loadGlTF(const std::string& modelPath) {
         throw std::runtime_error("glTF: failed to load " + modelPath + ": " + reason);
     }
 
-    std::vector<Vertex>   vertices;
+    std::vector<rhi::Vertex>   vertices;
     std::vector<uint32_t> indices;
     for (uint32_t m = 0; m < model->meshes_count; ++m) {
         const tg3_mesh& mesh = model->meshes[m];

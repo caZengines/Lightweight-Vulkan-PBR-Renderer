@@ -7,7 +7,7 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 
-#include "generic/vertex.hpp"  // InstanceData (pure data: one mat4 per instance)
+#include "rhi/vertex.hpp"  // InstanceData (pure data: one mat4 per instance)
 #include "resource/asset_handle.hpp"
 #include "scene/transform.hpp"
 
@@ -41,7 +41,7 @@ public:
     // transform composes on top of every instance placement:
     //   world = transform.toMatrix() * instance.model
     // (an identity transform reproduces the raw instance matrices).
-    void setInstances(resource::UploadQueue& queue, std::vector<InstanceData> instances);
+    void setInstances(resource::UploadQueue& queue, std::vector<rhi::InstanceData> instances);
 
     // Marks the world matrix dirty. The GPU instance stream is NOT re-uploaded
     // automatically — call setInstances() again to push updated matrices.
@@ -57,16 +57,16 @@ public:
     [[nodiscard]] uint32_t instanceCount() const { return instanceCount_; }
 
 private:
-    resource::AssetHandle          meshHandle_;         // keeps the GPU mesh loaded
-    const resource::MeshGPU*       meshGPU_ = nullptr;  // registry-owned
-    std::shared_ptr<Material>      material_;
-    Transform                      transform_{};
-    std::vector<InstanceData>      instances_;          // object-local placements
+    resource::AssetHandle                   meshHandle_;         // keeps the GPU mesh loaded
+    const resource::MeshGPU*                meshGPU_ = nullptr;  // registry-owned
+    std::shared_ptr<Material>               material_;
+    Transform                               transform_{};
+    std::vector<rhi::InstanceData>          instances_;          // object-local placements
     std::shared_ptr<render::InstanceBuffer> instanceBuffer_;
-    uint32_t                       instanceCount_ = 0;
+    uint32_t                                instanceCount_ = 0;
 
-    mutable glm::mat4              worldMatrix_{1.0f};
-    mutable bool                   worldDirty_  = false;
+    mutable glm::mat4                       worldMatrix_{1.0f};
+    mutable bool                            worldDirty_  = false;
 };
 
 }  // namespace scene

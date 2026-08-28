@@ -34,6 +34,7 @@
 - rhi 迁移：`Swapchain/VulkanDevice` 移入 `src/rhi/` 并命名空间化；`Context` 拆为 `DebugMessenger`+`Surface` 后删除；双配置构建通过 + 渲染循环冒烟复测存活
 - Phase 4：`grep -rniE "vulkan|glfw|vk::|VkBuffer" src/scene/*.hpp` 零命中（仅注释提及）；双配置构建通过 + 渲染循环冒烟存活；实例绘制不变（1 火星 + 1000 岩石，identity transform ⇒ 合成矩阵与原数据一致）
 - Phase 5：双配置构建通过 + 默认 PATH 冒烟存活（bin/ 已落地 ucrt64 运行时 DLL，修复 `0xC0000139` 加载失败）；行为等价——灯光/投影/输入参数原值迁移，`run()` 只剩循环转发
+- 析构顺序事故修复：`scene_`（→ SceneObject → InstanceBuffer → VmaBuffer）曾声明在 `vmaContext_` 之前，逆序析构时分配器先亡、VMA 断言 `Some allocations were not freed before destruction` 崩溃；已移至 `descriptorPool_` 之后，双配置构建 + 退出码 0 验证通过。**协议升级**：冒烟从强杀改为优雅关闭（`CloseMainWindow` → 等待退出）——强杀不执行析构函数，旧协议对退出期资源错误全盲
 
 ---
 

@@ -1,6 +1,6 @@
 #include "render/command_recorder.hpp"
 
-#include "generic/material.hpp"
+#include "resource/material.hpp"
 #include "render/instance_buffer.hpp"
 #include "rhi/rhi_factory.hpp"
 #include "render/pipeline.hpp"

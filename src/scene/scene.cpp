@@ -7,6 +7,15 @@ void Scene::addObject(std::shared_ptr<SceneObject> object) {
     itemsDirty_ = true;
 }
 
+bool Scene::isValid() {
+    return !objects_.empty() || !cachedItems_.empty();
+}
+
+void Scene::clear() {
+    if(!objects_.empty()) objects_.clear();;
+    if(!cachedItems_.empty()) cachedItems_.clear();
+}
+
 std::span<const render::RenderItem> Scene::collectRenderItems() const {
     if (itemsDirty_) {
         cachedItems_.clear();
@@ -14,7 +23,7 @@ std::span<const render::RenderItem> Scene::collectRenderItems() const {
         for (const auto& object : objects_) {
             if (object->instanceCount() == 0) continue;
 
-            cachedItems_.push_back(render::RenderItem{
+            cachedItems_.emplace_back(render::RenderItem{
                 .mesh          = &object->mesh(),
                 .material      = &object->material(),
                 .instances     = &object->instanceBuffer(),

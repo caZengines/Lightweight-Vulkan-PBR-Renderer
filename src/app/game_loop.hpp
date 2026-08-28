@@ -9,7 +9,7 @@ class Input;
 
 namespace app {
 
-// Owns the frame cadence (Layer 5): event polling, delta-time measurement,
+// event polling, delta-time measurement,
 // and the update → render step sequence.
 //
 // Fixed-timestep ready: once simulation logic exists, accumulate dt here and

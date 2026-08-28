@@ -16,6 +16,9 @@ class Scene {
 public:
     void addObject(std::shared_ptr<SceneObject> object);
 
+    bool isValid();
+    void clear();
+
     // One RenderItem per drawable object (instances > 0). Returns a view into
     // an internal cache that is rebuilt only after addObject — no per-frame
     // allocation; valid until the next scene mutation.

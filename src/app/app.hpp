@@ -23,14 +23,18 @@ class CommandPool;
 
 namespace app {
 
-// Composition root (Layer 5): owns every subsystem and assembles them
+// owns every subsystem and assembles them
 // bottom-up (rhi → resource → render services → content). run() only wires
 // the loop and forwards — all assembly happens in the constructor.
 //
-// C++ destroys members in reverse declaration order. Keep the
-// pool-before-set discipline: DescriptorPool must stay declared before
-// anything holding vk::raii::DescriptorSet (materials inside DemoScene,
-// per-frame sets inside Renderer).
+// Destruction discipline (C++ destroys members in reverse declaration order):
+// every member that transitively holds GPU resources — VMA allocations
+// (scene_ → InstanceBuffer → VmaBuffer) or vk::raii handles (materials'
+// descriptor sets, Renderer's per-frame sets) — must stay declared AFTER the
+// rhi/resource members it depends on (vulkanDevice_/vmaContext_,
+// descriptorPool_). Declaring a GPU-resource holder above them means the
+// allocator/pool dies first and VMA asserts with
+// "Some allocations were not freed before destruction" at exit.
 class App final {
 public:
     App();
@@ -56,9 +60,6 @@ private:
     scene::Camera    camera_{};
     CameraController cameraController_{camera_};
 
-    // --- scene data (filled by DemoScene) ---
-    scene::Scene scene_{};
-
     // --- rhi (Layer 0) ---
     rhi::VulkanDevice                      vulkanDevice_{};
     std::unique_ptr<rhi::VmaContext>       vmaContext_;
@@ -79,6 +80,9 @@ private:
     // --- render services (Layer 3) ---
     std::unique_ptr<render::DescriptorSetLayout> descriptorSetLayout_;
     std::unique_ptr<render::DescriptorPool>      descriptorPool_;
+
+    // --- scene data (filled by DemoScene) ---
+    scene::Scene scene_{};
 
     // --- content & frame orchestration (after the pool, per the rule above) ---
     DemoScene                         demoScene_{config_, scene_};
