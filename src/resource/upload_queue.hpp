@@ -1,5 +1,5 @@
 #pragma once
-#include "command_manager.hpp"
+#include "rhi/command_pool.hpp"
 #include "rhi/vma_allocator.hpp"
 
 #include <cstdint>
@@ -21,7 +21,7 @@ namespace resource {
 // rhi::RhiFactory instead of the removed singleton.
 class UploadQueue {
     public:
-        explicit UploadQueue(CommandPool& transientPool, const rhi::RhiFactory& factory,
+        explicit UploadQueue(rhi::CommandPool& transientPool, const rhi::RhiFactory& factory,
                              VmaAllocator allocator)
             : pool_(transientPool), factory_(factory), allocator_(allocator) {}
 
@@ -42,10 +42,10 @@ class UploadQueue {
 
         [[nodiscard]] VmaAllocator allocator() const noexcept { return allocator_; }
 
-        CommandPool& pool() { return pool_; }
+        rhi::CommandPool& pool() { return pool_; }
 
     private:
-        CommandPool& pool_;
+        rhi::CommandPool& pool_;
         const rhi::RhiFactory& factory_;
         VmaAllocator allocator_;
 

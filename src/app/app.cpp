@@ -1,7 +1,7 @@
 #include "app/app.hpp"
 
 #include "app/game_loop.hpp"
-#include "command_manager.hpp"
+#include "rhi/command_pool.hpp"
 #include "resource/material.hpp"
 #include "resource/sampler.hpp"
 #include "platform/log.hpp"
@@ -108,7 +108,7 @@ void App::initRhi() {
                                                             config_.enableValidationLayers);
     surface_        = std::make_unique<rhi::Surface>(vulkanDevice_.instance, *window_);
 
-    graphicsCommandPool_ = std::make_unique<CommandPool>(
+    graphicsCommandPool_ = std::make_unique<rhi::CommandPool>(
         vulkanDevice_.device, vulkanDevice_.graphicsQueueIndex,
         std::move(vulkanDevice_.graphicsQueue), vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
 
@@ -116,7 +116,7 @@ void App::initRhi() {
     // GRAPHICS queue family: mipmap generation records vkCmdBlitImage and
     // fragment-stage barriers, which transfer-only families cannot execute.
     vk::raii::Queue transientQueue(vulkanDevice_.device.getQueue(vulkanDevice_.graphicsQueueIndex, 0));
-    transientCommandPool_ = std::make_unique<CommandPool>(
+    transientCommandPool_ = std::make_unique<rhi::CommandPool>(
         vulkanDevice_.device, vulkanDevice_.graphicsQueueIndex, std::move(transientQueue),
         vk::CommandPoolCreateFlagBits::eResetCommandBuffer
         | vk::CommandPoolCreateFlagBits::eTransient);

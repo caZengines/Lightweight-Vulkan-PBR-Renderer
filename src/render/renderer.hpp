@@ -17,13 +17,12 @@
 #include "render_context.hpp"
 #include "rhi/vma_allocator.hpp"
 
-class CommandPool;
-
 namespace platform {
 class Window;
 }  // namespace platform
 
 namespace rhi {
+class CommandPool;
 class RhiFactory;
 class Swapchain;
 }  // namespace rhi
@@ -55,7 +54,7 @@ public:
         VmaAllocator                         alloc;
         std::vector<vk::DescriptorSetLayout> setLayouts;      // [0] per-frame, [1+] per-material
         const vk::DescriptorPool&            set0Pool;
-        CommandPool&                         graphicsPool;
+        rhi::CommandPool&                         graphicsPool;
         scene::Camera&                       camera;
         FrameParams                          frameParams;     // light/projection from the content layer
         const vk::raii::SurfaceKHR&          surface;
@@ -89,7 +88,7 @@ private:
     RenderContext                 rct_;
     scene::Camera&                camera_;
     FrameParams                   frameParams_;
-    CommandPool&                  graphicsPool_;
+    rhi::CommandPool&             graphicsPool_;
     const rhi::RhiFactory&        rhiFactory_;
     RenderSettings                settings_;
     std::string_view              spirvPath_;

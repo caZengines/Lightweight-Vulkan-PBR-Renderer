@@ -28,8 +28,7 @@ glm::vec3 Camera::position() const {
 void Camera::moveHorizontal(float forward, float right,
                             float deltaTime, float speed) {
     // offset = (sin(polar)*sin(azimuth), cos(polar), sin(polar)*cos(azimuth))
-    // The horizontal direction FROM camera TO target = normalize of
-    // (-offset.x, 0, -offset.z)
+    // The horizontal direction FROM camera TO target = normalize of (-offset.x, 0, -offset.z)
     // forwardXZ = (-sin(azimuth), 0, -cos(azimuth))
     glm::vec3 forwardXZ{-std::sin(azimuth_), 0.0f, -std::cos(azimuth_)};
     // right = cross(up, forward) -> rotated 90° CCW around Y

@@ -9,7 +9,9 @@
 
 #include "rhi/vma_allocator.hpp"
 
+namespace rhi {
 class CommandPool;
+} //namespace rhi
 
 struct RenderContext;
 
@@ -29,7 +31,7 @@ public:
     // imageCount = current swapchain image count (present-wait semaphores are
     // per-image). set0Pool/set0Layout feed the per-frame Set-0 allocation.
     void init(RenderContext& rct,
-              CommandPool& graphicsPool,
+              rhi::CommandPool& graphicsPool,
               VmaAllocator alloc,
               const vk::DescriptorPool& set0Pool,
               const vk::DescriptorSetLayout& set0Layout,
@@ -54,7 +56,7 @@ public:
 
 private:
     void createUniformBuffers(VmaAllocator alloc);
-    void createCommandBuffers(CommandPool& graphicsPool);
+    void createCommandBuffers(rhi::CommandPool& graphicsPool);
     void createSyncObjects(uint32_t imageCount);
     void createPerFrameSets(const vk::DescriptorPool& set0Pool,
                             const vk::DescriptorSetLayout& set0Layout);

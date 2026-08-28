@@ -19,7 +19,9 @@
 #include "scene/scene.hpp"
 #include <memory>
 
+namespace rhi {
 class CommandPool;
+}
 
 namespace app {
 
@@ -67,8 +69,8 @@ private:
     std::unique_ptr<rhi::Surface>          surface_;
     std::unique_ptr<rhi::RhiFactory>       rhiFactory_;
     std::unique_ptr<render::ShaderManager> shaderManager_;
-    std::unique_ptr<CommandPool>           graphicsCommandPool_;
-    std::unique_ptr<CommandPool>           transientCommandPool_;
+    std::unique_ptr<rhi::CommandPool>           graphicsCommandPool_;
+    std::unique_ptr<rhi::CommandPool>           transientCommandPool_;
 
     // --- resource (Layer 2) ---
     std::unique_ptr<resource::UploadQueue>      uploadQueue_;

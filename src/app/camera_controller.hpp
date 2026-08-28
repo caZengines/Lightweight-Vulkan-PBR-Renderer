@@ -8,9 +8,9 @@ class Camera;
 
 namespace app {
 
-// Translates raw platform input into scene::Camera calls (Layer 5):
+// Translates raw platform input into scene::Camera calls:
 // left-drag orbit, WASD pan, Space/Shift vertical move, wheel zoom. Owns the
-// drag state machine so the camera itself stays pure math.
+// drag state machine.
 class CameraController {
 public:
     explicit CameraController(scene::Camera& camera) : camera_(camera) {}

@@ -4,6 +4,8 @@
 #include <vulkan/vulkan_raii.hpp>
 
 
+namespace rhi{
+
 class CommandPool {
     public:
         // Ban copying
@@ -27,3 +29,4 @@ class CommandPool {
         vk::raii::Queue                          queue_      = nullptr;
 };
 
+}

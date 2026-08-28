@@ -1,4 +1,6 @@
-#include "command_manager.hpp"
+#include "rhi/command_pool.hpp"
+
+namespace rhi {
 
 CommandPool::CommandPool(vk::raii::Device& device, const uint32_t& queueIndex, vk::raii::Queue&& queue, vk::CommandPoolCreateFlags createFlags)
     : device_(&device), queue_(std::move(queue))
@@ -32,4 +34,6 @@ void CommandPool::endSingleTimeCommands(vk::raii::CommandBuffer &&commandBuffer)
     submitInfo.setCommandBuffers(*commandBuffer);
     queue_.submit(submitInfo, commandFence);
     (void)device_->waitForFences({commandFence}, VK_TRUE, UINT64_MAX);
+}
+
 }

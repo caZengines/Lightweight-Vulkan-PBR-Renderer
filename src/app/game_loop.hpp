@@ -12,7 +12,7 @@ namespace app {
 // event polling, delta-time measurement,
 // and the update → render step sequence.
 //
-// Fixed-timestep ready: once simulation logic exists, accumulate dt here and
+// Fixed-timestep: once simulation logic exists, accumulate dt here and
 // run update() in fixed slices; the interactive camera keeps consuming the
 // raw frame delta (input responsiveness must not wait on simulation steps).
 class GameLoop {

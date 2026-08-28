@@ -1,13 +1,13 @@
 #include "render/frame_resources.hpp"
 
 #include "render/frame_uniforms.hpp"
-#include "command_manager.hpp"
+#include "rhi/command_pool.hpp"
 #include "render_context.hpp"
 
 namespace render {
 
 void FrameResources::init(RenderContext& rct,
-                          CommandPool& graphicsPool,
+                          rhi::CommandPool& graphicsPool,
                           VmaAllocator alloc,
                           const vk::DescriptorPool& set0Pool,
                           const vk::DescriptorSetLayout& set0Layout,
@@ -49,7 +49,7 @@ void FrameResources::createUniformBuffers(VmaAllocator alloc) {
     }
 }
 
-void FrameResources::createCommandBuffers(CommandPool& graphicsPool) {
+void FrameResources::createCommandBuffers(rhi::CommandPool& graphicsPool) {
     vk::CommandBufferAllocateInfo allocInfo{};
     allocInfo.setCommandPool(*graphicsPool.setCommandPool())
              .setLevel(vk::CommandBufferLevel::ePrimary)

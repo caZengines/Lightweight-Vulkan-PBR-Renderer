@@ -9,7 +9,7 @@
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
 
-#include "command_manager.hpp"
+#include "rhi/command_pool.hpp"
 #include "rhi/swapchain.hpp"
 #include "render/command_recorder.hpp"
 #include "render/frame_resources.hpp"
