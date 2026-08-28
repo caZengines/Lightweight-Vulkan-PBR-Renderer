@@ -14,8 +14,8 @@
 | Phase 1 平台抽象层 | `b50867b` | ✅ 完成 | `platform::Window/Input/Log`（首个 Service Locator），GLFW 收进 `src/platform/` |
 | Phase 2 资源管理层 | `e2b9385` | ✅ 完成 | 资源句柄化、导入器、上传队列、注册表；Mesh/Texture 不再自建 buffer |
 | Phase 3 渲染层拆分 | `9f15bdb` | ✅ 完成 | `render::FrameResources/CommandRecorder/PipelineCache/PipelineSpec/ShaderManager/RenderSettings/FrameUniforms`；RhiFactory 去单例化注入；死代码清除 |
-| Phase 4 场景层纯数据化 | 本提交 | ✅ 完成 | `src/scene/` 落地（`scene::Scene/SceneObject/Transform/Camera`）；`Scene::collectRenderItems` 直产 RenderItem（app 桥接删除）；Transform 激活（dirty-flag）；剔除预留按路径追踪目标取消 |
-| Phase 5 应用层成形 | — | ⏳ 未开始 | `app::App`、GameLoop、CameraController、DemoScene |
+| Phase 4 场景层纯数据化 | `73c039a` | ✅ 完成 | `src/scene/` 落地（`scene::Scene/SceneObject/Transform/Camera`）；`Scene::collectRenderItems` 直产 RenderItem（app 桥接删除）；Transform 激活（dirty-flag）；剔除预留按路径追踪目标取消 |
+| Phase 5 应用层成形 | 本提交 | ✅ 完成 | `c_engine.hpp` 消失 → `app::App` 组合根 + `GameLoop/CameraController/DemoScene/Config`；灯光/FOV 常量收编 DemoScene；拖拽状态机移交 CameraController；bin/ 自包含（运行时 DLL 落地） |
 | Phase 6 构建层与工程纪律 | — | ⏳ 未开始 | CMake 拆 5 个静态库、命名空间落地、头文件卫生 |
 
 **当前工作树**：干净。**构建环境**：VS Code tasks.json 使用 **Ninja** 生成器（`cmake-build-debug` / `cmake-build-release`），Debug + Release 双配置通过。
@@ -33,6 +33,7 @@
 - Phase 3：Debug + Release 双配置构建通过；带验证层启动渲染循环稳定运行（同基线协议）；resize 路径沿用原时序逻辑（帧间跳过语义保留）
 - rhi 迁移：`Swapchain/VulkanDevice` 移入 `src/rhi/` 并命名空间化；`Context` 拆为 `DebugMessenger`+`Surface` 后删除；双配置构建通过 + 渲染循环冒烟复测存活
 - Phase 4：`grep -rniE "vulkan|glfw|vk::|VkBuffer" src/scene/*.hpp` 零命中（仅注释提及）；双配置构建通过 + 渲染循环冒烟存活；实例绘制不变（1 火星 + 1000 岩石，identity transform ⇒ 合成矩阵与原数据一致）
+- Phase 5：双配置构建通过 + 默认 PATH 冒烟存活（bin/ 已落地 ucrt64 运行时 DLL，修复 `0xC0000139` 加载失败）；行为等价——灯光/投影/输入参数原值迁移，`run()` 只剩循环转发
 
 ---
 
@@ -56,7 +57,7 @@ Layer 1  Platform      — 窗口/输入/日志/路径（platform::）  ✅ Phas
 | Layer 2 | `resource/*` | ✅ 已成型 |
 | Layer 3 | `render/*`（renderer、frame_resources、command_recorder、pipeline*、shader_manager、descriptor_manager、render_item、instance_buffer 等） | ✅ Phase 3 已拆分：Renderer 只剩编排 |
 | Layer 4 | `scene/*` | ✅ Phase 4 已纯数据化：头文件零 Vulkan/GLFW 类型 |
-| Layer 5 | `c_engine.*` + `main/main.cpp` | CEngine 即 App 雏形 |
+| Layer 5 | `app/*` + `main/main.cpp` | ✅ Phase 5 已成形：`app::App` 组合根 + GameLoop/CameraController/DemoScene/Config |
 
 `generic/` 仅剩 GPU 侧过渡件（material/sampler/vertex），随路径追踪改造一并数据化。
 
@@ -130,12 +131,21 @@ Layer 1  Platform      — 窗口/输入/日志/路径（platform::）  ✅ Phas
 | `Sampler` | `generic/sampler.hpp/cpp` | vk::raii::Sampler 包装 |
 | `Vertex` / `InstanceData` | `generic/vertex.hpp` | 纯数据顶点/实例布局（SNORM 量化，`static_assert` 64B 实例）；Vulkan 输入布局描述已移入 `pipeline.cpp`（数据与管线关注点分离） |
 
+### Layer 5 · 应用（`src/app/`，Phase 5 完成）
+
+| 模块 | 文件 | 职责 |
+|---|---|---|
+| `app::App` | `app/app.hpp/cpp` | **组合根**：构造函数按层装配（window→rhi→resources→samplers→content→render），`run()` 只做循环转发；`~App` 清理；成员析构逆序纪律（DescriptorPool 声明先于一切持 set 成员） |
+| `app::GameLoop` | `app/game_loop.hpp/cpp` | 帧节奏：pollEvents → input.poll → deltaTime → update/render 回调；固定步长骨架预留 |
+| `app::CameraController` | `app/camera_controller.hpp/cpp` | 输入→相机映射：左键拖拽轨道状态机（相机保持纯数学）、WASD/Space/Shift、滚轮 |
+| `app::DemoScene` | `app/demo_scene.hpp/cpp` | 示例内容：三材质 + 火星 + 1000 随机岩石；持有 `FrameParams`（灯光/FOV/远近平面，原 renderer 字面量收编） |
+| `app::Config` | `app/config.hpp` | 全部内容参数：窗口尺寸/标题、验证层与设备扩展、MSAA、present mode、资产路径（构造时解析为绝对路径） |
+
 ### 其它
 
 | 模块 | 文件 | 职责 |
 |---|---|---|
-| `CEngine`（App 雏形） | `c_engine.hpp` + `engine.cpp` | 组合根：initVulkan 装配（device→VMA→factory→messenger/surface→pool→**AssetLibrary**→sampler→material→DSL→pool→材质 Set-1→scene→renderer）、`run()` 主循环（`scene_.collectRenderItems()` 直供 record）、鼠标左键拖拽轨道状态机（app 边界持有，Phase 5 迁 `CameraController`）、场景内容（火星 + 1000 岩石，`std::random_device` 随机分布）、成员析构顺序纪律（池先于 set、库先于句柄） |
-| `main` | `main/main.cpp` | 入口：构造 CEngine → run，异常捕获 |
+| `main` | `main/main.cpp` | 入口：构造 `app::App` → run，异常捕获 |
 
 ### 外部依赖（`src/extern/`，头文件与实现单树共存）
 
@@ -172,10 +182,10 @@ SceneObject(mesh handle, material, registry)
 ### 每帧渲染（运行期）
 
 ```
-CEngine::run
-  ├─ pollEvents → input.poll → updateCamera(dt)
+app::GameLoop::run
+  ├─ pollEvents → input.poll → CameraController.update(dt)（WASD/滚轮/拖拽 → scene::Camera）
   ├─ renderer->beginFrame()                    // 空 optional ⇒ 本帧跳过（swapchain 重建中）
-  │    └─ waitFence → acquire(OOD⇒recreate) → fillUBO(camera) → writeSet0 → resetFence/cmdBuffer
+  │    └─ waitFence → acquire(OOD⇒recreate) → fillUBO(camera + FrameParams) → writeSet0 → resetFence/cmdBuffer
   ├─ renderer->record(*frame, scene_.collectRenderItems())   // Scene 直产（dirty 缓存），CommandRecorder 过渡→Rendering→逐 item 绘制
   └─ renderer->endFrame(*frame)                // timeline+binary submit → present → resize/OOD 处理
 ```
@@ -196,6 +206,7 @@ VK_LAYER_PATH=$VULKAN_SDK/Bin VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation ./m
 
 - shader：`shaders/shader.slang` → `slangc` 编译 → `shaders/slang.spv`（CMake 自定义命令，随构建执行）
 - 验证层：Debug 开 / Release 关（`NDEBUG`）
+- bin/ 自包含：CMake POST_BUILD 拷贝 ucrt64 运行时 DLL（libstdc++/libgcc/libwinpthread/glfw3）——PATH 上 mingw64/bin 先于 ucrt64/bin，不落地会 `0xC0000139` 启动即崩
 - `bin/main.exe` 被占用时（进程未退出）链接会失败，先结束进程再构建
 
 ---
@@ -204,16 +215,16 @@ VK_LAYER_PATH=$VULKAN_SDK/Bin VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation ./m
 
 1. `Material` 仍是 GPU 侧过渡件（`generic/`，含描述符集/RenderFlags）；路径追踪改造时数据化为 BSDF 参数表，`generic/` 剩余件（material/sampler/vertex）随之一并收编
 2. `SceneObject::setTransform` 后需重新 `setInstances` 才会更新 GPU 实例流（静态场景下无影响）；`SceneNode` 父子层次按计划暂缓——层次结构届时由 TLAS/BLAS 场景装配承接，`worldMatrix()`（dirty-flag）已就位
-3. 批合并不真正存在（每对象一个 InstanceBuffer，firstInstance 恒 0）；剔除（Frustum/SpatialIndex）**已取消**——项目目标为纯路径追踪离线渲染器，光栅剔除不再适用
-4. `VulkanDevice::transferQueueIndex/transferQueue` 已无使用者（Phase 2 后 transient pool 改挂 graphics 队列）
-5. 1000 岩石用 `std::random_device` 种子 → 跨运行画面不可复现（黄金帧对比协议采用"同进程帧差=0"）
-6. Material 的 RenderFlags 恒为"双纹理全开"，暂无按需开关
-7. `VULKAN_HPP_*` 宏仍在各 TU 头部重复定义，待收敛到单一公共头（工程纪律项）；根级 `command_manager.*`、`render_context.hpp` 待 Phase 6 归位
+3. `VulkanDevice::transferQueueIndex/transferQueue` 已无使用者（Phase 2 后 transient pool 改挂 graphics 队列）
+4. 1000 岩石用 `std::random_device` 种子 → 跨运行画面不可复现（黄金帧对比协议采用"同进程帧差=0"）
+5. Material 的 RenderFlags 恒为"双纹理全开"，暂无按需开关
+6. `VULKAN_HPP_*` 宏仍在各 TU 头部重复定义，待收敛到单一公共头（工程纪律项）；根级 `command_manager.*`、`render_context.hpp` 待 Phase 6 归位
+7. bin/ 依赖 CMake POST_BUILD 落地 ucrt64 运行时 DLL（libstdc++/libgcc/libwinpthread/glfw3）——PATH 上 mingw64/bin 先于 ucrt64/bin，不落地会 `0xC0000139` 启动即崩
 
 ---
 
 ## 七、下一步
 
-- **Phase 5 · 应用层成形**：`app::App`/`GameLoop`/`CameraController`（接管引擎里的拖拽状态机与键盘轮询）/`DemoScene`（灯光常量随迁）/Config 扩充
-- **Phase 6 · 工程纪律**：CMake 拆静态库（编译期强制依赖方向）、`VULKAN_HPP_*` 宏收编单一头、根级残留归位、头文件卫生、CI/测试可选
+- **Phase 6 · 工程纪律**（重构收官）：CMake 拆静态库（platform → resource → render → scene → app，链接方向即依赖方向）、`GLOB_RECURSE` 换显式列表、`VULKAN_HPP_*` 宏收编单一头、根级 `command_manager.*`/`render_context.hpp` 归位、头文件卫生、可选 CI/测试
 - **重构完成后 · 光线追踪管线**（见计划文档 §6 路线图）：NVIDIA GPU 上启用 `VK_KHR_acceleration_structure`/`VK_KHR_ray_tracing_pipeline`，BLAS/TLAS 由 `SceneObject` 数据（mesh + worldMatrix）构建，`RenderItem` 数据面直接复用；最终形态为纯路径追踪离线渲染器
+- 代理/协作者入口：仓库根 `AGENTS.md`（构建运行、模块地图、工程约定）

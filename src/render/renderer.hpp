@@ -11,6 +11,7 @@
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
 
+#include "render/frame_uniforms.hpp"
 #include "render/render_item.hpp"
 #include "render/render_settings.hpp"
 #include "render_context.hpp"
@@ -56,6 +57,7 @@ public:
         const vk::DescriptorPool&            set0Pool;
         CommandPool&                         graphicsPool;
         scene::Camera&                       camera;
+        FrameParams                          frameParams;     // light/projection from the content layer
         const vk::raii::SurfaceKHR&          surface;
         platform::Window&                    window;
         std::string_view                     spirvPath;       // absolute, from app::Config
@@ -86,6 +88,7 @@ private:
     const vk::raii::SurfaceKHR&   surface_;
     RenderContext                 rct_;
     scene::Camera&                camera_;
+    FrameParams                   frameParams_;
     CommandPool&                  graphicsPool_;
     const rhi::RhiFactory&        rhiFactory_;
     RenderSettings                settings_;

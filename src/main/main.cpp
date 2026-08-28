@@ -1,10 +1,10 @@
-#include "c_engine.hpp"
+#include "app/app.hpp"
 #include <iostream>
 
 
 int main() {
     try{
-        CEngine app{};
+        app::App app{};
         app.run();
     } catch (const std::exception& e) {
         std::cerr <<e.what() << std::endl;

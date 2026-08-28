@@ -17,7 +17,7 @@ namespace resource {
 // Ownership: the library owns the path→id mapping and the per-id reference
 // counts. GPU resources are owned by ResourceRegistry and are unloaded when
 // the last handle is released. The library must outlive every handle it
-// minted (CEngine declares it before the material/scene members).
+// minted (App declares it before the material/scene members).
 // ---------------------------------------------------------------------------
 class AssetLibrary {
     public:

@@ -94,6 +94,27 @@ target_include_directories(
     ${GLM_INCLUDE_DIRS}
 )
 
+# ===== Self-contained bin/: app-local runtime DLLs =====
+# The UCRT64-built exe must not resolve libstdc++/libgcc/libwinpthread (or
+# glfw3) from a foreign toolchain earlier on PATH (mingw64 builds are
+# MSVCRT-based and cause STATUS_ENTRYPOINT_NOT_FOUND at load). Copying the
+# compiler's own runtime DLLs next to the exe makes bin/ deterministic and
+# double-click runnable.
+get_filename_component(MINGW_BIN_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
+foreach(dll
+        libstdc++-6.dll
+        libgcc_s_seh-1.dll
+        libwinpthread-1.dll
+        glfw3.dll)
+    if(EXISTS "${MINGW_BIN_DIR}/${dll}")
+        add_custom_command(TARGET main POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${MINGW_BIN_DIR}/${dll}" $<TARGET_FILE_DIR:main>
+            COMMENT "Copying runtime DLL: ${dll}")
+    endif()
+endforeach()
+
+
 
 
 

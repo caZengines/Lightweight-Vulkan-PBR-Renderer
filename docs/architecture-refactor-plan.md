@@ -606,6 +606,12 @@ GPP 原文要点：服务定位器 = **抽象服务接口 + 具体提供者 + �
 
 **验证**：`c_engine.hpp` 消失；`app::App` 的 `run()` 只做装配 + 循环转发；行为与 Phase 4 完全一致。
 
+**实施记录（2026-08-28）**：
+- 五项全部落地：`app::App`（装配按层归位：initWindow → initRhi → initResources → initSamplers → initContent → initRender）、`app::GameLoop`（deltaTime 计时 + 固定步长骨架预留）、`app::CameraController`（左键拖拽轨道状态机 + WASD/Space/Shift/滚轮，参数原值迁移）、`app::DemoScene`（三材质 + 火星 + 1000 岩石；灯光/FOV/远近平面收编为 `render::FrameParams`，经 `Renderer::Dependencies` 下发——渲染层依旧不依赖内容层）、`app::Config`（窗口、验证层与设备扩展、MSAA、present mode、路径全部收编）；
+- 材质 Set-1 描述符改由 `App::initRender` 经 `DemoScene::materials()` 按材质分配一次；
+- 附带工程修复：CMake POST_BUILD 将 ucrt64 运行时 DLL（libstdc++/libgcc/libwinpthread/glfw3）落地 `bin/`，消除 PATH 上 mingw64（MSVCRT 版）运行库被优先解析导致的 `STATUS_ENTRYPOINT_NOT_FOUND (0xC0000139)` 启动崩溃；bin/ 自包含、可双击运行；
+- 新增仓库根 `AGENTS.md`：面向代理/新协作者的构建运行指南、五层架构与模块地图、跨层契约、工程约定。
+
 ### Phase 6 · 构建层与工程纪律（1 天）
 
 1. CMake 拆分 5 个静态库目标（platform → resource → render → scene → app），`main` 只链 `app`：

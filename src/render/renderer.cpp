@@ -28,6 +28,7 @@ Renderer::Renderer(Dependencies deps, const RenderSettings& settings)
       surface_(deps.surface),
       rct_(deps.rct),
       camera_(deps.camera),
+      frameParams_(deps.frameParams),
       graphicsPool_(deps.graphicsPool),
       rhiFactory_(deps.factory),
       settings_(settings),
@@ -162,16 +163,14 @@ void Renderer::fillUniformBuffer(uint32_t frame) {
     UniformBufferObject ubo{};
     ubo.view = camera_.viewMatrix();
     ubo.proj = glm::perspective(
-        glm::radians(45.0f),
+        glm::radians(frameParams_.fovDegrees),
         static_cast<float>(swapchain_->getExtent().width) /
             static_cast<float>(swapchain_->getExtent().height),
-        0.1f, 100.0f);
+        frameParams_.nearPlane, frameParams_.farPlane);
     ubo.proj[1][1] *= -1;
 
-    ubo.camPos        = glm::vec4(camera_.position(), 1.0f);
-    ubo.light.pos     = glm::vec4(4.0f, 20.0f, -25.0f, 1.0f);   // light params move to content in Phase 5
-    ubo.light.color   = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-    ubo.light.intensity = 10.0f;
+    ubo.camPos = glm::vec4(camera_.position(), 1.0f);
+    ubo.light  = frameParams_.light;
 
     std::memcpy(frames_->uniformBuffer(frame).mappedData(), &ubo, sizeof(ubo));
 }
