@@ -44,6 +44,8 @@
 
 namespace {
 
+using log = platform::LogLocator;
+
 const char* severityName(tg3_severity severity) {
     switch (severity) {
         case TG3_SEVERITY_INFO:    return "INFO";
@@ -526,14 +528,14 @@ void loadPrimitive(const tg3_model& model,
     // --- POSITION (mandatory) ---
     const int32_t positionIndex = findAttribute(&primitive, "POSITION");
     if (positionIndex < 0) {
-        platform::LogLocator::get().write(platform::LogLevel::Warning,
+        log::get().write(platform::LogLevel::Warning,
             "[glTF] warning: primitive without POSITION skipped");
         return;
     }
     const tg3_accessor& positionAccessor = model.accessors[positionIndex];
     if (positionAccessor.type != TG3_TYPE_VEC3 ||
         !attributeReadable(positionAccessor) || positionAccessor.count == 0) {
-        platform::LogLocator::get().write(platform::LogLevel::Warning,
+        log::get().write(platform::LogLevel::Warning,
             "[glTF] warning: unsupported POSITION accessor, primitive skipped");
         return;
     }
@@ -547,7 +549,7 @@ void loadPrimitive(const tg3_model& model,
         const tg3_accessor& accessor = model.accessors[normalIndex];
         if (accessor.type != TG3_TYPE_VEC3 || accessor.count < vertexCount ||
             !attributeReadable(accessor)) {
-            platform::LogLocator::get().write(platform::LogLevel::Warning,
+            log::get().write(platform::LogLevel::Warning,
                 "[glTF] warning: unsupported NORMAL accessor; smooth normals will be generated");
         } else {
             normalData.emplace(prepareAccessor(model, normalIndex));
@@ -560,7 +562,7 @@ void loadPrimitive(const tg3_model& model,
         const tg3_accessor& accessor = model.accessors[uvIndex];
         if (accessor.type != TG3_TYPE_VEC2 || accessor.count < vertexCount ||
             !attributeReadable(accessor)) {
-            platform::LogLocator::get().write(platform::LogLevel::Warning,
+            log::get().write(platform::LogLevel::Warning,
                 "[glTF] warning: unsupported TEXCOORD_0 accessor; UVs default to (0,0)");
         } else {
             uvData.emplace(prepareAccessor(model, uvIndex));
@@ -571,7 +573,7 @@ void loadPrimitive(const tg3_model& model,
     const int32_t mode = primitive.mode < 0 ? TG3_MODE_TRIANGLES : primitive.mode;
     if (mode != TG3_MODE_TRIANGLES && mode != TG3_MODE_TRIANGLE_STRIP &&
         mode != TG3_MODE_TRIANGLE_FAN) {
-        platform::LogLocator::get().write(platform::LogLevel::Warning,
+        log::get().write(platform::LogLevel::Warning,
             "[glTF] warning: non-triangle primitive mode " + std::to_string(mode) + " skipped");
         return;
     }
@@ -583,7 +585,7 @@ void loadPrimitive(const tg3_model& model,
         const tg3_accessor& indexAccessor = model.accessors[primitive.indices];
         if (indexAccessor.type != TG3_TYPE_SCALAR ||
             !indexComponentReadable(indexAccessor)) {
-            platform::LogLocator::get().write(platform::LogLevel::Warning,
+            log::get().write(platform::LogLevel::Warning,
                 "[glTF] warning: unsupported index accessor, primitive skipped");
             return;
         }
@@ -700,7 +702,7 @@ MeshData MeshImporter::loadGlTF(const std::string& modelPath) {
                                  " (" + std::to_string(static_cast<int>(entry.code)) + ")";
         if (entry.json_path) diagnostic += std::string(" at ") + entry.json_path;
         diagnostic += std::string(": ") + (entry.message ? entry.message : "(no message)");
-        platform::LogLocator::get().write(platform::LogLevel::Warning, diagnostic);
+        log::get().write(platform::LogLevel::Warning, diagnostic);
     }
 
     if (result != TG3_OK || errors.has_error()) {

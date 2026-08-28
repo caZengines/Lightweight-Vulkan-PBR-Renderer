@@ -69,7 +69,7 @@ void Renderer::cleanup() {
     swapchain_->cleanupSwapChain();
     cleaned_ = true;
     // FrameResources members release their own Vulkan handles via RAII after
-    // the idle wait above (same net ordering as the legacy explicit teardown).
+    // the idle wait above.
 }
 
 std::optional<Renderer::FrameContext> Renderer::beginFrame() {
@@ -85,7 +85,7 @@ std::optional<Renderer::FrameContext> Renderer::beginFrame() {
                                                  nullptr);
     if (result == vk::Result::eErrorOutOfDateKHR) {
         recreateAfterResize();
-        return std::nullopt;  // skip this frame, like legacy early-return path
+        return std::nullopt;  // skip this frame
     }
     if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR) {
         throw std::runtime_error("failed to acquire swap chain image!");
@@ -104,7 +104,7 @@ std::optional<Renderer::FrameContext> Renderer::beginFrame() {
 void Renderer::record(FrameContext& ctx, std::span<const RenderItem> items) {
     recorder_->record(frames_->commandBuffer(ctx.frameIndex),
                       ctx.imageIndex,
-                      frames_->frameSetHandles()[ctx.frameIndex],
+                      frames_->descriptorSetHandles()[ctx.frameIndex],
                       items);
 }
 
@@ -183,7 +183,7 @@ void Renderer::writeFrameSet(uint32_t frame) {
               .setRange(sizeof(UniformBufferObject));
 
     vk::WriteDescriptorSet write{};
-    write.setDstSet(frames_->frameSetHandles()[frame])
+    write.setDstSet(frames_->descriptorSetHandles()[frame])
          .setDstBinding(0)
          .setDescriptorType(vk::DescriptorType::eUniformBuffer)
          .setBufferInfo(bufferInfo);

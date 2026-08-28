@@ -4,6 +4,9 @@
 #include "resource/texture_importer.hpp"
 #include "platform/log.hpp"
 
+namespace {
+    using log = platform::LogLocator;
+}
 
 namespace resource {
 
@@ -11,7 +14,7 @@ AssetHandle AssetLibrary::loadMesh(const std::string& path) {
     auto it = paths_.find(path);
     if (it != paths_.end()) {
         ++refCounts_[it->second];
-        platform::LogLocator::get().write(platform::LogLevel::Info,
+        log::get().write(platform::LogLevel::Info,
             "AssetLibrary: mesh cache hit: " + path);
         return AssetHandle(this, it->second);
     }
@@ -21,7 +24,7 @@ AssetHandle AssetLibrary::loadMesh(const std::string& path) {
     paths_[path] = id;
     pathById_[id] = path;
     refCounts_[id] = 1;
-    platform::LogLocator::get().write(platform::LogLevel::Info,
+    log::get().write(platform::LogLevel::Info,
         "AssetLibrary: imported mesh: " + path + " (" +
         std::to_string(data.vertices().size()) + " vertices, " +
         std::to_string(data.indices().size()) + " indices)");
@@ -32,7 +35,7 @@ AssetHandle AssetLibrary::loadImage(const std::string& path, vk::Format format, 
     auto it = paths_.find(path);
     if (it != paths_.end()) {
         ++refCounts_[it->second];
-        platform::LogLocator::get().write(platform::LogLevel::Info,
+        log::get().write(platform::LogLevel::Info,
             "AssetLibrary: image cache hit: " + path);
         return AssetHandle(this, it->second);
     }
@@ -42,7 +45,7 @@ AssetHandle AssetLibrary::loadImage(const std::string& path, vk::Format format, 
     paths_[path] = id;
     pathById_[id] = path;
     refCounts_[id] = 1;
-    platform::LogLocator::get().write(platform::LogLevel::Info,
+    log::get().write(platform::LogLevel::Info,
         "AssetLibrary: imported image: " + path + " (" +
         std::to_string(image.width()) + "x" + std::to_string(image.height()) + ")");
     return AssetHandle(this, id);
@@ -83,7 +86,7 @@ void AssetLibrary::release(uint32_t id) {
         if (p != pathById_.end()) {
             paths_.erase(p->second);
             pathById_.erase(p);
-            platform::LogLocator::get().write(platform::LogLevel::Info,
+            log::get().write(platform::LogLevel::Info,
                 "AssetLibrary: unloaded asset id=" + std::to_string(id));
         }
     }

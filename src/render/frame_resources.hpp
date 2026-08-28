@@ -47,7 +47,7 @@ public:
     [[nodiscard]] const vk::raii::Semaphore& renderTimeline() const { return renderTimeline_; }
 
     [[nodiscard]] rhi::VmaBuffer& uniformBuffer(uint32_t frame) { return uniformBuffers_[frame]; }
-    [[nodiscard]] const std::vector<vk::DescriptorSet>& frameSetHandles() const { return perFrameSetHandles_; }
+    [[nodiscard]] const std::vector<vk::DescriptorSet>& descriptorSetHandles() const { return perFrameSetHandles_; }
 
     // Monotonic timeline payload; resets on sync recreation (same behavior as
     // the pre-split Renderer, which zeroed frameCount on rebuild).
@@ -72,7 +72,7 @@ private:
     vk::raii::Semaphore                   renderTimeline_      = nullptr; // signal = ++frameCount_
     std::vector<vk::raii::Fence>          inFlightFences_;
 
-    std::uint64_t                         frameCount_ = 0;
+    uint64_t                              frameCount_ = 0;
 };
 
 }  // namespace render
