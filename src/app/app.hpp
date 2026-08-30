@@ -63,32 +63,32 @@ private:
     CameraController cameraController_{camera_};
 
     // --- rhi (Layer 0) ---
-    rhi::VulkanDevice                      vulkanDevice_{};
-    std::unique_ptr<rhi::VmaContext>       vmaContext_;
-    std::unique_ptr<rhi::DebugMessenger>   debugMessenger_;
-    std::unique_ptr<rhi::Surface>          surface_;
-    std::unique_ptr<rhi::RhiFactory>       rhiFactory_;
-    std::unique_ptr<render::ShaderManager> shaderManager_;
+    rhi::VulkanDevice                           vulkanDevice_{};
+    std::unique_ptr<rhi::VmaContext>            vmaContext_;
+    std::unique_ptr<rhi::DebugMessenger>        debugMessenger_;
+    std::unique_ptr<rhi::Surface>               surface_;
+    std::unique_ptr<rhi::RhiFactory>            rhiFactory_;
+    std::unique_ptr<render::ShaderManager>      shaderManager_;
     std::unique_ptr<rhi::CommandPool>           graphicsCommandPool_;
     std::unique_ptr<rhi::CommandPool>           transientCommandPool_;
 
     // --- resource (Layer 2) ---
-    std::unique_ptr<resource::UploadQueue>      uploadQueue_;
-    std::unique_ptr<resource::ResourceRegistry> resourceRegistry_;
-    std::unique_ptr<resource::AssetLibrary>     assetLibrary_;
-    std::unique_ptr<Sampler>                    albedoSampler_;
-    std::unique_ptr<Sampler>                    normalSampler_;
+    std::unique_ptr<resource::UploadQueue>       uploadQueue_;
+    std::unique_ptr<resource::ResourceRegistry>  resourceRegistry_;
+    std::unique_ptr<resource::AssetLibrary>      assetLibrary_;
+    std::unique_ptr<Sampler>                     albedoSampler_;
+    std::unique_ptr<Sampler>                     normalSampler_;
 
     // --- render services (Layer 3) ---
     std::unique_ptr<render::DescriptorSetLayout> descriptorSetLayout_;
     std::unique_ptr<render::DescriptorPool>      descriptorPool_;
 
     // --- scene data (filled by DemoScene) ---
-    scene::Scene scene_{};
+    scene::Scene                                 scene_{};
 
     // --- content & frame orchestration (after the pool, per the rule above) ---
-    DemoScene                         demoScene_{config_, scene_};
-    std::unique_ptr<render::Renderer> renderer_;
+    DemoScene                                    demoScene_{config_, scene_};
+    std::unique_ptr<render::Renderer>            renderer_;
 };
 
 }  // namespace app

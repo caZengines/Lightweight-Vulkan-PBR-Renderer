@@ -1,8 +1,11 @@
 #include "scene/camera.hpp"
 
 #include <algorithm>
+#include <cmath>
+#include <limits>
 
 namespace scene {
+constexpr float eps = std::numeric_limits<float>::min();
 
 Camera::Camera(float azimuth, float polar, double distance)
     : azimuth_(azimuth), polar_(polar), distance_(distance) {}
@@ -35,8 +38,11 @@ void Camera::moveHorizontal(float forward, float right,
     glm::vec3 rightXZ{std::cos(azimuth_), 0.0f, -std::sin(azimuth_)};
 
     float step = speed * deltaTime;
-    target_ += forwardXZ * forward * step;
-    target_ += rightXZ  * right   * step;
+    glm::vec3 moveDir = forwardXZ * forward + rightXZ * right;
+    if(glm::length(moveDir) > eps) {
+        moveDir = glm::normalize(moveDir);
+    }
+    target_ += moveDir * step;
 }
 
 void Camera::moveVertical(float direction, float deltaTime, float speed) {

@@ -30,10 +30,12 @@ void CameraController::onCursorMove(double xPos, double yPos) {
 }
 
 void CameraController::update(const platform::Input& input, float deltaTime) {
-    if (input.isKeyDown(platform::Key::W))         camera_.moveHorizontal(1.0f, 0.0f, deltaTime);
-    if (input.isKeyDown(platform::Key::A))         camera_.moveHorizontal(0.0f, -1.0f, deltaTime);
-    if (input.isKeyDown(platform::Key::S))         camera_.moveHorizontal(-1.0f, 0.0f, deltaTime);
-    if (input.isKeyDown(platform::Key::D))         camera_.moveHorizontal(0.0f, 1.0f, deltaTime);
+    float forward = 0.0f, right = 0.0f;
+    if (input.isKeyDown(platform::Key::W))         forward += 1.0f;
+    if (input.isKeyDown(platform::Key::A))         right   -= 1.0f; 
+    if (input.isKeyDown(platform::Key::S))         forward -= 1.0f;
+    if (input.isKeyDown(platform::Key::D))         right   += 1.0f; 
+    camera_.moveHorizontal(forward, right, deltaTime);
     if (input.isKeyDown(platform::Key::Space))     camera_.moveVertical(1.0f, deltaTime);
     if (input.isKeyDown(platform::Key::LeftShift)) camera_.moveVertical(-1.0f, deltaTime);
 
