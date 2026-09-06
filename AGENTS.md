@@ -1,6 +1,6 @@
 # AGENTS.md — Vulkan 路径追踪渲染器 · 项目架构与模块指南
 
-> 面向在本仓库工作的 AI 代理与新协作者。细节文档：`docs/architecture-refactor-plan.md`（重构计划 + RT 路线图）、`docs/architecture-current.md`（当前架构全量说明）。
+> 面向在本仓库工作的 AI 代理与新协作者。细节文档：`docs/architecture-refactor-plan.md`（重构计划 + RT 路线图）、`docs/architecture-current.md`（当前架构全量说明）、`docs/input-action-layer-plan.md`（输入语义动作层重构 · 已批准，§4 相关行按该目标态描述）。
 
 ## 1. 项目是什么
 
@@ -50,8 +50,8 @@ Layer 1  Platform     — src/platform/ 窗口/输入/日志/路径（GLFW 唯�
 ### platform/（Layer 1）
 | 模块 | 职责 |
 |---|---|
-| `platform::Window` | GLFW 唯一封装：事件钩子（resize/鼠标/光标/滚轮）、`requiredInstanceExtensions()`、`createSurface()` |
-| `platform::Input` | 轮询式输入门面：`Key/MouseButton/ButtonAction` 枚举、`poll()`、按键/滚动查询 |
+| `platform::Window` | GLFW 唯一封装：resize 事件钩子 + 滚轮累积（`consumeScrollDelta`）、`requiredInstanceExtensions()`、`createSurface()`、运行时 `setTitle()`。鼠标/光标事件钩子已移除，输入全部改轮询（目标态，见 input-action-layer-plan.md） |
+| `platform::Input` | 轮询式输入门面：`Key/MouseButton` 枚举、`poll()`、电平查询 `isKeyDown/isMouseDown`、指针 delta 与滚轮增量（值流）；**无物理边沿 API**——边沿语义归 `app::ActionContext`。键位集按计划增 `Digit1..9/KP5/Delete`（目标态） |
 | `platform::Log` + `LogLocator` | 全项目唯一 Service Locator：`Log` 接口 + `ConsoleLog`/`NullLog`（Null Object） |
 | `platform::PlatformUtils` | `assetRoot()/assetPath()`：消灭 `../` 相对路径 |
 
@@ -92,15 +92,17 @@ Layer 1  Platform     — src/platform/ 窗口/输入/日志/路径（GLFW 唯�
 | `scene::Scene` | 对象列表属主；`collectRenderItems()` 直产 `std::span<const RenderItem>`（dirty 缓存，帧间零分配） |
 | `scene::SceneObject` | 纯数据可绘制体：mesh 句柄（保活）+ 材质 + `Transform` + 本地实例数组；`setInstances()` 合成 world = transform × instance 后经 UploadQueue 上传 |
 | `scene::Transform` | TRS + `toMatrix()`；`worldMatrix()` dirty-flag 惰性缓存 |
-| `scene::Camera` | 球坐标相机**纯数学**：`orbit/moveHorizontal/moveVertical/zoom/viewMatrix/position`；无输入依赖 |
+| `scene::Camera` | 球坐标相机**纯数学**：`orbit/moveHorizontal/moveVertical/zoom/viewMatrix/position`；自带投影参数（`Projection`：透视 fov / 正交视高 + near/far）与 `projectionMatrix(aspect)`；无输入依赖。计划增 `pan(dx,dy,viewportHeight)` 视平面平移（Blender 式，目标态） |
+| `scene::CameraManager` | 相机列表属主（deque 条目含名称；add 不失效引用）+ 活动索引：`add(camera, name=""/自动自增 Camera N)/setActive/active/removeActive/name`；纯数据零 Vulkan/GLFW，Renderer 每帧读 `active()`。`cycle()` 已删（目标态） |
 
 ### app/（Layer 5）
 | 模块 | 职责 |
 |---|---|
-| `app::App` | **组合根**：`App()` 按层装配（window→rhi→resources→samplers→content→render），`run()` 只做循环转发；成员析构逆序（池先于 set 纪律） |
+| `app::App` | **组合根**：`App()` 按层装配（window→rhi→resources→samplers→content→render）+ `initInputBindings()`（注册动作层键位表），`run()` 只做循环转发：update = `actions_.update(input_)` → `cameraController_.update(actions_, input_, dt)`；成员析构逆序（池先于 set 纪律） |
 | `app::GameLoop` | 帧节奏：pollEvents → input.poll → deltaTime → update/render 回调；固定步长骨架已预留 |
-| `app::CameraController` | 输入→相机映射：左键拖拽轨道（状态机在此，相机保持纯数学）、WASD 平移、Space/Shift 升降、滚轮缩放 |
-| `app::DemoScene` | 示例内容：三个材质（空句柄回落默认纹理）、火星 + 1000 随机岩石；持有 `FrameParams`（灯光/FOV/远近平面——原 renderer 字面量收编于此） |
+| `app::ActionContext` | **语义动作层**（边沿语义唯一归属，L1 无边沿）：有序 `Binding{source(Key/MouseButton variant), mods, action, Trigger::Hold/Press, Mode::Default/Walk, param}` + `bind(...)`；每帧 `update(input)`：模态探测（walk>pan>orbit 独占）→ 门控电平求值（Walk 组仅在 walk 模态激活时）→ per-binding 沿计算；查询 `isActive/wasActivated/wasDeactivated/param`（目标态，见 input-action-layer-plan.md） |
+| `app::CameraController` | 语义动作→活动相机映射（状态机在 app，相机保持纯数学）：MMB 拖拽轨道、Shift+MMB 视平面平移、Shift+RMB+WASD 漫游、Shift+D 克隆、数字键 1-9 直选、KP5 透视⇄正交、Delete 删除（剩 1 忽略）、滚轮缩放；同步窗口标题 `活动相机名 [Persp\|Ortho]`。只消费 ActionContext 查询与 Input 值流，不读裸 Key（目标态） |
+| `app::DemoScene` | 示例内容：三个材质（空句柄回落默认纹理）、火星 + 1000 随机岩石；持有 `FrameParams`（灯光——原 renderer 字面量收编于此；投影参数已 per-camera 移入 `scene::Camera`） |
 | `app::Config` | 全部内容参数：窗口、验证层/设备扩展、MSAA、present mode、资产路径（构造时解析为绝对路径） |
 
 `main/main.cpp` 仅构造 `app::App` → `run()`，异常捕获。
@@ -113,11 +115,11 @@ window → VulkanDevice → VMA → RhiFactory/ShaderManager → DebugMessenger/
       → UploadQueue → ResourceRegistry → AssetLibrary → Samplers
       → DemoScene.build()（材质 + SceneObject + InstanceBuffer 上传）
       → DescriptorSetLayout → DescriptorPool → 材质 Set-1（每材质一次）
-      → Renderer（依赖聚合：RenderContext/池/layout/camera/FrameParams/surface/window）
+      → Renderer（依赖聚合：RenderContext/池/layout/CameraManager/FrameParams/surface/window）
 
 每帧（GameLoop）
-pollEvents → input.poll → update(dt)（CameraController → scene::Camera）
-  → beginFrame: waitFence → acquire(OUT_OF_DATE⇒重建并跳帧) → fillUBO(camera+FrameParams) → writeSet0
+pollEvents → input.poll → update(dt)（ActionContext::update(input) → CameraController 语义消费 → scene::CameraManager.active()；键位表见 docs/input-action-layer-plan.md）
+  → beginFrame: waitFence → acquire(OUT_OF_DATE⇒重建并跳帧) → fillUBO(activeCamera+FrameParams) → writeSet0
   → record: scene_.collectRenderItems()（缓存 span）→ CommandRecorder（过渡→Rendering→逐 item）
   → endFrame: timeline+binary submit → present（resize/OOD ⇒ 重建）
 
@@ -143,7 +145,8 @@ pollEvents → input.poll → update(dt)（CameraController → scene::Camera）
 
 ## 7. 当前状态与下一步
 
-- ✅ Phase 0–5：平台层 / 资源层 / 渲染层拆分 / rhi 归位 / 场景层纯数据化 / 应用层成形。`c_engine.hpp` 已消失（由 `app::App` 取代）。
+- ✅ Phase 0–5：平台层 / 资源层 / 渲染层拆分 / rhi 归位 / 场景层纯数据化 / 应用层成形。
 - ⏳ **Phase 6 · 工程纪律**（唯一剩余重构阶段）：CMake 拆 5 个静态库（编译期强制依赖方向）、显式源文件列表、根级 `command_manager.*`/`render_context.hpp` 归位、`VULKAN_HPP_*` 宏收敛单一公共头、头文件卫生、可选 CI/测试。
+- ⏳ **输入语义动作层重构（计划已批准，实施未开始）**：目标态（键位表 / ActionContext / 相机命名与删除 / Window 鼠标钩子裁剪）见 `docs/input-action-layer-plan.md`；§4 相关行即按该目标态描述，**落地前以 `src/` 为准**——当前树处中间态：`CameraController` 仍引用已删的 `Input::wasKeyPressed`，暂不可编译。
 - 🎯 **重构完成后**：按计划文档 §6 路线图迁移到 Vulkan 光线追踪（NVIDIA）：`rhi::AccelerationStructure`（BLAS 引用 `MeshGPU` 顶点/索引，TLAS instance 用 `SceneObject::worldMatrix()`）、`RayTracingPipelineSpec`+SBT、trace pass 接入现有 `beginFrame/record/endFrame` 编排、离线累积输出。最终形态 = 纯路径追踪离线渲染器。
 - 已知债务清单见 `docs/architecture-current.md` §6（Material 仍 GPU 侧过渡件、`setTransform` 后需重新 `setInstances`、random_device 种子不可复现等）。

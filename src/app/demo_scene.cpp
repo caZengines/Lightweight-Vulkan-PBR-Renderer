@@ -16,17 +16,14 @@ namespace app {
 DemoScene::DemoScene(const Config& config, scene::Scene& scene)
     : config_(config), scene_(scene)
 {
-    // Demo light + camera projection — the exact values the renderer used to
-    // hardcode, now owned by the content.
+    // Demo light — the exact value the renderer used to hardcode, now owned by
+    // the content. Projection params are per-camera (scene::Camera defaults).
     frameParams_ = render::FrameParams{
         .light{
             .pos       = glm::vec4(4.0f, 20.0f, -25.0f, 1.0f),
             .color     = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
             .intensity = 10.0f,
         },
-        .fovDegrees = 45.0f,
-        .nearPlane  = 0.1f,
-        .farPlane   = 100.0f,
     };
 }
 

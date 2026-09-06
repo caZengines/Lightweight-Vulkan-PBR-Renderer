@@ -8,17 +8,32 @@ namespace platform {
 namespace {
 
 // GLFW key codes for our Key enum, index-aligned.
-constexpr int kGlfwKeys[static_cast<uint32_t>(Key::Count)] = {
+constexpr std::array<int, static_cast<uint32_t>(Key::Count)> kGlfwKeys = {
     GLFW_KEY_W,
     GLFW_KEY_A,
     GLFW_KEY_S,
     GLFW_KEY_D,
+    GLFW_KEY_Q,
+    GLFW_KEY_E,
+    GLFW_KEY_1,
+    GLFW_KEY_2,
+    GLFW_KEY_3,
+    GLFW_KEY_4,
+    GLFW_KEY_5,
+    GLFW_KEY_6,
+    GLFW_KEY_7,
+    GLFW_KEY_8,
+    GLFW_KEY_9,
+    GLFW_KEY_KP_5,
     GLFW_KEY_SPACE,
     GLFW_KEY_LEFT_SHIFT,
+    GLFW_KEY_LEFT_CONTROL,
+    GLFW_KEY_LEFT_ALT,
+    GLFW_KEY_TAB
 };
 
 // GLFW mouse button codes: LEFT=0, RIGHT=1, MIDDLE=2.
-constexpr int kGlfwMouseButtons[3] = {
+constexpr std::array<int, static_cast<uint32_t>(MouseButton::Middle) + 1> kGlfwMouseButtons = {
     GLFW_MOUSE_BUTTON_LEFT,
     GLFW_MOUSE_BUTTON_RIGHT,
     GLFW_MOUSE_BUTTON_MIDDLE,
@@ -51,12 +66,12 @@ void Input::poll(const Window& window) {
     scroll_ = window.consumeScrollDelta();
 }
 
-bool Input::isKeyDown(Key key) const {
+bool Input::isDown(Key key) const {
     const uint32_t index = static_cast<uint32_t>(key);
     return index < static_cast<uint32_t>(Key::Count) && keys_[index] != 0;
 }
 
-bool Input::isMouseDown(MouseButton button) const {
+bool Input::isDown(MouseButton button) const {
     const uint32_t index = static_cast<uint32_t>(button);
     return index < 3 && buttons_[index] != 0;
 }

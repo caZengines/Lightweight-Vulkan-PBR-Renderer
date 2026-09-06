@@ -1,5 +1,6 @@
 #pragma once
 #include "app/camera_controller.hpp"
+#include "app/action_context.hpp"
 #include "app/config.hpp"
 #include "app/demo_scene.hpp"
 #include "platform/input.hpp"
@@ -15,7 +16,7 @@
 #include "rhi/surface.hpp"
 #include "rhi/vma_allocator.hpp"
 #include "rhi/vulkan_device.hpp"
-#include "scene/camera.hpp"
+#include "scene/camera_manager.hpp"
 #include "scene/scene.hpp"
 #include <memory>
 
@@ -48,6 +49,7 @@ private:
     // Assembly steps, bottom-up.
     void initWindow();
     void initRhi();         // device, VMA, factories/messengers, command pools
+    void initActionContext();
     void initResources();   // upload queue, registry, asset library
     void initSamplers();
     void initContent();     // DemoScene: materials + scene objects
@@ -59,8 +61,9 @@ private:
     platform::Input                   input_{};
 
     // --- camera: scene-layer math + app-side input mapping ---
-    scene::Camera    camera_{};
-    CameraController cameraController_{camera_};
+    scene::CameraManager                       cameraManager_{};
+    ActionContext                              actions_{};
+    CameraController                           cameraController_{cameraManager_};
 
     // --- rhi (Layer 0) ---
     rhi::VulkanDevice                           vulkanDevice_{};

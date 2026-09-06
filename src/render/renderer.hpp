@@ -28,7 +28,7 @@ class Swapchain;
 }  // namespace rhi
 
 namespace scene {
-class Camera;
+class CameraManager;
 }  // namespace scene
 
 namespace render {
@@ -55,8 +55,8 @@ public:
         std::vector<vk::DescriptorSetLayout> setLayouts;      // [0] per-frame, [1+] per-material
         const vk::DescriptorPool&            set0Pool;
         rhi::CommandPool&                         graphicsPool;
-        scene::Camera&                       camera;
-        FrameParams                          frameParams;     // light/projection from the content layer
+        scene::CameraManager&                cameras;         // active() is read each frame
+        FrameParams                          frameParams;     // light from the content layer
         const vk::raii::SurfaceKHR&          surface;
         platform::Window&                    window;
         std::string_view                     spirvPath;       // absolute, from app::Config
@@ -86,7 +86,7 @@ private:
     platform::Window&             window_;
     const vk::raii::SurfaceKHR&   surface_;
     RenderContext                 rct_;
-    scene::Camera&                camera_;
+    scene::CameraManager&         cameras_;
     FrameParams                   frameParams_;
     rhi::CommandPool&             graphicsPool_;
     const rhi::RhiFactory&        rhiFactory_;

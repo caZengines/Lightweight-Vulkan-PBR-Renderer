@@ -1,6 +1,8 @@
 #include "app/app.hpp"
 
+#include "app/action_context.hpp"
 #include "app/game_loop.hpp"
+#include "platform/input.hpp"
 #include "rhi/command_pool.hpp"
 #include "resource/material.hpp"
 #include "resource/sampler.hpp"
@@ -33,6 +35,7 @@ App::App() {
     platform::LogLocator::initialize();   // default console logging provider
     initWindow();
     initRhi();
+    initActionContext();
     initResources();
     initSamplers();
     initContent();
@@ -52,7 +55,8 @@ App::~App() {
 void App::run() {
     GameLoop loop(*window_, input_);
     loop.setUpdate([this](float deltaTime) {
-        cameraController_.update(input_, deltaTime);
+        actions_.update(input_);
+        cameraController_.update(actions_, input_, deltaTime);
     });
     loop.setFrame([this] {
         if (auto frame = renderer_->beginFrame()) {
@@ -74,17 +78,11 @@ void App::initWindow() {
     windowConfig.title     = config_.title.c_str();
     windowConfig.resizable = config_.resizable;
     window_ = std::make_unique<platform::Window>(windowConfig);
+    cameraController_.setWindow(*window_);   // title feedback for camera hotkeys
 
     // Event hooks → input mapping / renderer notification.
     window_->onFramebufferResize = [this](uint32_t /*width*/, uint32_t /*height*/) {
         if (renderer_) renderer_->framebufferResized = true;
-    };
-    window_->onMouseButton = [this](platform::ButtonAction action, platform::MouseButton button,
-                                    double x, double y) {
-        cameraController_.onMouseButton(button, action, x, y);
-    };
-    window_->onCursorPos = [this](double x, double y) {
-        cameraController_.onCursorMove(x, y);
     };
 }
 
@@ -120,6 +118,24 @@ void App::initRhi() {
         vulkanDevice_.device, vulkanDevice_.graphicsQueueIndex, std::move(transientQueue),
         vk::CommandPoolCreateFlagBits::eResetCommandBuffer
         | vk::CommandPoolCreateFlagBits::eTransient);
+}
+
+void App::initActionContext() {
+    using K = platform::Key;  using MB = platform::MouseButton;
+    using F = ModifierFlag;   using A = Action;
+    using T = Trigger;        using M = Mode;
+    actions_.bind(MB::Right,  F::Shift, A::toggleCameraControlMode, T::Hold, M::Default);
+    actions_.bind(MB::Middle, F::Shift, A::cameraPan, T::Hold, M::Default);
+    actions_.bind(MB::Middle, A::OrbitalRotation, T::Hold, M::Default);
+    actions_.bind(K::KP5, A::toggleProjection, T::Press, M::Default);
+
+    // Roam movement — the action layer gates these to the walk gesture.
+    actions_.bind(K::W, A::moveForward,  T::Hold, M::Walk);
+    actions_.bind(K::A, A::moveLeft,     T::Hold, M::Walk);
+    actions_.bind(K::S, A::moveBackward, T::Hold, M::Walk);
+    actions_.bind(K::D, A::moveRight,    T::Hold, M::Walk);
+    actions_.bind(K::Q, A::moveUp,       T::Hold, M::Walk);
+    actions_.bind(K::E, A::moveDown,     T::Hold, M::Walk);
 }
 
 void App::initResources() {
@@ -188,14 +204,14 @@ void App::initRender() {
     vulkanDevice_.msaaSamples = chosenMsaa;
     const render::RenderSettings settings{chosenMsaa, config_.preferredPresentMode};
 
-    RenderContext rctForRenderer = vulkanDevice_.renderContext();  // keep alive for ctor
+    RenderContext rctForRenderer = vulkanDevice_.renderContext();
     render::Renderer::Dependencies deps{
         .rct          = rctForRenderer,
         .alloc        = vmaContext_->getAllocator(),
         .setLayouts   = descriptorSetLayout_->getLayoutHandles(),
         .set0Pool     = *descriptorPool_->getDescriptorPool(),
         .graphicsPool = *graphicsCommandPool_,
-        .camera       = camera_,
+        .cameras      = cameraManager_,
         .frameParams  = demoScene_.frameParams(),
         .surface      = surface_->handle(),
         .window       = *window_,

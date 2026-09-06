@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <string>
 #include <vector>
 
 #include "platform/input.hpp"   // MouseButton / ButtonAction
@@ -27,6 +28,11 @@ struct WindowConfig {
     bool       resizable = true;
 };
 
+enum class CursorMode {
+    Normal,
+    Disabled
+};
+
 class Window {
 public:
     explicit Window(const WindowConfig& config);
@@ -35,12 +41,18 @@ public:
     Window(const Window&) = delete;
     Window& operator=(const Window&) = delete;
 
+    void setCursorMode(CursorMode mode);
+
     void pollEvents();
     void waitEvents();
     bool shouldClose() const;
 
     uint32_t framebufferWidth()  const;
     uint32_t framebufferHeight() const;
+
+    // Runtime title changes (e.g. camera status); title() tracks the latest.
+    void setTitle(const std::string& title);
+    [[nodiscard]] const std::string& title() const { return title_; }
 
     // --- RHI interop (Layer 1 only) ---
     // Instance extensions required by the window system (e.g. VK_KHR_surface
@@ -51,8 +63,6 @@ public:
 
     // --- Event hooks ---
     std::function<void(uint32_t /*width*/, uint32_t /*height*/)>             onFramebufferResize;
-    std::function<void(ButtonAction, MouseButton, double /*x*/, double /*y*/)> onMouseButton;
-    std::function<void(double /*x*/, double /*y*/)>                          onCursorPos;
 
     // Scroll wheel delta accumulated since the last call (consumed by Input).
     double consumeScrollDelta() const;
@@ -62,11 +72,10 @@ private:
     GLFWwindow* nativeHandle() const { return window_; }
 
     static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
-    static void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
-    static void cursorPosCallback(GLFWwindow* window, double xPos, double yPos);
     static void scrollCallback(GLFWwindow* window, double xOffset, double yOffset);
 
     GLFWwindow* window_      = nullptr;
+    std::string title_;
     mutable double scrollAccum_ = 0.0;
 };
 

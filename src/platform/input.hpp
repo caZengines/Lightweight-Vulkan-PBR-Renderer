@@ -16,13 +16,21 @@ enum class Key : uint32_t {
     A,
     S,
     D,
+    Q,
+    E,
+    Digit1, Digit2, Digit3,
+    Digit4, Digit5, Digit6,
+    Digit7, Digit8, Digit9,
+    KP5,
     Space,
     LeftShift,
+    LeftCtrl,
+    LeftAlt,
+    Tab,
     Count
 };
 
 enum class MouseButton : uint8_t { Left = 0, Right = 1, Middle = 2 };
-enum class ButtonAction : uint8_t { Press, Release };
 
 class Window;
 
@@ -33,9 +41,9 @@ public:
     // Call once per frame after Window::pollEvents().
     void poll(const Window& window);
 
-    bool isKeyDown(Key key) const;
+    bool isDown(Key key) const;
 
-    bool isMouseDown(MouseButton button) const;
+    bool isDown(MouseButton button) const;
 
     // Cursor movement since the last poll (pixels, y-up screen space).
     double cursorDeltaX() const { return deltaX_; }

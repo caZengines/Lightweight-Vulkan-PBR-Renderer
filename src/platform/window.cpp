@@ -19,11 +19,10 @@ Window::Window(const WindowConfig& config) {
     if (!window_) {
         throw std::runtime_error("failed to create GLFW window");
     }
+    title_ = config.title;
 
     glfwSetWindowUserPointer(window_, this);
     glfwSetFramebufferSizeCallback(window_, framebufferResizeCallback);
-    glfwSetMouseButtonCallback(window_, mouseButtonCallback);
-    glfwSetCursorPosCallback(window_, cursorPosCallback);
     glfwSetScrollCallback(window_, scrollCallback);
 }
 
@@ -47,6 +46,15 @@ bool Window::shouldClose() const {
     return glfwWindowShouldClose(window_) != 0;
 }
 
+void Window::setCursorMode(CursorMode mode) {
+    int glfwMode = GLFW_CURSOR_NORMAL;
+    switch (mode) {
+        case CursorMode::Normal:  glfwMode = GLFW_CURSOR_NORMAL; break;
+        case CursorMode::Disabled:glfwMode = GLFW_CURSOR_DISABLED; break;
+    }
+    glfwSetInputMode(window_, GLFW_CURSOR, glfwMode);
+}
+
 uint32_t Window::framebufferWidth() const {
     int width = 0;
     glfwGetFramebufferSize(window_, &width, nullptr);
@@ -57,6 +65,11 @@ uint32_t Window::framebufferHeight() const {
     int height = 0;
     glfwGetFramebufferSize(window_, nullptr, &height);
     return static_cast<uint32_t>(height);
+}
+
+void Window::setTitle(const std::string& title) {
+    title_ = title;
+    glfwSetWindowTitle(window_, title.c_str());
 }
 
 std::vector<const char*> Window::requiredInstanceExtensions() const {
@@ -87,26 +100,6 @@ void Window::framebufferResizeCallback(GLFWwindow* window, int width, int height
     auto* self = static_cast<Window*>(glfwGetWindowUserPointer(window));
     if (self && self->onFramebufferResize) {
         self->onFramebufferResize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
-    }
-}
-
-void Window::mouseButtonCallback(GLFWwindow* window, int button, int action, int /*mods*/) {
-    auto* self = static_cast<Window*>(glfwGetWindowUserPointer(window));
-    if (!self || !self->onMouseButton) return;
-    if (button < 0 || button > static_cast<int>(MouseButton::Middle)) return;
-
-    auto mouseButton = static_cast<MouseButton>(button);
-    auto buttonAction = (action == GLFW_PRESS) ? ButtonAction::Press : ButtonAction::Release;
-
-    double x = 0.0, y = 0.0;
-    glfwGetCursorPos(window, &x, &y);
-    self->onMouseButton(buttonAction, mouseButton, x, y);
-}
-
-void Window::cursorPosCallback(GLFWwindow* window, double xPos, double yPos) {
-    auto* self = static_cast<Window*>(glfwGetWindowUserPointer(window));
-    if (self && self->onCursorPos) {
-        self->onCursorPos(xPos, yPos);
     }
 }
 

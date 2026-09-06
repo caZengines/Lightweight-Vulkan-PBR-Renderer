@@ -25,13 +25,10 @@ struct UniformBufferObject {
 static_assert(sizeof(UniformBufferObject) == 192, "UBO layout drifted from the slang shader");
 
 // CPU-side per-frame parameters fed by the content layer (app::DemoScene) and
-// consumed by Renderer::fillUniformBuffer — the light/projection literals
-// used to live in the renderer itself (moved out in Phase 5).
+// consumed by Renderer::fillUniformBuffer — the light literal used to live in
+// the renderer itself.
 struct FrameParams {
     Light light{};
-    float fovDegrees = 45.0f;
-    float nearPlane  = 0.1f;
-    float farPlane   = 100.0f;
 };
 
 }  // namespace render

@@ -19,7 +19,7 @@
 #include "render/pipeline_spec.hpp"
 #include "render/shader_manager.hpp"
 #include "render_context.hpp"
-#include "scene/camera.hpp"
+#include "scene/camera_manager.hpp"
 
 namespace render {
 
@@ -27,7 +27,7 @@ Renderer::Renderer(Dependencies deps, const RenderSettings& settings)
     : window_(deps.window),
       surface_(deps.surface),
       rct_(deps.rct),
-      camera_(deps.camera),
+      cameras_(deps.cameras),
       frameParams_(deps.frameParams),
       graphicsPool_(deps.graphicsPool),
       rhiFactory_(deps.factory),
@@ -160,16 +160,15 @@ void Renderer::recreateAfterResize() {
 }
 
 void Renderer::fillUniformBuffer(uint32_t frame) {
+    const scene::Camera& camera = cameras_.active();
     UniformBufferObject ubo{};
-    ubo.view = camera_.viewMatrix();
-    ubo.proj = glm::perspective(
-        glm::radians(frameParams_.fovDegrees),
+    ubo.view = camera.viewMatrix();
+    ubo.proj = camera.projectionMatrix(
         static_cast<float>(swapchain_->getExtent().width) /
-            static_cast<float>(swapchain_->getExtent().height),
-        frameParams_.nearPlane, frameParams_.farPlane);
+        static_cast<float>(swapchain_->getExtent().height));
     ubo.proj[1][1] *= -1;
 
-    ubo.camPos = glm::vec4(camera_.position(), 1.0f);
+    ubo.camPos = glm::vec4(camera.position(), 1.0f);
     ubo.light  = frameParams_.light;
 
     std::memcpy(frames_->uniformBuffer(frame).mappedData(), &ubo, sizeof(ubo));
