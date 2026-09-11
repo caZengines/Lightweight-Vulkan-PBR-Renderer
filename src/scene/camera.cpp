@@ -12,9 +12,9 @@ constexpr glm::vec3 cameraUp{0.0f, 1.0f, 0.0f};
 Camera::Camera(float azimuth, float polar, float distance)
     : azimuth_(azimuth), polar_(polar), distance_(distance) {}
 
-void Camera::orbit(float dAzimuth, float dPolar) {
-    azimuth_ += dAzimuth *sensitivity;
-    polar_   += dPolar * sensitivity;
+void Camera::orbit(float dxPixels, float dyPixels) {
+    azimuth_ += dxPixels *sensitivity;
+    polar_   += dyPixels * sensitivity;
     clampPolar();
 }
 
@@ -77,10 +77,17 @@ void Camera::moveVertical(float direction, float deltaTime, float speed) {
     target_.y += direction * speed * deltaTime;
 }
 
-void Camera::pan(float dxPiexls, float dyPixels) {
+void Camera::pan(float dxPixels, float dyPixels) {
     glm::vec3 rightXZ{std::cos(azimuth_), 0.0f, -std::sin(azimuth_)};
+    glm::vec3 front = {
+        std::sin(polar_) * std::sin(azimuth_),
+        std::cos(polar_),
+        std::sin(polar_) * std::cos(azimuth_)
+    };
+    glm::vec3 up = glm::cross(front, rightXZ);
+    up = glm::normalize(up);
     float scale = static_cast<float>(distance_) * sensitivity;
-    target_ += (rightXZ * dxPiexls + cameraUp * dyPixels) * scale;
+    target_ += (rightXZ * dxPixels + up * dyPixels) * scale;
 }
 
 void Camera::clampPolar() {

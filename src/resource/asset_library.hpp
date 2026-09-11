@@ -29,6 +29,13 @@ class AssetLibrary {
         AssetHandle loadMesh(const std::string& path);
         AssetHandle loadImage(const std::string& path, vk::Format format, vk::Filter filter);
 
+        // Get-or-load from CPU data the caller already imported — for formats
+        // that yield multiple meshes per file (glTF scenes). The cache key is
+        // caller-defined (e.g. "model.gltf#prim3"); on a miss the library
+        // uploads `data` and owns the GPU mesh under that key. `data` is left
+        // untouched on a cache hit.
+        AssetHandle loadMeshData(const std::string& cacheKey, const MeshData& data);
+
         // Non-throwing lookups — empty handle when missing.
         AssetHandle findMesh(const std::string& path);
         AssetHandle findImage(const std::string& path);

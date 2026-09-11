@@ -26,7 +26,7 @@ public:
            float distance = 32.0f);
 
     // Rotate the orbit; polar is clamped away from the singularities.
-    void orbit(float dAzimuth, float dPolar);
+    void orbit(float dxPixels, float dyPiexls);
 
     // First-person mouse look (roam mode): pixel deltas rotate the view
     // heading (azimuth = yaw, polar = pitch, clamped away from the poles).

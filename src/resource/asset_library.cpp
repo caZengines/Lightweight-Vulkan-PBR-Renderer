@@ -31,6 +31,26 @@ AssetHandle AssetLibrary::loadMesh(const std::string& path) {
     return AssetHandle(this, id);
 }
 
+AssetHandle AssetLibrary::loadMeshData(const std::string& cacheKey, const MeshData& data) {
+    auto it = paths_.find(cacheKey);
+    if (it != paths_.end()) {
+        ++refCounts_[it->second];
+        log::get().write(platform::LogLevel::Info,
+            "AssetLibrary: mesh cache hit: " + cacheKey);
+        return AssetHandle(this, it->second);
+    }
+
+    const uint32_t id = registry_.createMeshGPU(data);
+    paths_[cacheKey] = id;
+    pathById_[id] = cacheKey;
+    refCounts_[id] = 1;
+    log::get().write(platform::LogLevel::Info,
+        "AssetLibrary: imported mesh: " + cacheKey + " (" +
+        std::to_string(data.vertices().size()) + " vertices, " +
+        std::to_string(data.indices().size()) + " indices)");
+    return AssetHandle(this, id);
+}
+
 AssetHandle AssetLibrary::loadImage(const std::string& path, vk::Format format, vk::Filter filter) {
     auto it = paths_.find(path);
     if (it != paths_.end()) {

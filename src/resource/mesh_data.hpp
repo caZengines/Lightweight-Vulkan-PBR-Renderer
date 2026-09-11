@@ -12,12 +12,17 @@ namespace resource {
 class MeshData {
     public:
         MeshData() = default;
-        MeshData(std::vector<rhi::Vertex> vertices, std::vector<uint32_t> indices)
-            : vertices_(std::move(vertices)), indices_(std::move(indices)) {}
+        // tangentsFromSource: the vertices already carry source tangents
+        // (glTF TANGENT attribute) — postProcess() must not overwrite them.
+        // Default false: tangents are computed from TEXCOORD_0.
+        MeshData(std::vector<rhi::Vertex> vertices, std::vector<uint32_t> indices,
+                 bool tangentsFromSource = false)
+            : vertices_(std::move(vertices)), indices_(std::move(indices)),
+              tangentsFromSource_(tangentsFromSource) {}
 
-        // Deduplicate vertices by (pos, texcoord, normal), generate smooth
-        // normals when missing, compute tangents. Same semantics as the
-        // pre-Phase-2 Mesh constructor.
+        // Deduplicate vertices by (pos, texcoord, texcoord1, normal, tangent),
+        // generate smooth normals when missing, compute tangents (unless
+        // tangentsFromSource). Same semantics as the pre-Phase-2 Mesh constructor.
         void postProcess();
 
         const std::vector<rhi::Vertex>&   vertices() const { return vertices_; }
@@ -27,6 +32,7 @@ class MeshData {
     private:
         std::vector<rhi::Vertex>   vertices_;
         std::vector<uint32_t> indices_;
+        bool                  tangentsFromSource_ = false;
 };
 
 }  // namespace resource

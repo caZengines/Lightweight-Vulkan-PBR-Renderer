@@ -60,6 +60,11 @@ void MeshData::postProcess() {
     }
 
     // --- Tangent generation ---
+    // Source tangents (glTF TANGENT) are trusted as-is; only vertices without
+    // them get the computed tangent basis.
+    if (tangentsFromSource_) {
+        return;
+    }
     if (hasNormals && hasTexCoords) {
         std::vector<glm::vec3> tanAccum(vertices_.size());
         std::vector<glm::vec3> bitAccum(vertices_.size());

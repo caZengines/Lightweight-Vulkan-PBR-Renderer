@@ -44,6 +44,13 @@ public:
     [[nodiscard]] const render::FrameParams& frameParams() const { return frameParams_; }
 
 private:
+    // glTF scene (per-primitive objects). Transitional: one shared default
+    // material for all primitives (white model) until the per-primitive
+    // material/textures work replaces it.
+    void buildCar(const Sampler& albedoSampler, const Sampler& normalSampler,
+                  resource::AssetLibrary& assets, resource::ResourceRegistry& registry,
+                  resource::UploadQueue& queue);
+
     const Config& config_;
     scene::Scene& scene_;
 
