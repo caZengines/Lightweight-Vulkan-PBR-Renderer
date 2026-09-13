@@ -54,7 +54,7 @@ public:
         VmaAllocator                         alloc;
         std::vector<vk::DescriptorSetLayout> setLayouts;      // [0] per-frame, [1+] per-material
         const vk::DescriptorPool&            set0Pool;
-        rhi::CommandPool&                         graphicsPool;
+        rhi::CommandPool&                    graphicsPool;
         scene::CameraManager&                cameras;         // active() is read each frame
         FrameParams                          frameParams;     // light from the content layer
         const vk::raii::SurfaceKHR&          surface;

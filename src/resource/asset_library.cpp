@@ -52,35 +52,52 @@ AssetHandle AssetLibrary::loadMeshData(const std::string& cacheKey, const MeshDa
 }
 
 AssetHandle AssetLibrary::loadImage(const std::string& path, vk::Format format, vk::Filter filter) {
-    auto it = paths_.find(path);
+    const std::string key = imageKey(path, format);
+    auto it = paths_.find(key);
     if (it != paths_.end()) {
         ++refCounts_[it->second];
         log::get().write(platform::LogLevel::Info,
-            "AssetLibrary: image cache hit: " + path);
+            "AssetLibrary: image cache hit: " + key);
         return AssetHandle(this, it->second);
     }
 
     ImageData image = TextureImporter::load(path);
     const uint32_t id = registry_.createTextureGPU(image, format, filter);
-    paths_[path] = id;
-    pathById_[id] = path;
+    paths_[key] = id;
+    pathById_[id] = key;
     refCounts_[id] = 1;
     log::get().write(platform::LogLevel::Info,
-        "AssetLibrary: imported image: " + path + " (" +
+        "AssetLibrary: imported image: " + key + " (" +
         std::to_string(image.width()) + "x" + std::to_string(image.height()) + ")");
     return AssetHandle(this, id);
 }
 
-AssetHandle AssetLibrary::findMesh(const std::string& path) {
-    auto it = paths_.find(path);
-    if (it == paths_.end()) {
-        return AssetHandle();  // Null Object — empty handle
+AssetHandle AssetLibrary::loadImageData(const std::string& cacheKey, const ImageData& image,
+                                        vk::Format format, vk::Filter filter) {
+    const std::string key = imageKey(cacheKey, format);
+    auto it = paths_.find(key);
+    if (it != paths_.end()) {
+        ++refCounts_[it->second];
+        log::get().write(platform::LogLevel::Info,
+            "AssetLibrary: image cache hit: " + key);
+        return AssetHandle(this, it->second);
     }
-    ++refCounts_[it->second];
-    return AssetHandle(this, it->second);
+
+    const uint32_t id = registry_.createTextureGPU(image, format, filter);
+    paths_[key] = id;
+    pathById_[id] = key;
+    refCounts_[id] = 1;
+    log::get().write(platform::LogLevel::Info,
+        "AssetLibrary: imported image: " + key + " (" +
+        std::to_string(image.width()) + "x" + std::to_string(image.height()) + ")");
+    return AssetHandle(this, id);
 }
 
-AssetHandle AssetLibrary::findImage(const std::string& path) {
+std::string AssetLibrary::imageKey(const std::string& path, vk::Format format) {
+    return path + '|' + std::to_string(static_cast<uint32_t>(format));
+}
+
+AssetHandle AssetLibrary::findMesh(const std::string& path) {
     auto it = paths_.find(path);
     if (it == paths_.end()) {
         return AssetHandle();  // Null Object — empty handle

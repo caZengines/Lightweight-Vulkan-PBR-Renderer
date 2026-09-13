@@ -163,7 +163,7 @@ void App::initSamplers() {
     vk::SamplerCreateInfo normalInfo{};
     normalInfo.setMagFilter(vk::Filter::eLinear).setMinFilter(vk::Filter::eLinear)
               .setAddressModeU(vk::SamplerAddressMode::eClampToEdge).setAddressModeV(vk::SamplerAddressMode::eClampToEdge).setAddressModeW(vk::SamplerAddressMode::eClampToEdge)
-              .setMipmapMode(vk::SamplerMipmapMode::eNearest)
+              .setMipmapMode(vk::SamplerMipmapMode::eLinear)
               .setMipLodBias(0.0f).setMaxLod(vk::LodClampNone).setMinLod(0.0f)
               .setAnisotropyEnable(vk::True)
               .setMaxAnisotropy(properties.limits.maxSamplerAnisotropy)
@@ -183,18 +183,37 @@ void App::initRender() {
 
     const auto& spvCode = shaderManager_->spirv(config_.shaderPath);
     descriptorSetLayout_ = std::make_unique<render::DescriptorSetLayout>(rct, spvCode);
-    descriptorPool_      = std::make_unique<render::DescriptorPool>(rct,
-                                                            descriptorSetLayout_->getPoolMaxSets(),
-                                                            descriptorSetLayout_->getPoolSize());
 
     // One Set-1 descriptor set per material (shared materials reuse the same
-    // set no matter how many objects reference it).
+    // set no matter how many objects reference it); the pool scales with the
+    // actual material count.
+    const int materialCount = static_cast<int>(demoScene_.materials().size());
+    descriptorPool_      = std::make_unique<render::DescriptorPool>(rct,
+                                                            descriptorSetLayout_->computePoolMaxSets(materialCount),
+                                                            descriptorSetLayout_->computePoolSizes(materialCount));
+
     vk::DescriptorSetAllocateInfo allocInfo;
     allocInfo.setDescriptorPool(descriptorPool_->getDescriptorPool())
              .setDescriptorSetCount(1)
              .setSetLayouts(descriptorSetLayout_->getLayoutHandles()[1]);
+
+    // Set-1 bindings the shader actually declares (reflection-driven): slang
+    // removes unused resource bindings from the SPIR-V, so materials must
+    // only write those.
+    std::vector<uint32_t> set1Bindings;
+    for (const auto& binding : descriptorSetLayout_->getBindings()) {
+        if (binding.set != 1) continue;
+        bool known = false;
+        for (const uint32_t existing : set1Bindings) {
+            known = existing == binding.binding;
+            if (known) break;
+        }
+        if (!known) {
+            set1Bindings.push_back(binding.binding);
+        }
+    }
     for (const auto& material : demoScene_.materials()) {
-        material->createDescriptorSet(rct, allocInfo);
+        material->createDescriptorSet(rct, allocInfo, set1Bindings);
     }
 
     // MSAA: honor Config, clamped to device limits; keep the device-derived

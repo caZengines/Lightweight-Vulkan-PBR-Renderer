@@ -25,10 +25,11 @@ ConsoleLog& consoleLog() {
 } // namespace
 
 void ConsoleLog::write(LogLevel level, const std::string& message) {
+    std::ios_base::sync_with_stdio(false); std::cout.tie(nullptr);
     if (level == LogLevel::Error) {
         std::cerr << message << std::endl;
     } else {
-        std::cout << message << std::endl;
+        std::cout << message<< std::endl;
     }
 }
 

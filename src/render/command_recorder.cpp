@@ -87,10 +87,6 @@ void CommandRecorder::record(vk::raii::CommandBuffer& cmd,
             cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
                                    *pipeline_.layout(), 1,
                                    item.material->getDescriptorSet(), nullptr);
-            // Push constants: per-material render flags bitmask.
-            const uint32_t flags = to_uint32(item.material->getFlags());
-            cmd.pushConstants<uint32_t>(*pipeline_.layout(),
-                                             vk::ShaderStageFlagBits::eFragment, 0, flags);
 
             const std::array<vk::Buffer, 2> vertexBuffers{
                 item.mesh->vertexBuffer(),

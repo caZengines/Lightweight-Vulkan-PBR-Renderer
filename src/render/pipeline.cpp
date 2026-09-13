@@ -5,6 +5,8 @@
 #include "render_context.hpp"
 #include <array>
 #include <cstddef>
+#include <exception>
+#include <iostream>
 #include <stdexcept>
 
 namespace {
@@ -61,7 +63,11 @@ Pipeline::Pipeline(RenderContext& rct,
     if (spec_.colorFormat == vk::Format::eUndefined || spec_.depthFormat == vk::Format::eUndefined) {
         throw std::invalid_argument("GraphicsPipelineSpec requires color and depth formats");
     }
-    create(setLayouts, spec_);
+    try {
+        create(setLayouts, spec_);
+    } catch (const std::exception& e) {
+        std::cerr << "Error creating GraphicsPipeline: " << e.what() << std::endl;
+    }
 }
 
 void Pipeline::create(const std::vector<vk::DescriptorSetLayout>& setLayouts,
@@ -81,12 +87,12 @@ void Pipeline::create(const std::vector<vk::DescriptorSetLayout>& setLayouts,
     std::array<vk::PipelineShaderStageCreateInfo, 2> stages{vertStageInfo, fragStageInfo};
 
     // dynamic state
+    vk::PipelineViewportStateCreateInfo viewportState{};
+    viewportState.setViewportCount(1).setScissorCount(1);
     std::array<vk::DynamicState, 2> dynamicStates{
         vk::DynamicState::eViewport, vk::DynamicState::eScissor};
     vk::PipelineDynamicStateCreateInfo dynamicState{};
     dynamicState.setDynamicStates(dynamicStates);
-    vk::PipelineViewportStateCreateInfo viewportState{};
-    viewportState.setViewportCount(1).setScissorCount(1);
 
     // vertex input (mesh vertices + per-instance data)
     const auto vertexBindingDesc   = meshVertexBinding();
@@ -105,7 +111,8 @@ void Pipeline::create(const std::vector<vk::DescriptorSetLayout>& setLayouts,
 
     // assembly
     vk::PipelineInputAssemblyStateCreateInfo inputAssembly{};
-    inputAssembly.setTopology(spec.topology);
+    inputAssembly.setTopology(spec.topology)
+                  .setPrimitiveRestartEnable(vk::False);
 
     // rasterizer
     vk::PipelineRasterizationStateCreateInfo rasterizer{};
@@ -131,8 +138,8 @@ void Pipeline::create(const std::vector<vk::DescriptorSetLayout>& setLayouts,
                 .setStencilTestEnable(vk::False);
 
     // color blending
-    vk::PipelineColorBlendAttachmentState blendAttachment{};
-    blendAttachment.setBlendEnable(vk::True)
+    vk::PipelineColorBlendAttachmentState colorBlendAttachment{};
+    colorBlendAttachment.setBlendEnable(vk::True)
                    .setSrcColorBlendFactor(vk::BlendFactor::eSrcAlpha)
                    .setDstColorBlendFactor(vk::BlendFactor::eOneMinusSrcAlpha)
                    .setColorBlendOp(vk::BlendOp::eAdd)
@@ -147,7 +154,7 @@ void Pipeline::create(const std::vector<vk::DescriptorSetLayout>& setLayouts,
     colorBlending.setLogicOpEnable(vk::False)
                  .setLogicOp(vk::LogicOp::eCopy)
                  .setAttachmentCount(1)
-                 .setPAttachments(&blendAttachment);
+                 .setPAttachments(&colorBlendAttachment);
 
     // push constant: one uint32 bitmask of material render flags
     vk::PushConstantRange pushConstantRange{};

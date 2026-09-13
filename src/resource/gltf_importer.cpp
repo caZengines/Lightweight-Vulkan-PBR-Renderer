@@ -10,6 +10,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <filesystem>
 #include <limits>
 #include <optional>
 #include <stdexcept>
@@ -27,13 +28,18 @@
 //     TRS nodes; the glTF default scene is the traversal root)
 //   * POSITION (vec3), NORMAL (vec3), TANGENT (vec4 float, w = handedness),
 //     TEXCOORD_0 / TEXCOORD_1 (vec2) attributes, float or normalized int
+//   * materials parsed to MaterialData; textures referenced by materials
+//     resolved to TextureSource (absolute URI or embedded bufferView bytes,
+//     sampler params dereferenced)
 //   * TRIANGLES / TRIANGLE_STRIP / TRIANGLE_FAN (expanded), 8/16/32-bit
 //     indices, non-indexed primitives, sparse accessors
 //
-// Not supported: Draco compression, morph targets, skins/animations (warned
-// and skipped). UVs are glTF-native (V top-down, unflipped — see header).
-// The vertex pipeline bakes tangents from the file when present; otherwise
-// MeshData::postProcess computes them from TEXCOORD_0.
+// Not supported: Draco compression, morph targets, skins/animations,
+// KHR_materials_* extensions (rendered with the base metallic-roughness
+// model), data URIs — all warned and skipped. UVs are glTF-native (V
+// top-down, unflipped — see header). The vertex pipeline bakes tangents from
+// the file when present; otherwise MeshData::postProcess computes them from
+// TEXCOORD_0.
 // =============================================================================
 
 namespace {
@@ -645,6 +651,159 @@ bool loadPrimitive(const tg3_model& model,
     return true;
 }
 
+// --- Materials & textures ---------------------------------------------------
+
+resource::AlphaMode parseAlphaMode(tg3_str alphaMode) {
+    if (tg3_str_equals_cstr(alphaMode, "MASK"))  return resource::AlphaMode::Mask;
+    if (tg3_str_equals_cstr(alphaMode, "BLEND")) return resource::AlphaMode::Blend;
+    return resource::AlphaMode::Opaque;
+}
+
+// Reads one texture reference. An out-of-range index disables the slot
+// instead of failing the whole model. (Normal/occlusion texture infos are
+// distinct glTF structs with the same leading fields, so scalars in.)
+resource::TextureSlot parseTextureSlot(int32_t textureIndex, int32_t texCoord,
+                                       uint32_t textureCount, float scale) {
+    resource::TextureSlot slot;
+    slot.scale = scale;
+    if (textureIndex >= 0) {
+        if (static_cast<uint32_t>(textureIndex) < textureCount) {
+            slot.texture  = textureIndex;
+            slot.texCoord = texCoord > 0 ? static_cast<uint32_t>(texCoord) : 0u;
+        } else {
+            log::get().write(platform::LogLevel::Warning,
+                "[glTF] warning: material texture index out of range; slot disabled");
+        }
+    }
+    return slot;
+}
+
+void parseMaterial(const tg3_model& model, const tg3_material& src,
+                   resource::MaterialData& out) {
+    const tg3_pbr_metallic_roughness& pbr = src.pbr_metallic_roughness;
+    out.baseColorFactor = glm::vec4(static_cast<float>(pbr.base_color_factor[0]),
+                                    static_cast<float>(pbr.base_color_factor[1]),
+                                    static_cast<float>(pbr.base_color_factor[2]),
+                                    static_cast<float>(pbr.base_color_factor[3]));
+    out.metallic        = static_cast<float>(pbr.metallic_factor);
+    out.roughness       = static_cast<float>(pbr.roughness_factor);
+    out.emissiveFactor  = glm::vec3(static_cast<float>(src.emissive_factor[0]),
+                                    static_cast<float>(src.emissive_factor[1]),
+                                    static_cast<float>(src.emissive_factor[2]));
+    out.alphaCutoff     = static_cast<float>(src.alpha_cutoff);
+    out.alphaMode       = parseAlphaMode(src.alpha_mode);
+    out.doubleSided     = src.double_sided != 0;
+
+    using S = resource::MaterialTextureSlot;
+    out.slots[size_t(S::BaseColor)] =
+        parseTextureSlot(pbr.base_color_texture.index, pbr.base_color_texture.tex_coord,
+                         model.textures_count, 1.0f);
+    out.slots[size_t(S::MetallicRoughness)] =
+        parseTextureSlot(pbr.metallic_roughness_texture.index, pbr.metallic_roughness_texture.tex_coord,
+                         model.textures_count, 1.0f);
+    out.slots[size_t(S::Normal)] =
+        parseTextureSlot(src.normal_texture.index, src.normal_texture.tex_coord,
+                         model.textures_count, static_cast<float>(src.normal_texture.scale));
+    out.slots[size_t(S::Occlusion)] =
+        parseTextureSlot(src.occlusion_texture.index, src.occlusion_texture.tex_coord,
+                         model.textures_count, static_cast<float>(src.occlusion_texture.strength));
+    out.slots[size_t(S::Emissive)] =
+        parseTextureSlot(src.emissive_texture.index, src.emissive_texture.tex_coord,
+                         model.textures_count, 1.0f);
+}
+
+// glTF image URIs may carry percent escapes (%20 for a space).
+std::string decodeUriPercent(const std::string& uri) {
+    auto hexValue = [](char c) -> int {
+        if (c >= '0' && c <= '9') return c - '0';
+        if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+        if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+        return -1;
+    };
+    std::string out;
+    out.reserve(uri.size());
+    for (size_t i = 0; i < uri.size(); ++i) {
+        if (uri[i] == '%' && i + 2 < uri.size()) {
+            const int hi = hexValue(uri[i + 1]);
+            const int lo = hexValue(uri[i + 2]);
+            if (hi >= 0 && lo >= 0) {
+                out.push_back(static_cast<char>((hi << 4) | lo));
+                i += 2;
+                continue;
+            }
+        }
+        out.push_back(uri[i]);
+    }
+    return out;
+}
+
+// Resolves one glTF texture (sampler + image) to a TextureSource. Failures
+// mark the entry invalid so the material falls back to no texture instead of
+// failing the whole model.
+void resolveTextureSource(const tg3_model& model,
+                          int32_t textureIndex,
+                          const std::filesystem::path& gltfDir,
+                          resource::TextureSource& out) {
+    out = resource::TextureSource{};
+    if (textureIndex < 0 || static_cast<uint32_t>(textureIndex) >= model.textures_count) {
+        log::get().write(platform::LogLevel::Warning,
+            "[glTF] warning: texture index out of range; texture skipped");
+        return;
+    }
+    const tg3_texture& texture = model.textures[textureIndex];
+
+    if (texture.sampler >= 0 &&
+        static_cast<uint32_t>(texture.sampler) < model.samplers_count) {
+        const tg3_sampler& s = model.samplers[texture.sampler];
+        out.sampler.minFilter = s.min_filter;
+        out.sampler.magFilter = s.mag_filter;
+        out.sampler.wrapS     = s.wrap_s;
+        out.sampler.wrapT     = s.wrap_t;
+    }
+
+    if (texture.source < 0 || static_cast<uint32_t>(texture.source) >= model.images_count) {
+        log::get().write(platform::LogLevel::Warning,
+            "[glTF] warning: texture without a valid image source; texture skipped");
+        return;
+    }
+    const tg3_image& image = model.images[texture.source];
+    out.image = texture.source;
+
+    if (image.buffer_view >= 0) {
+        // Embedded image: copy the encoded bytes out of the parse arena,
+        // which dies with the model.
+        const tg3_buffer_view& view  = getBufferView(model, image.buffer_view);
+        const tg3_buffer&      buffer = getBuffer(model, view);
+        checkBufferViewRange(view, buffer, 0, view.byte_length, "image data");
+        if (view.byte_length == 0 || buffer.data.data == nullptr) {
+            log::get().write(platform::LogLevel::Warning,
+                "[glTF] warning: embedded image is empty; texture skipped");
+            return;
+        }
+        const uint8_t* begin = buffer.data.data + view.byte_offset;
+        out.bytes.assign(begin, begin + view.byte_length);
+        out.embedded = true;
+        out.mime     = toString(image.mime_type);
+        out.valid    = true;
+        return;
+    }
+
+    if (image.uri.data && image.uri.len > 0) {
+        const std::string uri = toString(image.uri);
+        if (uri.rfind("data:", 0) == 0) {
+            log::get().write(platform::LogLevel::Warning,
+                "[glTF] warning: data URI images are not supported; texture skipped");
+            return;
+        }
+        out.uri = (gltfDir / decodeUriPercent(uri)).generic_string();
+        out.valid = true;
+        return;
+    }
+
+    log::get().write(platform::LogLevel::Warning,
+        "[glTF] warning: image has neither a buffer view nor a URI; texture skipped");
+}
+
 // Local matrix of one node: explicit matrix (glTF stores it column-major,
 // same as glm) or composed TRS (glTF rotation quaternion is [x, y, z, w],
 // glm's scalar quaternion constructor takes (w, x, y, z)).
@@ -732,8 +891,7 @@ GltfScene GltfSceneImporter::load(const std::string& modelPath) {
 
     tg3_parse_options options;
     tg3_parse_options_init(&options);
-    options.images_as_is = 1;       // never decode images here — textures are
-                                    // decoded on demand by the app layer (P2)
+    options.images_as_is = 1;       // pixels stay encoded; TextureImporter decodes on demand
     options.skip_extras_values = 1; // don't materialize extras/extension values
     options.parse_float32 = 1;      // glTF geometry values are single-precision
 
@@ -751,14 +909,13 @@ GltfScene GltfSceneImporter::load(const std::string& modelPath) {
         diagnostic += std::string(": ") + (entry.message ? entry.message : "(no message)");
         log::get().write(platform::LogLevel::Warning, diagnostic);
     }
-
     if (result != TG3_OK || errors.has_error()) {
         const char* reason = (errors.count() > 0 && errors.entry(0)->message)
                                  ? errors.entry(0)->message
                                  : "unknown parse error";
         throw std::runtime_error("glTF: failed to load " + modelPath + ": " + reason);
     }
-
+    // Don't look at the messy code above
     GltfScene scene;
     if (model->scenes_count == 0) {
         throw std::runtime_error("glTF: no scene in " + modelPath);
@@ -778,6 +935,59 @@ GltfScene GltfSceneImporter::load(const std::string& modelPath) {
     if (scene.primitives.empty()) {
         throw std::runtime_error("glTF: no drawable triangle geometry in " + modelPath);
     }
+
+    // --- materials ---
+    scene.materials.resize(model->materials_count);
+    for (uint32_t m = 0; m < model->materials_count; ++m) {
+        parseMaterial(*model.get(), model->materials[m], scene.materials[m]);
+    }
+
+    // Primitive material references must point at a parsed material.
+    for (resource::GltfPrimitive& prim : scene.primitives) {
+        if (prim.materialIndex != 0xFFFFFFFFu &&
+            prim.materialIndex >= scene.materials.size()) {
+            log::get().write(platform::LogLevel::Warning,
+                "[glTF] warning: primitive material index out of range; "
+                "material reference dropped");
+            prim.materialIndex = 0xFFFFFFFFu;
+        }
+    }
+
+    // --- textures referenced by any material slot ---
+    std::vector<bool> referenced(model->textures_count, false);
+    for (const resource::MaterialData& mat : scene.materials) {
+        for (const resource::TextureSlot& slot : mat.slots) {
+            if (slot.texture >= 0) {
+                referenced[static_cast<size_t>(slot.texture)] = true;
+            }
+        }
+    }
+    const std::filesystem::path gltfDir =
+        std::filesystem::absolute(std::filesystem::path(modelPath)).parent_path();
+    scene.textures.resize(model->textures_count);
+    for (uint32_t t = 0; t < model->textures_count; ++t) {
+        if (referenced[t]) {
+            resolveTextureSource(*model.get(), static_cast<int32_t>(t),
+                                 gltfDir, scene.textures[t]);
+        }
+    }
+
+    // Material extensions this importer renders with the base
+    // metallic-roughness model.
+    std::string ignoredExtensions;
+    for (uint32_t e = 0; e < model->extensions_used_count; ++e) {
+        const tg3_str ext = model->extensions_used[e];
+        if (ext.len >= 14 && std::memcmp(ext.data, "KHR_materials_", 14) == 0) {
+            if (!ignoredExtensions.empty()) ignoredExtensions += ", ";
+            ignoredExtensions += toString(ext);
+        }
+    }
+    if (!ignoredExtensions.empty()) {
+        log::get().write(platform::LogLevel::Warning,
+            "[glTF] warning: extensions ignored (base metallic-roughness used): " +
+            ignoredExtensions);
+    }
+
     return scene;
 }
 

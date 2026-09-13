@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -37,23 +38,22 @@ struct ReflectBinding {
 namespace render {
 
 // SPIRV-Reflect driven descriptor-set layout derivation: consumes raw SPIR-V
-// (from ShaderManager), produces Set layouts plus the matching pool sizes
-// (Set 0 scaled by kMaxFramesInFlight, per-object sets by an upper bound).
+// (from ShaderManager), produces Set layouts plus pool sizing that scales
+// with the actual object count (Set 0 × frames in flight, Set 1+ × objects).
 class DescriptorSetLayout final {
 public:
-    static constexpr uint32_t kDefaultObjectMultiplier = 8;
-
     explicit DescriptorSetLayout(RenderContext& rct, const std::vector<uint8_t>& spvCode);
     ~DescriptorSetLayout() = default;
 
     [[nodiscard]] const std::vector<vk::raii::DescriptorSetLayout>& getDescriptorSetLayouts() const { return descriptorSetLayouts_; }
     [[nodiscard]] const std::vector<vk::DescriptorSetLayout>&       getLayoutHandles()       const { return layoutHandles_; }
     [[nodiscard]] const std::vector<ReflectBinding>&                getBindings()            const { return bindings_; }
-    [[nodiscard]] int                                               getPoolMaxSets()         const { return poolMaxSets_; }
     [[nodiscard]] int                                               getSetCount()            const { return setCount_; }
-    [[nodiscard]] const std::vector<vk::DescriptorPoolSize>&        getPoolSize()            const { return poolSizes_; }
 
-    int computePoolMaxSets(uint32_t objectCount) const;
+    // Pool sizing for `objectCount` per-object sets (e.g. materials):
+    // Set 0 is counted once per frame in flight, Set 1+ once per object.
+    [[nodiscard]] int                                        computePoolMaxSets(uint32_t objectCount) const;
+    [[nodiscard]] std::vector<vk::DescriptorPoolSize>        computePoolSizes(uint32_t objectCount) const;
 
 private:
     void autoCreateDSL(const std::vector<uint8_t>& spvCode);
@@ -62,10 +62,11 @@ private:
     std::vector<vk::raii::DescriptorSetLayout>    descriptorSetLayouts_;
     std::vector<vk::DescriptorSetLayout>          layoutHandles_;
     std::vector<ReflectBinding>                   bindings_;
-    std::vector<vk::DescriptorPoolSize>           poolSizes_;
 
-    int                                           setCount_    = 0;
-    int                                           poolMaxSets_ = 0;
+    // set index → descriptor type → unmultiplied descriptor count
+    std::map<uint32_t, std::map<vk::DescriptorType, uint32_t>> perSetDescCounts_;
+
+    int                                           setCount_ = 0;
 };
 
 class DescriptorPool final {

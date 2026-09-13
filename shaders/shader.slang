@@ -1,3 +1,4 @@
+import common;
 struct VertexInput {
     float3 inPosition;
     float2 inTexCoord;
@@ -5,18 +6,18 @@ struct VertexInput {
     float4 inTangent;
 };
 
+struct VertexOutput {
+    float4 pos : SV_POSITION;
+
+    float2 fragTexCoord;
+    float3 fragTangentLightDir;
+    float3 fragTangentViewDir;
+    float3 worldPos;
+};
+
 struct InstanceData {
     float4x4 model;
 };
-
-// Push constant: per-material render flags (bitmask)
-struct PushConstants {
-    uint32_t flags;
-};
-[[vk::push_constant]] ConstantBuffer<PushConstants> pc;
-
-static const uint32_t FLAG_ALBEDO_TEXTURE = 1u << 0; // bit 0
-static const uint32_t FLAG_NORMAL_TEXTURE = 1u << 1; // bit 1
 
 struct Light {
     float4 position;
@@ -32,15 +33,22 @@ struct UniformBuffer {
 };
 
 [[vk::binding(0, 0)]] ConstantBuffer<UniformBuffer> ubo;
+[[vk::binding(0, 1)]] Texture2D baseColorMap;
+[[vk::binding(1, 1)]] SamplerState baseColorSampler;
+[[vk::binding(2, 1)]] Texture2D metallicRoughnessMap;
+[[vk::binding(3, 1)]] SamplerState mrSampler;
+[[vk::binding(4, 1)]] Texture2D normalMap;
+[[vk::binding(5, 1)]] SamplerState normalSampler;
+[[vk::binding(6, 1)]] Texture2D occlusionMap;
+[[vk::binding(7, 1)]] SamplerState occlusionSampler;
+[[vk::binding(8, 1)]] Texture2D emissiveMap;
+[[vk::binding(9, 1)]] SamplerState emissiveSampler;
 
-struct VertexOutput {
-    float4 pos : SV_Position;
-    float2 fragTexCoord;
-    float3 fragTangentNormal;
-    float3 fragTangentLightDir;
-    float3 fragTangentViewDir;
-    float3 worldPos;
+// Push constant: per-material render flags (bitmask)
+struct PushConstants {
+    uint32_t flags;
 };
+[[vk::push_constant]] ConstantBuffer<PushConstants> pc;
 
 [shader("vertex")]
 VertexOutput vertMain(VertexInput Input, InstanceData instance) {
@@ -73,15 +81,9 @@ VertexOutput vertMain(VertexInput Input, InstanceData instance) {
         dot(worldViewDir, B),
         dot(worldViewDir, N)
     );
-    Output.fragTangentNormal = float3(0, 0, 1);
     
     return Output;
 }
-
-[[vk::binding(0, 1)]] Texture2D albedoTexture;
-[[vk::binding(1, 1)]] Texture2D normalTexture;
-[[vk::binding(2, 1)]] SamplerState gtexSampler;
-[[vk::binding(3, 1)]] SamplerState gNorSampler;
 
 static float constant = 1.0; 
 static float linear = 0.09;     // Linear attenuation coefficient
@@ -91,22 +93,14 @@ static float quadratic = 0.032; // Square attenuation coefficient
 float4 fragMain(VertexOutput inVert) : SV_Target {
     // Bitmask albedo sampling
     float4 albedo;
-    if ((pc.flags & FLAG_ALBEDO_TEXTURE) != 0u) {
-        albedo = albedoTexture.Sample(gtexSampler, inVert.fragTexCoord);
-    } else {
-        albedo = float4(0.8f, 0.8f, 0.8f, 1.0f); // solid gray fallback
-    }
+    albedo = baseColorMap.Sample(baseColorSampler, inVert.fragTexCoord);
 
     // Bitmask normal sampling
     float3 N;
-    if ((pc.flags & FLAG_NORMAL_TEXTURE) != 0u) {
-        float3 tn = normalTexture.Sample(gNorSampler, inVert.fragTexCoord).rgb;
-        tn.rg = tn.rg * 2 - 1.0;
-        tn.g = 1.0 - tn.g;
-        N = normalize(tn);
-    } else {
-        N = normalize(inVert.fragTangentNormal);
-    }
+    float3 tn = normalMap.Sample(normalSampler, inVert.fragTexCoord).rgb;
+    tn.rg = tn.rg * 2 - 1.0;
+    tn.g = tn.g;
+    N = normalize(tn);
 
     float3 L = normalize(inVert.fragTangentLightDir);
     float3 V = normalize(inVert.fragTangentViewDir);
@@ -129,7 +123,7 @@ float4 fragMain(VertexOutput inVert) : SV_Target {
      float spec = max(dot(N, halfwayDir), 0.0);
      float3 specular = pow(spec, shininess);
 
-     float3 finalColor = (ambient + diffuse + specular) * radiance;
+     float3 finalColor = albedo.xyz;
     // float2 uv = inVert.fragTexCoord * 50;
     // uv.x = uv.x - (int)uv.x;
     // uv.y = uv.y - (int)uv.y;

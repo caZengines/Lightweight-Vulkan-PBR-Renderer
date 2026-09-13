@@ -77,26 +77,9 @@ void DescriptorSetLayout::autoCreateDSL(const std::vector<uint8_t>& spvCode) {
         layoutHandles_.emplace_back(*dsl);
     }
 
-    // Pool sizing: Set 0 is per-frame (× frames in flight), Set 1+ is
-    // per-object (× upper bound for simultaneous materials).
-    std::map<vk::DescriptorType, uint32_t> totalDescriptors;
-    poolMaxSets_ = 0;
-
-    for (const auto& [setIdx, descCounts] : perSetDescCounts) {
-        const uint32_t multiplier =
-            (setIdx == 0) ? render::kMaxFramesInFlight
-                          : DescriptorSetLayout::kDefaultObjectMultiplier;
-        poolMaxSets_ += static_cast<int>(multiplier);
-        for (const auto& [type, count] : descCounts) {
-            totalDescriptors[type] += count * multiplier;
-        }
-    }
-
-    poolSizes_.clear();
-    poolSizes_.reserve(totalDescriptors.size());
-    for (const auto& [type, count] : totalDescriptors) {
-        poolSizes_.emplace_back(vk::DescriptorPoolSize().setType(type).setDescriptorCount(count));
-    }
+    // Pool sizing scales with the object count at pool-creation time — the
+    // unmultiplied per-set counts are kept for computePoolSizes().
+    perSetDescCounts_ = std::move(perSetDescCounts);
 }
 
 int DescriptorSetLayout::computePoolMaxSets(uint32_t objectCount) const {
@@ -105,6 +88,24 @@ int DescriptorSetLayout::computePoolMaxSets(uint32_t objectCount) const {
         total += static_cast<int>(objectCount);
     }
     return total;
+}
+
+std::vector<vk::DescriptorPoolSize> DescriptorSetLayout::computePoolSizes(uint32_t objectCount) const {
+    std::map<vk::DescriptorType, uint32_t> totalDescriptors;
+    for (const auto& [setIdx, descCounts] : perSetDescCounts_) {
+        const uint32_t multiplier =
+            (setIdx == 0) ? render::kMaxFramesInFlight : objectCount;
+        for (const auto& [type, count] : descCounts) {
+            totalDescriptors[type] += count * multiplier;
+        }
+    }
+    std::vector<vk::DescriptorPoolSize> poolSizes;
+    poolSizes.reserve(totalDescriptors.size());
+    for (const auto& [type, count] : totalDescriptors) {
+        poolSizes.emplace_back(
+            vk::DescriptorPoolSize().setType(type).setDescriptorCount(count));
+    }
+    return poolSizes;
 }
 
 DescriptorPool::DescriptorPool(RenderContext& rct,

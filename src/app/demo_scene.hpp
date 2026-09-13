@@ -7,6 +7,8 @@
 #include <glm/glm.hpp>
 
 #include "render/frame_uniforms.hpp"
+#include "resource/asset_handle.hpp"
+#include "resource/gltf_importer.hpp"
 
 class Material;
 class Sampler;
@@ -44,12 +46,22 @@ public:
     [[nodiscard]] const render::FrameParams& frameParams() const { return frameParams_; }
 
 private:
-    // glTF scene (per-primitive objects). Transitional: one shared default
-    // material for all primitives (white model) until the per-primitive
-    // material/textures work replaces it.
-    void buildCar(const Sampler& albedoSampler, const Sampler& normalSampler,
+    // glTF scene content: one SceneObject per primitive, one Material per
+    // glTF material (materials_[0] is the fallback for primitives without
+    // one). Textures resolve through the asset library, so shared textures
+    // upload once.
+    void buildglTFdemo(const Sampler& albedoSampler, const Sampler& normalSampler,
                   resource::AssetLibrary& assets, resource::ResourceRegistry& registry,
                   resource::UploadQueue& queue);
+
+    // Resolves one material texture slot to an asset handle; empty handle
+    // when the slot has no usable texture (Material falls back to the
+    // built-in default textures).
+    [[nodiscard]] resource::AssetHandle resolveSlotTexture(
+        const resource::GltfScene& imported,
+        const resource::MaterialData& material,
+        resource::MaterialTextureSlot slot,
+        resource::AssetLibrary& assets) const;
 
     const Config& config_;
     scene::Scene& scene_;

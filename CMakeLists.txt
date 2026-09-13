@@ -34,7 +34,11 @@ file(GLOB_RECURSE SRC_LIST
 
 set(SHADER_DIR ${PROJECT_SOURCE_DIR}/shaders)
 set(SHADER_SOURCE ${SHADER_DIR}/shader.slang)
-set(SHADER_OUTPUT ${SHADER_DIR}/slang.spv) 
+set(SHADER_OUTPUT ${SHADER_DIR}/slang.spv)
+
+file(GLOB_RECURSE SHADER_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.slang"
+)
 
 add_custom_command(
     OUTPUT ${SHADER_OUTPUT}
@@ -45,6 +49,7 @@ add_custom_command(
         -fvk-use-entrypoint-name
         -entry vertMain
         -entry fragMain
+        -I ${CMAKE_CURRENT_SOURCE_DIR}/shaders/modules
         -o ${SHADER_OUTPUT}
     DEPENDS ${SHADER_SOURCE}
     COMMENT "Compiling Slang shader to SPIR-V"

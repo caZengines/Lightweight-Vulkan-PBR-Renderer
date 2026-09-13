@@ -23,7 +23,7 @@ class Camera {
 public:
     Camera(float azimuth   = glm::radians(45.0f),
            float polar     = glm::radians(45.0f),
-           float distance = 32.0f);
+           float distance = 160.0f);
 
     // Rotate the orbit; polar is clamped away from the singularities.
     void orbit(float dxPixels, float dyPiexls);
@@ -62,7 +62,7 @@ private:
     float  distance_;
 
     static constexpr float kMinDistance = 0.01;
-    static constexpr float kMaxDistance = 100.0;
+    static constexpr float kMaxDistance = 400.0;
 
     glm::vec3 target_{0.0f, 0.0f, 0.0f};
 
@@ -74,7 +74,7 @@ private:
     float fovDegrees_  = 45.0f;   // perspective vertical fov
     float orthoHeight_ = 10.0f;   // orthographic view height (world units)
     float nearPlane_   = 0.1f;
-    float farPlane_    = 100.0f;
+    float farPlane_    = 150.0f;
 
     static constexpr float  kMinOrthoHeight  = 0.1f;
     static constexpr float  kMaxOrthoHeight  = 200.0f;

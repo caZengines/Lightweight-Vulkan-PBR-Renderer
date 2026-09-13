@@ -31,7 +31,7 @@ class MeshData {
 
     private:
         std::vector<rhi::Vertex>   vertices_;
-        std::vector<uint32_t> indices_;
+        std::vector<uint32_t>      indices_;
         bool                  tangentsFromSource_ = false;
 };
 
