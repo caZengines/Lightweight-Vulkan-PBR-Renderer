@@ -227,7 +227,7 @@ void App::initRender() {
     render::Renderer::Dependencies deps{
         .rct          = rctForRenderer,
         .alloc        = vmaContext_->getAllocator(),
-        .setLayouts   = descriptorSetLayout_->getLayoutHandles(),
+        .setLayouts   = *descriptorSetLayout_,
         .set0Pool     = *descriptorPool_->getDescriptorPool(),
         .graphicsPool = *graphicsCommandPool_,
         .cameras      = cameraManager_,

@@ -7,6 +7,18 @@
 #include <cstdint>
 #include <vector>
 
+namespace resource {
+
+struct PushConstantBlock {
+    glm::vec4 baseColorFactor;            // RGB base color and alpha
+    float metallicFactor;                 // How metallic the surface is
+    float roughnessFactor;                // How rough the surface is
+    float alphaMask;                      // Whether to use alpha masking
+    float alphaMaskCutoff = 0.5f;         // Alpha threshold for masking
+};
+
+struct MaterialData;
+
 //It should be noticed that class::Material should not and cannot be copied
 class Material{
     public:
@@ -16,6 +28,7 @@ class Material{
         Material(const resource::AssetHandle& baseColor, const resource::AssetHandle& metallicRoughness,
                  const resource::AssetHandle& normal, const resource::AssetHandle& occlusion, 
                  const resource::AssetHandle& emissive,
+                 const MaterialData& data,
                  const Sampler& texSampler, const Sampler& norSampler,
                  const resource::ResourceRegistry& registry);
 
@@ -28,6 +41,7 @@ class Material{
                                  const vk::DescriptorSetAllocateInfo allocInfo_,
                                  const std::vector<uint32_t>& setBindings);
 
+        const PushConstantBlock&       getPushConstantBlock() const { return pcBlock_; }
         const vk::DescriptorImageInfo& getImageInfo()  const { return baseColorInfo_; }
         const vk::DescriptorImageInfo& getNormalInfo() const { return normalInfo_; }
         const vk::DescriptorImageInfo& getbaseColorSampler() const { return baseColorSamplerInfo_; }
@@ -36,6 +50,8 @@ class Material{
         const vk::DescriptorSet& getDescriptorSet() const { return *descriptorSet_; }
 
     private:
+        PushConstantBlock                      pcBlock_{};
+
         resource::AssetHandle                  baseColorHandle_;
         resource::AssetHandle                  metallicRoughnessHandle_;
         resource::AssetHandle                  normalHandle_;
@@ -61,3 +77,5 @@ class Material{
 
         bool                                   descriptorSetCreated_ = false;
 };
+
+} // namespace resource

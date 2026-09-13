@@ -6,7 +6,7 @@ namespace render {
 
 const Pipeline& PipelineCache::getOrCreate(
     RenderContext& rct,
-    const std::vector<vk::DescriptorSetLayout>& setLayouts,
+    const DescriptorSetLayout& setLayouts,
     const GraphicsPipelineSpec& spec,
     ShaderManager& shaders,
     std::string_view spirvPath) {

@@ -4,9 +4,9 @@
 
 namespace resource {
 class MeshGPU;
+class Material;
 }  // namespace resource
 
-class Material;  // global until materials become pure data (path tracing)
 
 namespace render {
 
@@ -21,11 +21,11 @@ class InstanceBuffer;
 // path; the planned ray-tracing pipeline (post-refactor, see plan doc §6)
 // replaces draw items with TLAS instances built from the same scene data.
 struct RenderItem {
-    const resource::MeshGPU* mesh      = nullptr;
-    const Material*          material  = nullptr;
-    const InstanceBuffer*    instances = nullptr;
-    uint32_t                 firstInstance = 0;
-    uint32_t                 instanceCount = 0;
+    const resource::MeshGPU*           mesh      = nullptr;
+    const resource::Material*          material  = nullptr;
+    const InstanceBuffer*              instances = nullptr;
+    uint32_t                           firstInstance = 0;
+    uint32_t                           instanceCount = 0;
 };
 
 }  // namespace render

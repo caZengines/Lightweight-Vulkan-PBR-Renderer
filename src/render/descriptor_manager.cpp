@@ -10,6 +10,15 @@ namespace render {DescriptorSetLayout::DescriptorSetLayout(RenderContext& rct, c
     autoCreateDSL(spvCode);
 }
 
+void DescriptorSetLayout::getPushConstantRanges(std::vector<vk::PushConstantRange>& ranges) const {
+    if (pushConstant_) {
+        ranges.emplace_back()
+              .setStageFlags(pushConstant_->stageFlags)
+              .setOffset(pushConstant_->offset)
+              .setSize(pushConstant_->size);
+    }
+}
+
 void DescriptorSetLayout::autoCreateDSL(const std::vector<uint8_t>& spvCode) {
     spv_reflect::ShaderModule module(spvCode);
 
@@ -23,6 +32,28 @@ void DescriptorSetLayout::autoCreateDSL(const std::vector<uint8_t>& spvCode) {
     for (uint32_t ep = 0; ep < module.GetEntryPointCount(); ++ep) {
         const auto epName  = module.GetEntryPointName(ep);
         const auto epStage = module.GetEntryPointShaderStage(ep);
+        uint32_t pcCount = 0;
+        module.EnumerateEntryPointPushConstantBlocks(epName, &pcCount, nullptr);
+        if (pcCount > 0) {
+            std::vector<SpvReflectBlockVariable*> pcBlocks(pcCount);
+            module.EnumerateEntryPointPushConstantBlocks(epName, &pcCount, pcBlocks.data());
+
+            for (const auto* blk : pcBlocks) {
+                const auto stage = static_cast<vk::ShaderStageFlags>(epStage);
+
+                if (!pushConstant_) {
+                    pushConstant_ = ReflectPushConstant{
+                        .size       = blk->size,
+                        .offset     = blk->offset,
+                        .stageFlags = stage,
+                    };
+                } else {
+                    assert(pushConstant_->size   == blk->size);
+                    assert(pushConstant_->offset == blk->offset);
+                    pushConstant_->stageFlags |= stage;
+                }
+            }
+        }
 
         uint32_t bindCount = 0;
         module.EnumerateEntryPointDescriptorBindings(epName, &bindCount, nullptr);

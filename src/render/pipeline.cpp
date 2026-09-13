@@ -2,6 +2,7 @@
 
 #include "rhi/vertex.hpp"
 #include "render/shader_manager.hpp"
+#include "render/descriptor_manager.hpp"
 #include "render_context.hpp"
 #include <array>
 #include <cstddef>
@@ -55,7 +56,7 @@ std::array<vk::VertexInputAttributeDescription, 4> instanceAttributes() {
 namespace render {
 
 Pipeline::Pipeline(RenderContext& rct,
-                   const std::vector<vk::DescriptorSetLayout>& setLayouts,
+                   const DescriptorSetLayout& setLayouts,
                    const GraphicsPipelineSpec& spec,
                    std::string_view spirvPath,
                    const ShaderManager& shaders)
@@ -70,7 +71,7 @@ Pipeline::Pipeline(RenderContext& rct,
     }
 }
 
-void Pipeline::create(const std::vector<vk::DescriptorSetLayout>& setLayouts,
+void Pipeline::create(const DescriptorSetLayout& setLayouts,
                       const GraphicsPipelineSpec& spec) {
     // Shader module — loaded/cached through the manager, never read twice.
     const auto& code  = shaders_.spirv(spirvPath_);
@@ -156,14 +157,14 @@ void Pipeline::create(const std::vector<vk::DescriptorSetLayout>& setLayouts,
                  .setAttachmentCount(1)
                  .setPAttachments(&colorBlendAttachment);
 
-    // push constant: one uint32 bitmask of material render flags
-    vk::PushConstantRange pushConstantRange{};
-    pushConstantRange.setStageFlags(vk::ShaderStageFlagBits::eFragment)
-                     .setOffset(0)
-                     .setSize(sizeof(uint32_t));
-
     vk::PipelineLayoutCreateInfo layoutInfo{};
-    layoutInfo.setSetLayouts(setLayouts).setPushConstantRanges(pushConstantRange);
+    std::vector<vk::PushConstantRange> ranges;
+    setLayouts.getPushConstantRanges(ranges);
+    if (!ranges.empty()) {
+        pushConstantStageFlags_ = ranges.front().stageFlags;
+    }
+    layoutInfo.setSetLayouts(setLayouts.getLayoutHandles())
+              .setPushConstantRanges(ranges);
     pipelineLayout_ = vk::raii::PipelineLayout(rct_.device, layoutInfo);
 
     // dynamic rendering

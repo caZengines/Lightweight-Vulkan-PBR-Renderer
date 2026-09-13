@@ -1,10 +1,16 @@
 #include "resource/material.hpp"
 #include "resource/resource_registry.hpp"
+#include "resource/gltf_importer.hpp"
 #include "vulkan/vulkan.hpp"
+
+namespace resource {
+
+struct MaterialData;
 
 Material::Material(const resource::AssetHandle& baseColor, const resource::AssetHandle& metallicRoughness,
                    const resource::AssetHandle& normal, const resource::AssetHandle& occlusion, 
                    const resource::AssetHandle& emissive,
+                   const MaterialData& data,
                    const Sampler& texSampler, const Sampler& norSampler,
                    const resource::ResourceRegistry& registry)
     : baseColorHandle_(baseColor), metallicRoughnessHandle_(metallicRoughness), normalHandle_(normal),
@@ -39,6 +45,12 @@ Material::Material(const resource::AssetHandle& baseColor, const resource::Asset
 
     baseColorSamplerInfo_.setSampler(texSamplerHandle_);
     normalSamplerInfo_.setSampler(norSamplerHandle_);
+
+    pcBlock_.baseColorFactor = data.baseColorFactor;
+    pcBlock_.metallicFactor  = data.metallic;
+    pcBlock_.roughnessFactor = data.roughness;
+    pcBlock_.alphaMask       = data.alphaMode == AlphaMode::Mask ? 1.0f : 0.0f;
+    pcBlock_.alphaMaskCutoff = data.alphaCutoff;
 }
 
 void Material::createDescriptorSet(RenderContext& rct, const vk::DescriptorSetAllocateInfo allocInfo_,
@@ -96,9 +108,11 @@ void Material::createDescriptorSet(RenderContext& rct, const vk::DescriptorSetAl
     activeWrites.reserve(writeCount);
     for (const auto& w : writes) {
         if (inLayout(w.dstBinding)) {
-            activeWrites.push_back(w);
+            activeWrites.emplace_back(w);
         }
     }
     rct.device.updateDescriptorSets(activeWrites, {});
     descriptorSetCreated_ = true;
+}
+
 }

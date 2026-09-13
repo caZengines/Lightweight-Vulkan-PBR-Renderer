@@ -14,6 +14,7 @@
 #include "render/command_recorder.hpp"
 #include "render/frame_resources.hpp"
 #include "render/frame_uniforms.hpp"
+#include "render/descriptor_manager.hpp"
 #include "render/pipeline.hpp"
 #include "render/pipeline_cache.hpp"
 #include "render/pipeline_spec.hpp"
@@ -33,7 +34,7 @@ Renderer::Renderer(Dependencies deps, const RenderSettings& settings)
       rhiFactory_(deps.factory),
       settings_(settings),
       spirvPath_(deps.spirvPath),
-      setLayouts_(std::move(deps.setLayouts)) {
+      setLayouts_(deps.setLayouts) {
     swapchain_ = std::make_unique<rhi::Swapchain>(rct_, deps.alloc, surface_, window_,
                                                   rhiFactory_, settings_);
     frames_ = std::make_unique<FrameResources>();
@@ -41,7 +42,7 @@ Renderer::Renderer(Dependencies deps, const RenderSettings& settings)
                   graphicsPool_,
                   deps.alloc,
                   deps.set0Pool,
-                  setLayouts_[0],
+                  setLayouts_.getDescriptorSetLayouts()[0],
                   static_cast<uint32_t>(swapchain_->Image_.images.size()));
     createPipeline();
 }

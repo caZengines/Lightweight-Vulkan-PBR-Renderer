@@ -10,7 +10,7 @@
 #include "resource/asset_handle.hpp"
 #include "resource/gltf_importer.hpp"
 
-class Material;
+
 class Sampler;
 
 namespace scene {
@@ -18,6 +18,7 @@ class Scene;
 }  // namespace scene
 
 namespace resource {
+class Material;
 class AssetLibrary;
 class ResourceRegistry;
 class UploadQueue;
@@ -42,7 +43,7 @@ public:
                resource::AssetLibrary& assets, resource::ResourceRegistry& registry,
                resource::UploadQueue& queue);
 
-    [[nodiscard]] const std::vector<std::shared_ptr<Material>>& materials() const { return materials_; }
+    [[nodiscard]] const std::vector<std::shared_ptr<resource::Material>>& materials() const { return materials_; }
     [[nodiscard]] const render::FrameParams& frameParams() const { return frameParams_; }
 
 private:
@@ -66,7 +67,7 @@ private:
     const Config& config_;
     scene::Scene& scene_;
 
-    std::vector<std::shared_ptr<Material>> materials_;
+    std::vector<std::shared_ptr<resource::Material>> materials_;
     render::FrameParams frameParams_{};
 };
 

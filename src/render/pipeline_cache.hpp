@@ -16,6 +16,7 @@ namespace render {
 
 class Pipeline;
 class ShaderManager;
+class DescriptorSetLayout;
 
 // Builds pipelines on demand keyed by GraphicsPipelineSpec. Kept as a small
 // linear vector on purpose: realistic scenes hold a handful of distinct specs,
@@ -24,7 +25,7 @@ class PipelineCache final {
 public:
     [[nodiscard]] const Pipeline& getOrCreate(
         RenderContext& rct,
-        const std::vector<vk::DescriptorSetLayout>& setLayouts,
+        const DescriptorSetLayout& setLayouts,
         const GraphicsPipelineSpec& spec,
         ShaderManager& shaders,
         std::string_view spirvPath);

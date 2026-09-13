@@ -5,7 +5,6 @@
 #include <optional>
 #include <span>
 #include <string_view>
-#include <vector>
 
 #define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
@@ -37,6 +36,7 @@ class CommandRecorder;
 class FrameResources;
 class PipelineCache;
 class ShaderManager;
+class DescriptorSetLayout;
 
 // Fills one frame: acquire → [app records] → submit/present.
 // Phase 3 made this class an orchestrator: per-frame state lives in
@@ -52,7 +52,7 @@ public:
     struct Dependencies {
         RenderContext&                       rct;
         VmaAllocator                         alloc;
-        std::vector<vk::DescriptorSetLayout> setLayouts;      // [0] per-frame, [1+] per-material
+        DescriptorSetLayout&                 setLayouts;      // [0] per-frame, [1+] per-material
         const vk::DescriptorPool&            set0Pool;
         rhi::CommandPool&                    graphicsPool;
         scene::CameraManager&                cameras;         // active() is read each frame
@@ -92,7 +92,7 @@ private:
     const rhi::RhiFactory&        rhiFactory_;
     RenderSettings                settings_;
     std::string_view              spirvPath_;
-    std::vector<vk::DescriptorSetLayout> setLayouts_;
+    DescriptorSetLayout&          setLayouts_;
 
     std::unique_ptr<rhi::Swapchain>  swapchain_;
     std::unique_ptr<FrameResources>  frames_;

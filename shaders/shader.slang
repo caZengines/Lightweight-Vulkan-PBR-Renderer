@@ -46,7 +46,11 @@ struct UniformBuffer {
 
 // Push constant: per-material render flags (bitmask)
 struct PushConstants {
-    uint32_t flags;
+    float4 baseColorFactor;
+    float metallicFactor;
+    float roughnessFactor;
+    float alphaMask;       // Alpha masking enable flag
+    float alphaMaskCutoff; // Alpha cutoff threshold
 };
 [[vk::push_constant]] ConstantBuffer<PushConstants> pc;
 
@@ -123,7 +127,7 @@ float4 fragMain(VertexOutput inVert) : SV_Target {
      float spec = max(dot(N, halfwayDir), 0.0);
      float3 specular = pow(spec, shininess);
 
-     float3 finalColor = albedo.xyz;
+     float3 finalColor = albedo.xyz * pc.baseColorFactor.xyz;
     // float2 uv = inVert.fragTexCoord * 50;
     // uv.x = uv.x - (int)uv.x;
     // uv.y = uv.y - (int)uv.y;

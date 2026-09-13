@@ -4,6 +4,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <optional>
 
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
@@ -35,6 +36,13 @@ struct ReflectBinding {
     ReflectBinding& setBlockSize(uint32_t v) { blockSize = v; return *this; }
 };
 
+struct ReflectPushConstant {
+    uint32_t             size   = 0;
+    uint32_t             offset = 0;
+    vk::ShaderStageFlags stageFlags{};
+};
+
+
 namespace render {
 
 // SPIRV-Reflect driven descriptor-set layout derivation: consumes raw SPIR-V
@@ -49,6 +57,10 @@ public:
     [[nodiscard]] const std::vector<vk::DescriptorSetLayout>&       getLayoutHandles()       const { return layoutHandles_; }
     [[nodiscard]] const std::vector<ReflectBinding>&                getBindings()            const { return bindings_; }
     [[nodiscard]] int                                               getSetCount()            const { return setCount_; }
+
+    // push constant
+    [[nodiscard]] const std::optional<ReflectPushConstant>& getPushConstant() const { return pushConstant_; }
+    void getPushConstantRanges(std::vector<vk::PushConstantRange>& ranges) const;
 
     // Pool sizing for `objectCount` per-object sets (e.g. materials):
     // Set 0 is counted once per frame in flight, Set 1+ once per object.
@@ -65,6 +77,7 @@ private:
 
     // set index → descriptor type → unmultiplied descriptor count
     std::map<uint32_t, std::map<vk::DescriptorType, uint32_t>> perSetDescCounts_;
+    std::optional<ReflectPushConstant>            pushConstant_;
 
     int                                           setCount_ = 0;
 };

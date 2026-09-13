@@ -1,10 +1,11 @@
 #include "render/command_recorder.hpp"
 
-#include "resource/material.hpp"
 #include "render/instance_buffer.hpp"
+#include "resource/material.hpp"
 #include "rhi/rhi_factory.hpp"
 #include "render/pipeline.hpp"
 #include "rhi/swapchain.hpp"
+#include "vulkan/vulkan.hpp"
 
 namespace render {
 
@@ -80,6 +81,10 @@ void CommandRecorder::record(vk::raii::CommandBuffer& cmd,
         cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
                                *pipeline_.layout(), 0, frameSet, nullptr);
 
+        // Per-material push constants are only legal when the pipeline layout
+        // actually declares a range — the shader may not use any.
+        const vk::ShaderStageFlags pushConstantStages = pipeline_.pushConstantStageFlags();
+
         for (const RenderItem& item : items) {
             if (item.instanceCount == 0) continue;
 
@@ -87,6 +92,11 @@ void CommandRecorder::record(vk::raii::CommandBuffer& cmd,
             cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
                                    *pipeline_.layout(), 1,
                                    item.material->getDescriptorSet(), nullptr);
+            if (pushConstantStages) {
+                cmd.pushConstants<resource::PushConstantBlock>(*pipeline_.layout(),
+                                                               pushConstantStages, 0,
+                                                                item.material->getPushConstantBlock());
+            }
 
             const std::array<vk::Buffer, 2> vertexBuffers{
                 item.mesh->vertexBuffer(),

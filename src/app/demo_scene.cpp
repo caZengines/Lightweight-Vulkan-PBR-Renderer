@@ -49,19 +49,21 @@ void DemoScene::buildglTFdemo(const Sampler& albedoSampler, const Sampler& norma
     // materials_[0] is the fallback for primitives without a material;
     // glTF material i lives at materials_[i + 1].
     materials_.reserve(imported.materials.size() + 1);
-    materials_.emplace_back(std::make_shared<Material>(resource::AssetHandle{},
+    materials_.emplace_back(std::make_shared<resource::Material>(resource::AssetHandle{},
                                                     resource::AssetHandle{},
                                                     resource::AssetHandle{},
                                                     resource::AssetHandle{},
                                                     resource::AssetHandle{},
+                                                    resource::MaterialData{},
                                                     albedoSampler, normalSampler, registry));
     for (const resource::MaterialData& data : imported.materials) {
-        materials_.push_back(std::make_shared<Material>(
+        materials_.emplace_back(std::make_shared<resource::Material>(
             resolveSlotTexture(imported, data, resource::MaterialTextureSlot::BaseColor, assets),
             resolveSlotTexture(imported, data, resource::MaterialTextureSlot::MetallicRoughness, assets),
             resolveSlotTexture(imported, data, resource::MaterialTextureSlot::Normal, assets),
             resolveSlotTexture(imported, data, resource::MaterialTextureSlot::Occlusion, assets),
             resolveSlotTexture(imported, data, resource::MaterialTextureSlot::Emissive, assets),
+            data,
             albedoSampler, normalSampler, registry));
     }
 
@@ -85,7 +87,7 @@ void DemoScene::buildglTFdemo(const Sampler& albedoSampler, const Sampler& norma
         const std::string key = config_.modelPath + "#prim" + std::to_string(i);
         auto meshHandle = assets.loadMeshData(key, prim.mesh);
 
-        const std::shared_ptr<Material>& material =
+        const std::shared_ptr<resource::Material>& material =
             prim.materialIndex < imported.materials.size()
                 ? materials_[prim.materialIndex + 1]
                 : materials_[0];

@@ -10,7 +10,7 @@
 namespace scene {
 
 SceneObject::SceneObject(const resource::AssetHandle& mesh,
-                         std::shared_ptr<Material> material,
+                         std::shared_ptr<resource::Material> material,
                          const resource::ResourceRegistry& registry)
     : meshHandle_(mesh), material_(std::move(material))
 {
