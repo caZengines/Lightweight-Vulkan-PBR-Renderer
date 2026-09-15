@@ -23,9 +23,9 @@ DemoScene::DemoScene(const Config& config, scene::Scene& scene)
     // the content. Projection params are per-camera (scene::Camera defaults).
     frameParams_ = render::FrameParams{
         .light{
-            .pos       = glm::vec4(4.0f, 20.0f, -25.0f, 1.0f),
+            .pos       = glm::vec4(0.0f, 6.0f, 0.0f, 1.0f),
             .color     = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
-            .intensity = 10.0f,
+            .intensity = 200.0f,
         },
     };
 }
@@ -67,7 +67,7 @@ void DemoScene::buildglTFdemo(const Sampler& albedoSampler, const Sampler& norma
             albedoSampler, normalSampler, registry));
     }
 
-    glm::mat4 placement = glm::scale(glm::mat4(1.0f), glm::vec3(0.1f, 0.1f, 0.1f));
+    glm::mat4 placement = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 1.0f, 1.0f));
 
     glm::vec3 aabbMin(std::numeric_limits<float>::max());
     glm::vec3 aabbMax(std::numeric_limits<float>::lowest());

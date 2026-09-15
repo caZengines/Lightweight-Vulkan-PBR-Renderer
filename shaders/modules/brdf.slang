@@ -3,12 +3,13 @@ module brdf;
 import common;
 
 // Normal Distribution Function (D) - GGX/Trowbridge-Reitz Distribution
-public float DistributionGGX(float NdotV, float roughness) {
-    float a2 = roughness * roughness;
-    float NdotV2 = NdotV * NdotV;
+public float DistributionGGX(float NdotH, float roughness) {
+    float a = roughness * roughness;
+    float a2 = a * a;
+    float NdotH2 = NdotH * NdotH;
 
-    float denom = NdotV2 * (a2 - 1) + 1;
-    denom = PI / denom * denom;
+    float denom = NdotH2 * (a2 - 1) + 1;
+    denom = PI * denom * denom;
     return a2 / denom; 
 }
 
@@ -31,16 +32,9 @@ public float GeometrySmith(float NdotV, float NdotL, float roughness) {
 
 // Fresnel Reflectance (F) - Schlick's approximation
 public float3 FresnelSchlick(float cosTheta, float3 F0) {
-    return F0 + (1 - F0) * pow((1 - cosTheta), 5);
+    return F0 + (1 - F0) * pow((1 - cosTheta), 5.0);
 }
 
 public float3 diffuseBRDF(float3 diffuseColor) {
     return diffuseColor / PI;
-}
-
-public float3 specularBRDF(float3 f0, float roughness, float NdotV, float NdotL, float NdotH) {
-    float3 F = FresnelSchlick(NdotH, f0);
-    float D = DistributionGGX(NdotV, roughness);
-    float G = GeometrySmith(NdotV, NdotL, roughness);
-    return F * D * G;
 }

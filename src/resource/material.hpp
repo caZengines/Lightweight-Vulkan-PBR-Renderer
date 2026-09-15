@@ -11,11 +11,14 @@ namespace resource {
 
 struct PushConstantBlock {
     glm::vec4 baseColorFactor;            // RGB base color and alpha
+    alignas(16)glm::vec4 emissiveFactor;
     float metallicFactor;                 // How metallic the surface is
     float roughnessFactor;                // How rough the surface is
     float alphaMask;                      // Whether to use alpha masking
     float alphaMaskCutoff = 0.5f;         // Alpha threshold for masking
 };
+static_assert(sizeof(PushConstantBlock) == 48);
+static_assert(offsetof(PushConstantBlock, emissiveFactor) == 16);
 
 struct MaterialData;
 

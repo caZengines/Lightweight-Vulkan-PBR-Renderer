@@ -1,0 +1,11 @@
+Model Information:
+* title:	Motorcycle SZH2I2 Demo
+* source:	https://sketchfab.com/3d-models/motorcycle-szh2i2-demo-ea5fc0d947ac4dfe90db690f48dba5c7
+* author:	ChamberSu1996 (https://sketchfab.com/chambersu1996)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Motorcycle SZH2I2 Demo" (https://sketchfab.com/3d-models/motorcycle-szh2i2-demo-ea5fc0d947ac4dfe90db690f48dba5c7) by ChamberSu1996 (https://sketchfab.com/chambersu1996) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

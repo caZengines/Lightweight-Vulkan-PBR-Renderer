@@ -49,6 +49,7 @@ Material::Material(const resource::AssetHandle& baseColor, const resource::Asset
     pcBlock_.baseColorFactor = data.baseColorFactor;
     pcBlock_.metallicFactor  = data.metallic;
     pcBlock_.roughnessFactor = data.roughness;
+    pcBlock_.emissiveFactor  = glm::vec4(data.emissiveFactor, 0.0f);
     pcBlock_.alphaMask       = data.alphaMode == AlphaMode::Mask ? 1.0f : 0.0f;
     pcBlock_.alphaMaskCutoff = data.alphaCutoff;
 }
