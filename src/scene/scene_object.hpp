@@ -7,7 +7,7 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 
-#include "rhi/vertex.hpp"  // InstanceData (pure data: one mat4 per instance)
+#include "resource/vertex.hpp"  // InstanceData (pure data: one mat4 per instance)
 #include "resource/asset_handle.hpp"
 #include "scene/transform.hpp"
 
@@ -42,7 +42,7 @@ public:
     // transform composes on top of every instance placement:
     //   world = transform.toMatrix() * instance.model
     // (an identity transform reproduces the raw instance matrices).
-    void setInstances(resource::UploadQueue& queue, std::vector<rhi::InstanceData> instances);
+    void setInstances(resource::UploadQueue& queue, std::vector<resource::InstanceData> instances);
 
     // Marks the world matrix dirty. The GPU instance stream is NOT re-uploaded
     // automatically — call setInstances() again to push updated matrices.
@@ -60,9 +60,9 @@ public:
 private:
     resource::AssetHandle                   meshHandle_;         // keeps the GPU mesh loaded
     const resource::MeshGPU*                meshGPU_ = nullptr;  // registry-owned
-    std::shared_ptr<resource::Material>               material_;
+    std::shared_ptr<resource::Material>     material_;
     Transform                               transform_{};
-    std::vector<rhi::InstanceData>          instances_;          // object-local placements
+    std::vector<resource::InstanceData>          instances_;          // object-local placements
     std::shared_ptr<render::InstanceBuffer> instanceBuffer_;
     uint32_t                                instanceCount_ = 0;
 

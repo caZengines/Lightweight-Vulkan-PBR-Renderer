@@ -29,7 +29,7 @@ MeshData MeshImporter::loadObj(const std::string& modelPath) {
     {
         throw std::runtime_error(err.empty() ? "Failed to load OBJ: " + modelPath : err);
     }
-    std::vector<rhi::Vertex>   vertices;
+    std::vector<resource::Vertex>   vertices;
     std::vector<uint32_t> indices;
     size_t cornerCount = 0;
     for (const auto& shape : shapes) cornerCount += shape.mesh.indices.size();
@@ -38,7 +38,7 @@ MeshData MeshImporter::loadObj(const std::string& modelPath) {
     const bool hasFileNormals = !attrib.normals.empty();
     for (const auto& shape : shapes) {
         for (const auto& index : shape.mesh.indices) {
-            rhi::Vertex vertex{};
+            resource::Vertex vertex{};
             vertex.pos = {
                 attrib.vertices[3 * index.vertex_index + 0],
                 attrib.vertices[3 * index.vertex_index + 1],

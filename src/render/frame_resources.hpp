@@ -7,6 +7,7 @@
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
 
+#include "rhi/descriptor_set_allocator.hpp"
 #include "rhi/vma_allocator.hpp"
 
 namespace rhi {
@@ -27,14 +28,18 @@ inline constexpr uint32_t kMaxFramesInFlight = 2;
 class FrameResources final {
 public:
     FrameResources() = default;
+    ~FrameResources();
 
     // imageCount = current swapchain image count (present-wait semaphores are
-    // per-image). set0Pool/set0Layout feed the per-frame Set-0 allocation.
+    // per-image).  set0Layout/set0Bindings describe the hand-made set 0; the sets
+    // themselves come from the app-owned allocator, which must outlive this
+    // object (the destructor returns the ids to it).
     void init(RenderContext& rct,
               rhi::CommandPool& graphicsPool,
               VmaAllocator alloc,
-              const vk::DescriptorPool& set0Pool,
+              rhi::DescriptorSetAllocator& descriptorSets,
               const vk::DescriptorSetLayout& set0Layout,
+              std::span<const vk::DescriptorSetLayoutBinding> set0Bindings,
               uint32_t imageCount);
 
     // Swapchain rebuilt: re-create sync objects against the new image count.
@@ -58,13 +63,15 @@ private:
     void createUniformBuffers(VmaAllocator alloc);
     void createCommandBuffers(rhi::CommandPool& graphicsPool);
     void createSyncObjects(uint32_t imageCount);
-    void createPerFrameSets(const vk::DescriptorPool& set0Pool,
-                            const vk::DescriptorSetLayout& set0Layout);
+    void createPerFrameSets(rhi::DescriptorSetAllocator& descriptorSets,
+                            const vk::DescriptorSetLayout& set0Layout,
+                            std::span<const vk::DescriptorSetLayoutBinding> set0Bindings);
 
     vk::raii::Device*                     device_ = nullptr;  // non-owning, set by init()
+    rhi::DescriptorSetAllocator*          descriptorSets_ = nullptr;  // non-owning
 
     std::vector<rhi::VmaBuffer>           uniformBuffers_;
-    std::vector<vk::raii::DescriptorSet>  perFrameSetObjects_;
+    std::vector<rhi::DescriptorSetId>     perFrameSetIds_;
     std::vector<vk::DescriptorSet>        perFrameSetHandles_;
     std::vector<vk::raii::CommandBuffer>  commandBuffers_;
 

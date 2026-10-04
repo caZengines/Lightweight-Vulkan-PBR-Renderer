@@ -1,5 +1,5 @@
 #pragma once
-#include "rhi/vertex.hpp"
+#include "resource/vertex.hpp"
 
 #include <cstdint>
 #include <vector>
@@ -15,7 +15,7 @@ class MeshData {
         // tangentsFromSource: the vertices already carry source tangents
         // (glTF TANGENT attribute) — postProcess() must not overwrite them.
         // Default false: tangents are computed from TEXCOORD_0.
-        MeshData(std::vector<rhi::Vertex> vertices, std::vector<uint32_t> indices,
+        MeshData(std::vector<resource::Vertex> vertices, std::vector<uint32_t> indices,
                  bool tangentsFromSource = false)
             : vertices_(std::move(vertices)), indices_(std::move(indices)),
               tangentsFromSource_(tangentsFromSource) {}
@@ -25,12 +25,12 @@ class MeshData {
         // tangentsFromSource). Same semantics as the pre-Phase-2 Mesh constructor.
         void postProcess();
 
-        const std::vector<rhi::Vertex>&   vertices() const { return vertices_; }
+        const std::vector<resource::Vertex>&   vertices() const { return vertices_; }
         const std::vector<uint32_t>& indices()  const { return indices_; }
         bool empty() const { return vertices_.empty() || indices_.empty(); }
 
     private:
-        std::vector<rhi::Vertex>   vertices_;
+        std::vector<resource::Vertex>   vertices_;
         std::vector<uint32_t>      indices_;
         bool                  tangentsFromSource_ = false;
 };

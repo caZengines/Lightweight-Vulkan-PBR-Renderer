@@ -145,7 +145,6 @@ void VulkanDevice::createLogicalDevice(){
     if(transferQueueIndex == ~0) throw std::runtime_error("Could not find a queue for transfer and present -> terminating");
 
     //Create graphic & transfer queue
-    std::vector<const char *> requiredDeviceExtension = {vk::KHRSwapchainExtensionName};
     std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
     float queuePriority = 0.5f;
     vk::DeviceQueueCreateInfo graphicQueueCreateInfo{};
@@ -178,8 +177,8 @@ void VulkanDevice::createLogicalDevice(){
     vk::DeviceCreateInfo deviceCreateInfo{};
     deviceCreateInfo.setPNext(&featureChain.get<vk::PhysicalDeviceFeatures2>())
                     .setQueueCreateInfos(queueCreateInfos)
-                    .setEnabledExtensionCount(static_cast<uint32_t>(requiredDeviceExtension.size()))
-                    .setPpEnabledExtensionNames(requiredDeviceExtension.data());
+                    .setEnabledExtensionCount(static_cast<uint32_t>(info_.requiredDeviceExtensions_.size()))
+                    .setPpEnabledExtensionNames(info_.requiredDeviceExtensions_.data());
     device = vk::raii::Device(physicalDevice, deviceCreateInfo);
 
     graphicsQueue = vk::raii::Queue(device, graphicsQueueIndex, 0);

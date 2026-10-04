@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string_view>
+
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
 
@@ -17,6 +19,13 @@ struct GraphicsPipelineSpec {
     vk::CullModeFlags       cullMode      = vk::CullModeFlagBits::eBack;
     bool                    depthTest     = true;
     bool                    depthWrite    = true;
+
+    // Entry-point names are the C++↔shader interface contract.  They are spelled
+    // once here rather than inside Pipeline, so a second pipeline family can name
+    // its own; ShaderLibrary::stage() throws with the available names if one
+    // drifts (see docs/pipeline-descriptor-refactor-plan.md D6/D7).
+    std::string_view        vertEntry     = "vertMain";
+    std::string_view        fragEntry     = "fragMain";
 
     friend constexpr bool operator==(const GraphicsPipelineSpec&,
                                      const GraphicsPipelineSpec&) = default;

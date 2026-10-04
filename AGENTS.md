@@ -1,6 +1,6 @@
 # AGENTS.md — Vulkan 路径追踪渲染器 · 项目架构与模块指南
 
-> 面向在本仓库工作的 AI 代理与新协作者。细节文档：`docs/architecture-refactor-plan.md`（重构计划 + RT 路线图）、`docs/architecture-current.md`（当前架构全量说明）、`docs/input-action-layer-plan.md`（输入语义动作层重构 · 已批准，§4 相关行按该目标态描述）。
+> 面向在本仓库工作的 AI 代理与新协作者。细节文档：`docs/architecture-refactor-plan.md`（重构计划 + RT 路线图）、`docs/architecture-current.md`（当前架构全量说明）、`docs/input-action-layer-plan.md`（输入语义动作层重构 · 已批准，§4 相关行按该目标态描述）、`docs/pipeline-descriptor-refactor-plan.md`（管线/描述符改造 · 光栅+计算 · 设计已定，实施未开始；§4 末尾的「目标态」块即出自它）、`docs/light-system-plan.md`（多光源 · 依赖上一份先落地）。
 
 ## 1. 项目是什么
 
@@ -107,6 +107,25 @@ Layer 1  Platform     — src/platform/ 窗口/输入/日志/路径（GLFW 唯�
 
 `main/main.cpp` 仅构造 `app::App` → `run()`，异常捕获。
 
+> **目标态（未落地）· 描述符子系统分层** —— 见 `docs/pipeline-descriptor-refactor-plan.md` D9–D11。
+> 上面各表按**当前** `src/` 描述；落地时按下表移动：
+>
+> | 移动 | 内容 |
+> |---|---|
+> | `resource` ← `render` | `ShaderLibrary`（路径 → 模块 + 反射 + 入口点校验；取代 `render::ShaderManager`） |
+> | `render` ← `resource` | `Material`（收窄为只持自己的 `DescriptorSet` + 其 set layout，不再自己分配/写入） |
+> | `rhi` 新增 | `DescriptorSetAllocator`、`DescriptorWriter`（纯 Vulkan；**不得引用 `resource/`**，故 Writer 收 `vk::DescriptorSetLayoutBinding` 而非 `ReflectBinding`）。分配器只收 `vk::raii::Device&`，固定带 `eFreeDescriptorSet`、**不暴露 `reset()`**、耗尽时按同一预算再建一块板；**自己持有 set**（对外发 `DescriptorSetId` + 裸句柄，`release(id)` 归还并记账递减）——实测依据见计划 §D5.1/§D5.1b/§D5.6.1 |
+> | `render` 内部 | **`Material` 不再是 GPU 属主**：持 `DescriptorSetId` + 裸句柄，析构时把释放排进延迟队列 |
+> | `render` 新增 | `DescriptorSetLayoutLibrary`（手工 Set0 + 反射 Set1+ + no-holes set 表）**已实现**；**Set0 反射校验延后**（计划 D4.2，延后期间靠启动日志对照两张表）；`PoolBudgetBuilder`（`bindingTables` × 用途个数 → 池预算）；`DeferredReleaseQueue`（计划 D5.6.3，**属「运行时增删模型」特性**） |
+>
+> 三条 grep 不变量：`src/render` 无读盘、`src/resource` 无 descriptor 类型、`src/rhi` 无 `resource/` 引用。
+> 一条所有权不变量：**`vk::raii::DescriptorSet` 只允许出现在 `rhi/descriptor_set_allocator.*` 内部**
+> （验收 `grep -rn "vk::raii::DescriptorSet\b" src/`）。外部一律持 `rhi::DescriptorSetId` + 裸句柄，
+> 释放走 `allocator.release(id)` —— 于是「池比 set 活得久」是**结构性**成立的，不再依赖成员声明顺序。
+> 释放的前置条件：`vkFreeDescriptorSets` 要求引用该 set 的已提交命令已执行完
+> （`VUID-vkFreeDescriptorSets-pDescriptorSets-00309`），而 `record()` 每帧都在绑材质 set ——
+> 所以删除必须经延迟释放队列推迟 `kMaxFramesInFlight` 帧，**不能**在删除点直接 `release`。
+
 ## 5. 关键数据流
 
 ```
@@ -148,5 +167,6 @@ pollEvents → input.poll → update(dt)（ActionContext::update(input) → Came
 - ✅ Phase 0–5：平台层 / 资源层 / 渲染层拆分 / rhi 归位 / 场景层纯数据化 / 应用层成形。
 - ⏳ **Phase 6 · 工程纪律**（唯一剩余重构阶段）：CMake 拆 5 个静态库（编译期强制依赖方向）、显式源文件列表、根级 `command_manager.*`/`render_context.hpp` 归位、`VULKAN_HPP_*` 宏收敛单一公共头、头文件卫生、可选 CI/测试。
 - ⏳ **输入语义动作层重构（计划已批准，实施未开始）**：目标态（键位表 / ActionContext / 相机命名与删除 / Window 鼠标钩子裁剪）见 `docs/input-action-layer-plan.md`；§4 相关行即按该目标态描述，**落地前以 `src/` 为准**——当前树处中间态：`CameraController` 仍引用已删的 `Input::wasKeyPressed`，暂不可编译。
+- ⏳ **管线/描述符改造（设计已定，实施未开始）**：`docs/pipeline-descriptor-refactor-plan.md`。**本轮只做光栅 + 计算两种管线族**，RT 归档在附录 A。里程碑 M0（修 6 个既存缺陷）→ M1（`resource::ShaderLibrary`）→ M2（`render::DescriptorSetLayoutLibrary` 接线，手工 Set0；**Set0 反射校验延后**）→ M3（描述符分配/写入下沉 `rhi` + `Material` 搬到 `render`）→ M4（记录层按管线族拆分 + 计算管线打通）。**多光源改造依赖它先落地**：灯数组的 Set0 binding 必须加进手工表 + 预算，且因校验延后需人工核对 shader 声明。
 - 🎯 **重构完成后**：按计划文档 §6 路线图迁移到 Vulkan 光线追踪（NVIDIA）：`rhi::AccelerationStructure`（BLAS 引用 `MeshGPU` 顶点/索引，TLAS instance 用 `SceneObject::worldMatrix()`）、`RayTracingPipelineSpec`+SBT、trace pass 接入现有 `beginFrame/record/endFrame` 编排、离线累积输出。最终形态 = 纯路径追踪离线渲染器。
 - 已知债务清单见 `docs/architecture-current.md` §6（Material 仍 GPU 侧过渡件、`setTransform` 后需重新 `setInstances`、random_device 种子不可复现等）。

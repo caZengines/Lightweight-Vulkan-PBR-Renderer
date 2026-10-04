@@ -56,8 +56,7 @@ glm::vec3 Camera::position() const {
     return target_ + distance_ * front;
 }
 
-void Camera::moveHorizontal(float forward, float right,
-                            float deltaTime, float speed) {
+void Camera::moveHorizontal(float forward, float right, float deltaTime, float speed) {
     // offset = (sin(polar)*sin(azimuth), cos(polar), sin(polar)*cos(azimuth))
     // The horizontal direction FROM camera TO target = normalize of (-offset.x, 0, -offset.z)
     // forwardXZ = (-sin(azimuth), 0, -cos(azimuth))

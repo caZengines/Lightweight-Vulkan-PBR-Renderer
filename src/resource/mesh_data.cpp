@@ -6,9 +6,9 @@ namespace resource {
 
 void MeshData::postProcess() {
     // --- Deduplicate vertices by (pos, texcoord, normal) ---
-    std::unordered_map<rhi::Vertex, uint32_t> uniqueVertices;
+    std::unordered_map<resource::Vertex, uint32_t> uniqueVertices;
     uniqueVertices.reserve(vertices_.size());
-    std::vector<rhi::Vertex>   deduped;
+    std::vector<resource::Vertex>   deduped;
     std::vector<uint32_t> dedupedIndices;
     deduped.reserve(vertices_.size());
     dedupedIndices.reserve(indices_.size());
@@ -26,7 +26,7 @@ void MeshData::postProcess() {
     bool hasNormals     = false;
     bool hasTexCoords   = false;
     bool missingNormals = false;
-    for (const rhi::Vertex& v : vertices_) {
+    for (const resource::Vertex& v : vertices_) {
         if ((v.normal[0] | v.normal[1] | v.normal[2]) != 0) {
             hasNormals = true;
         } else {

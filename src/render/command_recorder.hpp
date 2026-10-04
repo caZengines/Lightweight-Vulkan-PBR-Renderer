@@ -1,5 +1,5 @@
 #pragma once
-
+// DEPRECATED!
 #include <cstdint>
 #include <span>
 

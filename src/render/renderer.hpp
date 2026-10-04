@@ -14,11 +14,16 @@
 #include "render/render_item.hpp"
 #include "render/render_settings.hpp"
 #include "render_context.hpp"
+#include "rhi/descriptor_set_allocator.hpp"
 #include "rhi/vma_allocator.hpp"
 
 namespace platform {
 class Window;
 }  // namespace platform
+
+namespace resource {
+class ShaderLibrary;
+}  // namespace resource
 
 namespace rhi {
 class CommandPool;
@@ -34,14 +39,14 @@ namespace render {
 
 class CommandRecorder;
 class FrameResources;
-class PipelineCache;
-class ShaderManager;
-class DescriptorSetLayout;
+class DescriptorSetLayoutLibrary;
+class PipelineLayoutLibrary;
+class Pipeline;
 
 // Fills one frame: acquire → [app records] → submit/present.
 // Phase 3 made this class an orchestrator: per-frame state lives in
-// FrameResources, drawing lives in CommandRecorder, pipelines are built via
-// PipelineCache from a GraphicsPipelineSpec.
+// FrameResources, drawing lives in CommandRecorder, the pipeline is built from a
+// GraphicsPipelineSpec.
 class Renderer final {
 public:
     struct FrameContext {
@@ -50,17 +55,19 @@ public:
     };
 
     struct Dependencies {
-        RenderContext&                       rct;
-        VmaAllocator                         alloc;
-        DescriptorSetLayout&                 setLayouts;      // [0] per-frame, [1+] per-material
-        const vk::DescriptorPool&            set0Pool;
-        rhi::CommandPool&                    graphicsPool;
-        scene::CameraManager&                cameras;         // active() is read each frame
-        FrameParams                          frameParams;     // light from the content layer
-        const vk::raii::SurfaceKHR&          surface;
-        platform::Window&                    window;
-        std::string_view                     spirvPath;       // absolute, from app::Config
-        const rhi::RhiFactory&               factory;
+        RenderContext&                              rct;
+        VmaAllocator                                alloc;
+
+        std::unique_ptr<DescriptorSetLayoutLibrary> setLayoutLibrary;
+        rhi::DescriptorSetAllocator&                descriptorSets;  // app-owned, must outlive us
+        const resource::ShaderLibrary&              shaders;         // app-owned
+        rhi::CommandPool&                           graphicsPool;
+        scene::CameraManager&                       cameras;         // active() is read each frame
+        FrameParams                                 frameParams;     // light from the content layer
+        const vk::raii::SurfaceKHR&                 surface;
+        platform::Window&                           window;
+        std::string_view                            spirvPath;       // absolute, from app::Config
+        const rhi::RhiFactory&                      factory;
     };
 
     explicit Renderer(Dependencies deps, const RenderSettings& settings);
@@ -92,16 +99,18 @@ private:
     const rhi::RhiFactory&        rhiFactory_;
     RenderSettings                settings_;
     std::string_view              spirvPath_;
-    DescriptorSetLayout&          setLayouts_;
+    rhi::DescriptorSetAllocator&  descriptorSets_;
+    const resource::ShaderLibrary& shaders_;
 
-    std::unique_ptr<rhi::Swapchain>  swapchain_;
-    std::unique_ptr<FrameResources>  frames_;
-    std::unique_ptr<ShaderManager>   shaders_;
-    std::unique_ptr<PipelineCache>   pipelineCache_;
-    std::unique_ptr<CommandRecorder> recorder_;
+    std::unique_ptr<DescriptorSetLayoutLibrary> setLayoutLibrary_;
+    std::unique_ptr<PipelineLayoutLibrary>      pipelineLayouts_;
+    std::unique_ptr<rhi::Swapchain>             swapchain_;
+    std::unique_ptr<FrameResources>             frames_;
+    std::unique_ptr<Pipeline>                   pipeline_;
+    std::unique_ptr<CommandRecorder>            recorder_;
 
     uint32_t frameCursor_ = 0;   // mirrors legacy frameIndex semantics
-    bool          cleaned_     = false;
+    bool     cleaned_     = false;
 };
 
 }  // namespace render

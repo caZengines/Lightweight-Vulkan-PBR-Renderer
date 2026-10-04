@@ -40,14 +40,14 @@ struct Config {
     std::string assetRoot;
 
     // Asset paths — stored relative, resolved to absolute in the constructor.
-    std::string modelPath         = "assets/models/motorcycle_szh2i2_demo/scene.gltf";
+    std::string modelPath         = "assets/models/hongkong/scene.gltf";
     std::string rockPath          = "assets/models/rock.obj";
     std::string planetPath        = "assets/models/planet.obj";
     std::string texturePath       = "assets/textures/container.png";
     std::string rockTexturePath   = "assets/textures/rock.png";
     std::string marsTexturePath   = "assets/textures/mars.png";
     std::string normalTexturePath = "assets/textures/container_normal_OpenGL.png";
-    std::string shaderPath        = "shaders/slang.spv";
+    std::string shaderPath        = "shaders/raster/slang.spv";
 
     Config() {
         assetRoot         = platform::PlatformUtils::assetRoot();

@@ -527,7 +527,7 @@ void appendPrimitiveIndices(const AccessorData* indexData,
 // mode); `tangentsFromFile` reports whether trusted TANGENT data was read.
 bool loadPrimitive(const tg3_model& model,
                    const tg3_primitive& primitive,
-                   std::vector<rhi::Vertex>& outVertices,
+                   std::vector<resource::Vertex>& outVertices,
                    std::vector<uint32_t>& outIndices,
                    bool& tangentsFromFile) {
     tangentsFromFile = false;
@@ -626,7 +626,7 @@ bool loadPrimitive(const tg3_model& model,
     const uint32_t baseVertex = static_cast<uint32_t>(outVertices.size());
     reserveAdditional(outVertices, vertexCount);
     for (uint64_t i = 0; i < vertexCount; ++i) {
-        rhi::Vertex vertex{};
+        resource::Vertex vertex{};
         vertex.pos = glm::vec3(readAttributeElement(positionData, i));
         vertex.texCoord  = uv0Data ? glm::vec2(readAttributeElement(*uv0Data, i))
                                    : glm::vec2(0.0f);
@@ -851,7 +851,7 @@ void visitNode(const tg3_model& model,
         const tg3_mesh& mesh = model.meshes[node.mesh];
         const std::string meshName = toString(mesh.name);
         for (uint32_t p = 0; p < mesh.primitives_count; ++p) {
-            std::vector<rhi::Vertex> vertices;
+            std::vector<resource::Vertex> vertices;
             std::vector<uint32_t>    indices;
             bool tangentsFromFile = false;
             if (!loadPrimitive(model, mesh.primitives[p], vertices, indices,

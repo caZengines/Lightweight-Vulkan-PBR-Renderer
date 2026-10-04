@@ -1,11 +1,19 @@
 #pragma once
+#include "rhi/descriptor_set_id.hpp"
+
 #include "resource/asset_handle.hpp"
 #include "resource/sampler.hpp"
-#include "render_context.hpp"
 #include "resource/resource_registry.hpp"
 
 #include <cstdint>
-#include <vector>
+#include <glm/glm.hpp>
+
+#define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
+#include <vulkan/vulkan_raii.hpp>
+
+namespace rhi {
+class DescriptorWriter;
+}  // namespace rhi
 
 namespace resource {
 
@@ -40,9 +48,16 @@ class Material{
         Material& operator=(const Material&) = delete;
         Material(Material&&) = default;
 
-        void createDescriptorSet(RenderContext& rct,
-                                 const vk::DescriptorSetAllocateInfo allocInfo_,
-                                 const std::vector<uint32_t>& setBindings);
+        // Describes WHAT to bind, by shader-side name. Does not allocate, does
+        // not own: the caller allocated the set and calls flush(). Binding
+        // numbers and descriptor types come from the set layout's table, so the
+        // numbers are never hand-copied here.
+        void bind(rhi::DescriptorWriter& writer) const;
+
+        // Handed back by the assembler after the writes have been flushed.
+        // `handle` is non-owning: the allocator owns the set and invalidates it
+        // on release.
+        void attachSet(rhi::DescriptorSetId id, vk::DescriptorSet handle);
 
         const PushConstantBlock&       getPushConstantBlock() const { return pcBlock_; }
         const vk::DescriptorImageInfo& getImageInfo()  const { return baseColorInfo_; }
@@ -50,7 +65,9 @@ class Material{
         const vk::DescriptorImageInfo& getbaseColorSampler() const { return baseColorSamplerInfo_; }
         const vk::DescriptorImageInfo& getNormalSampler() const { return normalSamplerInfo_; }
 
-        const vk::DescriptorSet& getDescriptorSet() const { return *descriptorSet_; }
+        [[nodiscard]] vk::DescriptorSet          getDescriptorSet()   const { return descriptorSet_; }
+        [[nodiscard]] rhi::DescriptorSetId       descriptorSetId()    const { return descriptorSetId_; }
+        [[nodiscard]] bool                       hasDescriptorSet()   const { return descriptorSet_ != nullptr; }
 
     private:
         PushConstantBlock                      pcBlock_{};
@@ -60,11 +77,6 @@ class Material{
         resource::AssetHandle                  normalHandle_;
         resource::AssetHandle                  occlusionHandle_;
         resource::AssetHandle                  emissiveHandle_;
-        const resource::TextureGPU*            baseColorTexture_         = nullptr;  // registry-owned, kept alive by the handles
-        const resource::TextureGPU*            metallicRoughnessTexture_ = nullptr;
-        const resource::TextureGPU*            normalTexture_            = nullptr;
-        const resource::TextureGPU*            occlusionTexture_         = nullptr;
-        const resource::TextureGPU*            emissiveTexture_          = nullptr;
         vk::Sampler                            texSamplerHandle_;
         vk::Sampler                            norSamplerHandle_;
 
@@ -73,12 +85,17 @@ class Material{
         vk::DescriptorImageInfo                normalInfo_{};
         vk::DescriptorImageInfo                aoInfo_{};
         vk::DescriptorImageInfo                emiInfo_{};
+        // One per sampler binding: each vk::WriteDescriptorSet points at one of
+        // these, so they must stay distinct objects.
         vk::DescriptorImageInfo                baseColorSamplerInfo_{};
+        vk::DescriptorImageInfo                mrSamplerInfo_{};
         vk::DescriptorImageInfo                normalSamplerInfo_{};
+        vk::DescriptorImageInfo                aoSamplerInfo_{};
+        vk::DescriptorImageInfo                emiSamplerInfo_{};
 
-        vk::raii::DescriptorSet                descriptorSet_ = nullptr;
-
-        bool                                   descriptorSetCreated_ = false;
+        // Non-owning: rhi::DescriptorSetAllocator owns the set.
+        rhi::DescriptorSetId                   descriptorSetId_ = rhi::kInvalidDescriptorSet;
+        vk::DescriptorSet                      descriptorSet_   = nullptr;
 };
 
 } // namespace resource

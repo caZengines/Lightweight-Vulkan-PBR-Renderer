@@ -29,7 +29,6 @@ namespace app {
 struct Config;
 
 // Demo content (from the old composition root's createMaterials/initScene):
-// three materials, one mars, 1000 randomly placed rocks — plus the demo
 // light/projection constants that used to be literals inside the renderer's
 // uniform fill. Materials are owned here; the composition root allocates one
 // Set-1 descriptor set per material after build().

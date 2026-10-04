@@ -46,7 +46,7 @@ struct UniformBuffer {
 [[vk::binding(8, 1)]] Texture2D emissiveMap;
 [[vk::binding(9, 1)]] SamplerState emiSampler;
 
-// Push constant: per-material render flags (bitmask)
+// Push constant
 struct PushConstants {
     float4 baseColorFactor;
     float4 emissiveFactor;

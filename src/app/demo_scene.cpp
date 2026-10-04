@@ -5,7 +5,7 @@
 #include "resource/gltf_importer.hpp"
 #include "resource/material.hpp"
 #include "resource/sampler.hpp"
-#include "rhi/vertex.hpp"
+#include "resource/vertex.hpp"
 #include "resource/asset_library.hpp"
 #include "resource/resource_registry.hpp"
 #include "resource/texture_importer.hpp"
@@ -23,7 +23,7 @@ DemoScene::DemoScene(const Config& config, scene::Scene& scene)
     // the content. Projection params are per-camera (scene::Camera defaults).
     frameParams_ = render::FrameParams{
         .light{
-            .pos       = glm::vec4(0.0f, 6.0f, 0.0f, 1.0f),
+            .pos       = glm::vec4(2.0f, 6.0f, 0.0f, 1.0f),
             .color     = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
             .intensity = 200.0f,
         },
@@ -77,7 +77,7 @@ void DemoScene::buildglTFdemo(const Sampler& albedoSampler, const Sampler& norma
         const glm::mat4 modelMatrix = placement * prim.world;
 
         // World-space bounds (logged so the orbit camera can be aimed by hand).
-        for (const rhi::Vertex& v : prim.mesh.vertices()) {
+        for (const resource::Vertex& v : prim.mesh.vertices()) {
             const glm::vec3 wp = glm::vec3(modelMatrix * glm::vec4(v.pos, 1.0f));
             aabbMin = glm::min(aabbMin, wp);
             aabbMax = glm::max(aabbMax, wp);
@@ -92,7 +92,7 @@ void DemoScene::buildglTFdemo(const Sampler& albedoSampler, const Sampler& norma
                 ? materials_[prim.materialIndex + 1]
                 : materials_[0];
         auto object = std::make_shared<scene::SceneObject>(meshHandle, material, registry);
-        std::vector<rhi::InstanceData> instances(1);
+        std::vector<resource::InstanceData> instances(1);
         instances[0].model = modelMatrix;
         object->setInstances(queue, std::move(instances));
         scene_.addObject(std::move(object));

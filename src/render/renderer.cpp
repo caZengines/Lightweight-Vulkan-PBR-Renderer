@@ -12,13 +12,13 @@
 #include "rhi/command_pool.hpp"
 #include "rhi/swapchain.hpp"
 #include "render/command_recorder.hpp"
+#include "render/descriptor_set_layout_library.hpp"
 #include "render/frame_resources.hpp"
 #include "render/frame_uniforms.hpp"
-#include "render/descriptor_manager.hpp"
 #include "render/pipeline.hpp"
-#include "render/pipeline_cache.hpp"
+#include "render/pipeline_layout_library.hpp"
 #include "render/pipeline_spec.hpp"
-#include "render/shader_manager.hpp"
+#include "resource/shader_library.hpp"
 #include "render_context.hpp"
 #include "scene/camera_manager.hpp"
 
@@ -34,15 +34,30 @@ Renderer::Renderer(Dependencies deps, const RenderSettings& settings)
       rhiFactory_(deps.factory),
       settings_(settings),
       spirvPath_(deps.spirvPath),
-      setLayouts_(deps.setLayouts) {
+      descriptorSets_(deps.descriptorSets),
+      shaders_(deps.shaders),
+      setLayoutLibrary_(std::move(deps.setLayoutLibrary)) {
+    if (!setLayoutLibrary_) {
+        throw std::invalid_argument("Renderer requires a DescriptorSetLayoutLibrary");
+    }
+    pipelineLayouts_ = std::make_unique<PipelineLayoutLibrary>(rct_, *setLayoutLibrary_);
+
     swapchain_ = std::make_unique<rhi::Swapchain>(rct_, deps.alloc, surface_, window_,
                                                   rhiFactory_, settings_);
+
+    // The set-0 layout and table are the same objects the app used to size the
+    // pool and fill the material sets, so pipeline layouts and allocated sets
+    // agree by construction.
+    const std::string_view layoutPaths[]{spirvPath_};
+    const LayoutSet& layouts = setLayoutLibrary_->layoutSetFor(layoutPaths);
+
     frames_ = std::make_unique<FrameResources>();
     frames_->init(rct_,
                   graphicsPool_,
                   deps.alloc,
-                  deps.set0Pool,
-                  setLayouts_.getDescriptorSetLayouts()[0],
+                  descriptorSets_,
+                  layouts.bySetIndex[0],
+                  layouts.bindingTables[0],
                   static_cast<uint32_t>(swapchain_->Image_.images.size()));
     createPipeline();
 }
@@ -52,18 +67,23 @@ Renderer::~Renderer() {
 }
 
 void Renderer::createPipeline() {
-    // Depth format: taken from the Swapchain so attachments and pipeline agree
-    // by construction (removes the old Pipeline::findDepthFormat duplicate).
     GraphicsPipelineSpec spec;
     spec.colorFormat = swapchain_->getSurfaceFormat().format;
     spec.depthFormat = swapchain_->depthFormat();
     spec.msaaSamples = settings_.msaaSamples;
 
-    shaders_      = std::make_unique<ShaderManager>();
-    pipelineCache_ = std::make_unique<PipelineCache>();
-    const auto& pipeline =
-        pipelineCache_->getOrCreate(rct_, setLayouts_, spec, *shaders_, spirvPath_);
-    recorder_ = std::make_unique<CommandRecorder>(*swapchain_, pipeline, rhiFactory_);
+    // Push constant ranges come from the shader's own reflection (ShaderLibrary
+    // merges them across entry points), so the layout cannot drift from the
+    // shader the way a hand-written range would.
+    std::vector<PushConstantRangeSpec> pushConstants;
+    if (const auto& pc = shaders_.pushConstant(spirvPath_)) {
+        pushConstants.push_back(PushConstantRangeSpec{pc->stageFlags, pc->offset, pc->size});
+    }
+    const std::string_view layoutPaths[]{spirvPath_};
+    const PipelineLayout& layout = pipelineLayouts_->getFor(layoutPaths, pushConstants);
+
+    pipeline_ = std::make_unique<Pipeline>(rct_, layout, shaders_, spirvPath_, spec);
+    recorder_ = std::make_unique<CommandRecorder>(*swapchain_, *pipeline_, rhiFactory_);
 }
 
 void Renderer::cleanup() {

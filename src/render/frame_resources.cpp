@@ -6,15 +6,26 @@
 
 namespace render {
 
+FrameResources::~FrameResources() {
+    if (descriptorSets_ == nullptr) return;
+    for (const auto id : perFrameSetIds_) {
+        if (descriptorSets_->alive(id)) descriptorSets_->release(id);
+    }
+    perFrameSetIds_.clear();
+    perFrameSetHandles_.clear();
+}
+
 void FrameResources::init(RenderContext& rct,
                           rhi::CommandPool& graphicsPool,
                           VmaAllocator alloc,
-                          const vk::DescriptorPool& set0Pool,
+                          rhi::DescriptorSetAllocator& descriptorSets,
                           const vk::DescriptorSetLayout& set0Layout,
+                          std::span<const vk::DescriptorSetLayoutBinding> set0Bindings,
                           uint32_t imageCount) {
-    device_ = &rct.device;
+    device_          = &rct.device;
+    descriptorSets_  = &descriptorSets;
     createUniformBuffers(alloc);
-    createPerFrameSets(set0Pool, set0Layout);
+    createPerFrameSets(descriptorSets, set0Layout, set0Bindings);
     createCommandBuffers(graphicsPool);
     createSyncObjects(imageCount);
 }
@@ -77,18 +88,18 @@ void FrameResources::createSyncObjects(uint32_t imageCount) {
     }
 }
 
-void FrameResources::createPerFrameSets(const vk::DescriptorPool& set0Pool,
-                                        const vk::DescriptorSetLayout& set0Layout) {
+void FrameResources::createPerFrameSets(rhi::DescriptorSetAllocator& descriptorSets,
+                                        const vk::DescriptorSetLayout& set0Layout,
+                                        std::span<const vk::DescriptorSetLayoutBinding> set0Bindings) {
+    const auto allocated = descriptorSets.allocate(set0Layout, set0Bindings, kMaxFramesInFlight);
+
+    perFrameSetIds_.clear();
     perFrameSetHandles_.clear();
-    std::vector<vk::DescriptorSetLayout> layouts(kMaxFramesInFlight, set0Layout);
-    vk::DescriptorSetAllocateInfo alloc{};
-    alloc.setDescriptorPool(set0Pool)
-         .setDescriptorSetCount(kMaxFramesInFlight)
-         .setSetLayouts(layouts);
-    perFrameSetObjects_ = vk::raii::DescriptorSets(*device_, alloc);
-    perFrameSetHandles_.reserve(perFrameSetObjects_.size());
-    for (const auto& set : perFrameSetObjects_) {
-        perFrameSetHandles_.emplace_back(*set);
+    perFrameSetIds_.reserve(allocated.size());
+    perFrameSetHandles_.reserve(allocated.size());
+    for (const auto& entry : allocated) {
+        perFrameSetIds_.emplace_back(entry.id);
+        perFrameSetHandles_.emplace_back(entry.set);
     }
 }
 

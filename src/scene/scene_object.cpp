@@ -20,17 +20,17 @@ SceneObject::SceneObject(const resource::AssetHandle& mesh,
     meshGPU_ = &registry.mesh(mesh);
 }
 
-void SceneObject::setInstances(resource::UploadQueue& queue, std::vector<rhi::InstanceData> instances) {
+void SceneObject::setInstances(resource::UploadQueue& queue, std::vector<resource::InstanceData> instances) {
     instances_ = std::move(instances);
     instanceCount_ = static_cast<uint32_t>(instances_.size());
 
     // Compose the object transform on top of each instance placement; the
     // stored placements stay object-local so re-uploads never double-apply.
     const glm::mat4 world = worldMatrix();
-    std::vector<rhi::InstanceData> worldInstances;
+    std::vector<resource::InstanceData> worldInstances;
     worldInstances.reserve(instances_.size());
-    for (const rhi::InstanceData& local : instances_) {
-        worldInstances.emplace_back(rhi::InstanceData{world * local.model});
+    for (const resource::InstanceData& local : instances_) {
+        worldInstances.emplace_back(resource::InstanceData{world * local.model});
     }
     instanceBuffer_ = std::make_shared<render::InstanceBuffer>(queue, worldInstances);
 }

@@ -17,7 +17,7 @@ class VulkanDevice {
             std::vector<const char*>    validationLayers_;
             std::vector<const char*>    requiredDeviceExtensions_;
             // Instance extensions required by the window system (GLFW), provided
-            // by platform::Window — keeps GLFW out of the RHI layer.
+            // by platform::Window.
             std::vector<const char*>    instanceExtensions_;
         };
 

@@ -1,32 +1,13 @@
 ---
-CompileFlags:
-  Add:
-    # Force the MinGW triple everywhere: headers without a compile command
-    # fall back to clangd's default MSVC target, which breaks mingw-w64
-    # headers (e.g. __MINGW_ATTRIB_NORETURN undefined in stdlib.h).
-    - "-target"
-    - "x86_64-w64-windows-gnu"
-    # Order matters: mirrors g++ -v include search order. libstdc++ uses
-    # #include_next from cmath/cstdlib, which only searches directories AFTER
-    # the one containing the current file, so ucrt64/include must come after
-    # the c++ header dirs.
-    - "-isystem"
-    - "C:/msys64/ucrt64/include/c++/15.2.0"
-    - "-isystem"
-    - "C:/msys64/ucrt64/include/c++/15.2.0/x86_64-w64-mingw32"
-    - "-isystem"
-    - "C:/msys64/ucrt64/include/c++/15.2.0/backward"
-    - "-isystem"
-    - "C:/msys64/ucrt64/lib/gcc/x86_64-w64-mingw32/15.2.0/include"
-    - "-isystem"
-    - "C:/msys64/ucrt64/include"
-    - "-isystem"
-    - "C:/msys64/ucrt64/lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed"
+# 自查命令（工作区根目录，应输出 "All checks completed, 0 errors"）：
+#   clangd --check=src/app/app.cpp ^
+#          --compile-commands-dir=cmake-build-Debug ^
+#          "--query-driver=C:/msys64/ucrt64/bin/g++.exe,C:/msys64/ucrt64/bin/gcc.exe" ^
+#          --background-index=false
 
 Diagnostics:
   Suppress:
-    # mingw-w64's xmmintrin.h defines _mm_getcsr, which clang registers as a
-    # TARGET_HEADER_BUILTIN -> spurious "definition of builtin function"
-    # error when parsing stb_image.h's emmintrin.h include. GCC accepts the
-    # definition, so this is a clang-only false positive.
+    # mingw-w64 的 xmmintrin.h 定义了 _mm_getcsr，clang 把它注册为
+    # TARGET_HEADER_BUILTIN -> 解析 stb_image.h 间接包含的 emmintrin.h 时误报
+    # "definition of builtin function"。GCC 接受该定义，属 clang 侧假阳性。
     - builtin_definition

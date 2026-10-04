@@ -64,7 +64,7 @@ uint32_t ResourceRegistry::createMeshGPU(const MeshData& data) {
 
     gpu->vertexBuffer_ = uploadQueue_.uploadBuffer(
         data.vertices().data(),
-        sizeof(rhi::Vertex) * data.vertices().size(),
+        sizeof(resource::Vertex) * data.vertices().size(),
         vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst);
     gpu->indexBuffer_ = uploadQueue_.uploadBuffer(
         data.indices().data(),

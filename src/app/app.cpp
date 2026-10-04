@@ -7,8 +7,15 @@
 #include "resource/material.hpp"
 #include "resource/sampler.hpp"
 #include "platform/log.hpp"
+#include "render/descriptor_budget.hpp"
+#include "render/descriptor_set_layout_library.hpp"
+#include "render/frame_resources.hpp"   // kMaxFramesInFlight
 #include "render_context.hpp"
 #include "resource/resource_registry.hpp"
+#include "resource/shader_library.hpp"
+#include "rhi/descriptor_writer.hpp"
+
+#include <stdexcept>
 
 namespace {
 
@@ -100,7 +107,6 @@ void App::initRhi() {
     // Factories/managers are constructed once here and injected — no reachable
     // globals left in the rendering path.
     rhiFactory_    = std::make_unique<rhi::RhiFactory>(vulkanDevice_.physicalDevice, vulkanDevice_.device);
-    shaderManager_ = std::make_unique<render::ShaderManager>();
 
     debugMessenger_ = std::make_unique<rhi::DebugMessenger>(vulkanDevice_.instance,
                                                             config_.enableValidationLayers);
@@ -181,39 +187,43 @@ void App::initContent() {
 void App::initRender() {
     RenderContext rct = vulkanDevice_.renderContext();
 
-    const auto& spvCode = shaderManager_->spirv(config_.shaderPath);
-    descriptorSetLayout_ = std::make_unique<render::DescriptorSetLayout>(rct, spvCode);
+    shaderLibrary_ = std::make_unique<resource::ShaderLibrary>(rct);
 
-    // One Set-1 descriptor set per material (shared materials reuse the same
-    // set no matter how many objects reference it); the pool scales with the
-    // actual material count.
-    const int materialCount = static_cast<int>(demoScene_.materials().size());
-    descriptorPool_      = std::make_unique<render::DescriptorPool>(rct,
-                                                            descriptorSetLayout_->computePoolMaxSets(materialCount),
-                                                            descriptorSetLayout_->computePoolSizes(materialCount));
+    // --- The set table: hand-made set 0 + reflected set 1+ (D4) ---
+    // The app builds it because the pool budget and the material sets both need
+    // it before the renderer exists; ownership then moves into the renderer, so
+    // the pipeline layouts are built against exactly this table.
+    auto setLayoutLibrary = std::make_unique<render::DescriptorSetLayoutLibrary>(
+        rct, *shaderLibrary_, render::globalSetBindings());
 
-    vk::DescriptorSetAllocateInfo allocInfo;
-    allocInfo.setDescriptorPool(descriptorPool_->getDescriptorPool())
-             .setDescriptorSetCount(1)
-             .setSetLayouts(descriptorSetLayout_->getLayoutHandles()[1]);
-
-    // Set-1 bindings the shader actually declares (reflection-driven): slang
-    // removes unused resource bindings from the SPIR-V, so materials must
-    // only write those.
-    std::vector<uint32_t> set1Bindings;
-    for (const auto& binding : descriptorSetLayout_->getBindings()) {
-        if (binding.set != 1) continue;
-        bool known = false;
-        for (const uint32_t existing : set1Bindings) {
-            known = existing == binding.binding;
-            if (known) break;
-        }
-        if (!known) {
-            set1Bindings.push_back(binding.binding);
-        }
+    const std::string_view layoutPaths[]{config_.shaderPath};
+    const render::LayoutSet& layouts = setLayoutLibrary->layoutSetFor(layoutPaths);
+    if (layouts.bySetIndex.size() < 2) {
+        throw std::runtime_error("shader declares no set 1; material sets cannot be built");
     }
+
+    // --- Pool budget derived from those tables (D5.3) ---
+    // Sheet 0 x frames in flight, set 1 x materials: the peak simultaneously
+    // alive, not the total ever created (released sets return their quota).
+    const size_t materialCount = demoScene_.materials().size();
+    render::PoolBudgetBuilder budget;
+    budget.add(layouts.bindingTables[0], render::kMaxFramesInFlight);
+    budget.add(layouts.bindingTables[1], materialCount);
+    descriptorSetAllocator_ = std::make_unique<rhi::DescriptorSetAllocator>(
+        vulkanDevice_.device, budget.build());
+
+    // --- One Set-1 set per material; the material describes the writes (D10) ---
+    // Binding numbers and types come from the layout table, so the material only
+    // names what it is binding — a drift throws instead of silently binding the
+    // wrong sampler.
     for (const auto& material : demoScene_.materials()) {
-        material->createDescriptorSet(rct, allocInfo, set1Bindings);
+        const auto set = descriptorSetAllocator_->allocate(layouts.bySetIndex[1],
+                                                          layouts.bindingTables[1]);
+        rhi::DescriptorWriter writer(vulkanDevice_.device, set.set,
+                                     layouts.bindingTables[1], layouts.bindingNames[1]);
+        material->bind(writer);
+        writer.flush();
+        material->attachSet(set.id, set.set);
     }
 
     // MSAA: honor Config, clamped to device limits; keep the device-derived
@@ -225,19 +235,20 @@ void App::initRender() {
 
     RenderContext rctForRenderer = vulkanDevice_.renderContext();
     render::Renderer::Dependencies deps{
-        .rct          = rctForRenderer,
-        .alloc        = vmaContext_->getAllocator(),
-        .setLayouts   = *descriptorSetLayout_,
-        .set0Pool     = *descriptorPool_->getDescriptorPool(),
-        .graphicsPool = *graphicsCommandPool_,
-        .cameras      = cameraManager_,
-        .frameParams  = demoScene_.frameParams(),
-        .surface      = surface_->handle(),
-        .window       = *window_,
-        .spirvPath    = config_.shaderPath,
-        .factory      = *rhiFactory_,
+        .rct              = rctForRenderer,
+        .alloc            = vmaContext_->getAllocator(),
+        .setLayoutLibrary = std::move(setLayoutLibrary),
+        .descriptorSets   = *descriptorSetAllocator_,
+        .shaders          = *shaderLibrary_,
+        .graphicsPool     = *graphicsCommandPool_,
+        .cameras          = cameraManager_,
+        .frameParams      = demoScene_.frameParams(),
+        .surface          = surface_->handle(),
+        .window           = *window_,
+        .spirvPath        = config_.shaderPath,
+        .factory          = *rhiFactory_,
     };
-    renderer_ = std::make_unique<render::Renderer>(deps, settings);
+    renderer_ = std::make_unique<render::Renderer>(std::move(deps), settings);
 }
 
 }  // namespace app

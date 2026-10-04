@@ -32,34 +32,6 @@ file(GLOB_RECURSE SRC_LIST
     "${PROJECT_SOURCE_DIR}/src/*.c" 
 )
 
-set(SHADER_DIR ${PROJECT_SOURCE_DIR}/shaders)
-set(SHADER_SOURCE ${SHADER_DIR}/shader.slang)
-set(SHADER_OUTPUT ${SHADER_DIR}/slang.spv)
-
-file(GLOB_RECURSE SHADER_DEPENDS
-    "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.slang"
-)
-
-add_custom_command(
-    OUTPUT ${SHADER_OUTPUT}
-    COMMAND ${SLANGC_COMPILER} ${SHADER_SOURCE}
-        -target spirv
-        -profile spirv_1_4
-        -emit-spirv-directly
-        -fvk-use-entrypoint-name
-        -entry vertMain
-        -entry fragMain
-        -I ${CMAKE_CURRENT_SOURCE_DIR}/shaders/modules
-        -o ${SHADER_OUTPUT}
-    DEPENDS ${SHADER_SOURCE}
-    COMMENT "Compiling Slang shader to SPIR-V"
-    VERBATIM
-)
-
-add_custom_target(CompileShaders ALL
-    DEPENDS ${SHADER_OUTPUT}
-)
-
 add_executable(
     main
     ${SRC_LIST}
@@ -71,7 +43,27 @@ set_source_files_properties(src/extern/spirv_reflect.c PROPERTIES COMPILE_OPTION
 # tiny_gltf_v3.c is compiled as its own translation unit; the filesystem feature
 # must be enabled there for tg3_parse_file (and external .bin buffers) to work.
 set_source_files_properties(src/extern/tiny_gltf_v3.c PROPERTIES COMPILE_DEFINITIONS "TINYGLTF3_ENABLE_FS")
-add_dependencies(main CompileShaders)
+
+function(add_slang_shaders TARGET SOURCE OUT)
+
+    get_filename_component(SOURCE_ABS "${SOURCE}" ABSOLUTE)
+    get_filename_component(OUT_ABS "${OUT}" ABSOLUTE)
+
+    add_custom_command(OUTPUT ${OUT}
+        COMMAND ${SLANGC_COMPILER} ${SOURCE_ABS} -target spirv -profile spirv_1_4
+                -emit-spirv-directly -fvk-use-entrypoint-name
+                -I ${CMAKE_CURRENT_SOURCE_DIR}/shaders/modules
+                -o ${OUT_ABS}
+        DEPENDS ${SOURCE} ${SHADER_DEPENDS}
+        COMMENT "Compiling Slang shader ${SOURCE}"
+        VERBATIM)
+    add_custom_target(${TARGET} ALL DEPENDS ${OUT})
+    add_dependencies(main ${TARGET})
+endfunction()
+
+# Output lands beside its source, so the raster family owns shaders/raster/ and the
+# compute family will own shaders/compute/. app::Config::shaderPath points here.
+add_slang_shaders(CompileRasterShaders  shaders/raster/shader.slang    shaders/raster/slang.spv)
 
 target_compile_definitions(main 
     PUBLIC SPIRV_REFLECT_USE_SYSTEM_SPIRV_H

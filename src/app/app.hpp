@@ -5,13 +5,13 @@
 #include "app/demo_scene.hpp"
 #include "platform/input.hpp"
 #include "platform/window.hpp"
-#include "render/descriptor_manager.hpp"
 #include "render/renderer.hpp"
-#include "render/shader_manager.hpp"
 #include "resource/asset_library.hpp"
 #include "resource/resource_registry.hpp"
+#include "resource/shader_library.hpp"
 #include "resource/upload_queue.hpp"
 #include "rhi/debug_messenger.hpp"
+#include "rhi/descriptor_set_allocator.hpp"
 #include "rhi/rhi_factory.hpp"
 #include "rhi/surface.hpp"
 #include "rhi/vma_allocator.hpp"
@@ -32,12 +32,11 @@ namespace app {
 //
 // Destruction discipline (C++ destroys members in reverse declaration order):
 // every member that transitively holds GPU resources — VMA allocations
-// (scene_ → InstanceBuffer → VmaBuffer) or vk::raii handles (materials'
-// descriptor sets, Renderer's per-frame sets) — must stay declared AFTER the
-// rhi/resource members it depends on (vulkanDevice_/vmaContext_,
-// descriptorPool_). Declaring a GPU-resource holder above them means the
-// allocator/pool dies first and VMA asserts with
-// "Some allocations were not freed before destruction" at exit.
+// (scene_ → InstanceBuffer → VmaBuffer) or descriptor sets (materials' Set-1,
+// the renderer's per-frame Set-0) — must stay declared AFTER the owners they
+// depend on (vulkanDevice_/vmaContext_ and, now, descriptorSetAllocator_).
+// Declaring a GPU-resource holder above them means the allocator dies first and
+// VMA asserts with "Some allocations were not freed before destruction" at exit.
 class App final {
 public:
     App();
@@ -71,7 +70,6 @@ private:
     std::unique_ptr<rhi::DebugMessenger>        debugMessenger_;
     std::unique_ptr<rhi::Surface>               surface_;
     std::unique_ptr<rhi::RhiFactory>            rhiFactory_;
-    std::unique_ptr<render::ShaderManager>      shaderManager_;
     std::unique_ptr<rhi::CommandPool>           graphicsCommandPool_;
     std::unique_ptr<rhi::CommandPool>           transientCommandPool_;
 
@@ -81,10 +79,12 @@ private:
     std::unique_ptr<resource::AssetLibrary>      assetLibrary_;
     std::unique_ptr<Sampler>                     albedoSampler_;
     std::unique_ptr<Sampler>                     normalSampler_;
-
-    // --- render services (Layer 3) ---
-    std::unique_ptr<render::DescriptorSetLayout> descriptorSetLayout_;
-    std::unique_ptr<render::DescriptorPool>      descriptorPool_;
+    std::unique_ptr<resource::ShaderLibrary>     shaderLibrary_;
+    
+    // The descriptor pool lives in rhi but is owned here: it must outlive both
+    // the material sets (held by scene_ → SceneObject) and the renderer's
+    // per-frame sets.  Declaration order below is what guarantees that.
+    std::unique_ptr<rhi::DescriptorSetAllocator> descriptorSetAllocator_;
 
     // --- scene data (filled by DemoScene) ---
     scene::Scene                                 scene_{};

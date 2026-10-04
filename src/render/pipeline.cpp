@@ -1,13 +1,11 @@
 #include "render/pipeline.hpp"
 
-#include "rhi/vertex.hpp"
-#include "render/shader_manager.hpp"
-#include "render/descriptor_manager.hpp"
+#include "resource/vertex.hpp"
+#include "resource/shader_library.hpp"
+#include "render/pipeline_layout_library.hpp"
 #include "render_context.hpp"
 #include <array>
 #include <cstddef>
-#include <exception>
-#include <iostream>
 #include <stdexcept>
 
 namespace {
@@ -18,26 +16,26 @@ namespace {
 // pipeline concern.)
 vk::VertexInputBindingDescription meshVertexBinding() {
     vk::VertexInputBindingDescription description;
-    description.setBinding(0).setStride(sizeof(rhi::Vertex)).setInputRate(vk::VertexInputRate::eVertex);
+    description.setBinding(0).setStride(sizeof(resource::Vertex)).setInputRate(vk::VertexInputRate::eVertex);
     return description;
 }
 
 std::array<vk::VertexInputAttributeDescription, 4> meshVertexAttributes() {
     vk::VertexInputAttributeDescription posAttribute;
-    posAttribute.setBinding(0).setLocation(0).setFormat(vk::Format::eR32G32B32Sfloat).setOffset(offsetof(rhi::Vertex, pos));
+    posAttribute.setBinding(0).setLocation(0).setFormat(vk::Format::eR32G32B32Sfloat).setOffset(offsetof(resource::Vertex, pos));
     vk::VertexInputAttributeDescription uvAttribute;
-    uvAttribute.setBinding(0).setLocation(1).setFormat(vk::Format::eR32G32Sfloat).setOffset(offsetof(rhi::Vertex, texCoord));
+    uvAttribute.setBinding(0).setLocation(1).setFormat(vk::Format::eR32G32Sfloat).setOffset(offsetof(resource::Vertex, texCoord));
     vk::VertexInputAttributeDescription norAttribute;
-    norAttribute.setBinding(0).setLocation(2).setFormat(vk::Format::eR8G8B8A8Snorm).setOffset(offsetof(rhi::Vertex, normal));
+    norAttribute.setBinding(0).setLocation(2).setFormat(vk::Format::eR8G8B8A8Snorm).setOffset(offsetof(resource::Vertex, normal));
     vk::VertexInputAttributeDescription tanAttribute;
-    tanAttribute.setBinding(0).setLocation(3).setFormat(vk::Format::eR8G8B8A8Snorm).setOffset(offsetof(rhi::Vertex, tangent));
+    tanAttribute.setBinding(0).setLocation(3).setFormat(vk::Format::eR8G8B8A8Snorm).setOffset(offsetof(resource::Vertex, tangent));
 
     return {posAttribute, uvAttribute, norAttribute, tanAttribute};
 }
 
 vk::VertexInputBindingDescription instanceBinding() {
     vk::VertexInputBindingDescription description;
-    description.setBinding(1).setStride(sizeof(rhi::InstanceData)).setInputRate(vk::VertexInputRate::eInstance);
+    description.setBinding(1).setStride(sizeof(resource::InstanceData)).setInputRate(vk::VertexInputRate::eInstance);
     return description;
 }
 
@@ -56,36 +54,32 @@ std::array<vk::VertexInputAttributeDescription, 4> instanceAttributes() {
 namespace render {
 
 Pipeline::Pipeline(RenderContext& rct,
-                   const DescriptorSetLayout& setLayouts,
-                   const GraphicsPipelineSpec& spec,
+                   const PipelineLayout& layout,
+                   const resource::ShaderLibrary& shaders,
                    std::string_view spirvPath,
-                   const ShaderManager& shaders)
-    : rct_(rct), spirvPath_(spirvPath), shaders_(shaders), spec_(spec) {
-    if (spec_.colorFormat == vk::Format::eUndefined || spec_.depthFormat == vk::Format::eUndefined) {
+                   const GraphicsPipelineSpec& spec)
+    : rct_(rct), layoutHandle_(layout.getHandle()) {
+    if (spec.colorFormat == vk::Format::eUndefined || spec.depthFormat == vk::Format::eUndefined) {
         throw std::invalid_argument("GraphicsPipelineSpec requires color and depth formats");
     }
-    try {
-        create(setLayouts, spec_);
-    } catch (const std::exception& e) {
-        std::cerr << "Error creating GraphicsPipeline: " << e.what() << std::endl;
+
+    // B1: union over ALL declared ranges, not just the first.
+    for (const auto& pc : layout.spec().pushConstants) {
+        pushConstantStageFlags_ |= pc.stages;
     }
+
+    create(shaders, spirvPath, spec);
 }
 
-void Pipeline::create(const DescriptorSetLayout& setLayouts,
+void Pipeline::create(const resource::ShaderLibrary& shaders,
+                      std::string_view spirvPath,
                       const GraphicsPipelineSpec& spec) {
-    // Shader module — loaded/cached through the manager, never read twice.
-    const auto& code  = shaders_.spirv(spirvPath_);
-    auto shaderModule = shaders_.createModule(rct_.device, code);
-
-    vk::PipelineShaderStageCreateInfo vertStageInfo{};
-    vertStageInfo.setStage(vk::ShaderStageFlagBits::eVertex)
-                 .setModule(*shaderModule)
-                 .setPName("vertMain");
-    vk::PipelineShaderStageCreateInfo fragStageInfo{};
-    fragStageInfo.setStage(vk::ShaderStageFlagBits::eFragment)
-                 .setModule(*shaderModule)
-                 .setPName("fragMain");
-    std::array<vk::PipelineShaderStageCreateInfo, 2> stages{vertStageInfo, fragStageInfo};
+    // Stage create infos come from the library, which owns the module and has
+    // already validated that the entry point exists (it throws, listing the
+    // available names, if the shader-side name drifted).
+    const auto vertStageInfo = shaders.stage(spirvPath, spec.vertEntry);
+    const auto fragStageInfo = shaders.stage(spirvPath, spec.fragEntry);
+    const std::array<vk::PipelineShaderStageCreateInfo, 2> stages{vertStageInfo, fragStageInfo};
 
     // dynamic state
     vk::PipelineViewportStateCreateInfo viewportState{};
@@ -157,16 +151,8 @@ void Pipeline::create(const DescriptorSetLayout& setLayouts,
                  .setAttachmentCount(1)
                  .setPAttachments(&colorBlendAttachment);
 
-    vk::PipelineLayoutCreateInfo layoutInfo{};
-    std::vector<vk::PushConstantRange> ranges;
-    setLayouts.getPushConstantRanges(ranges);
-    if (!ranges.empty()) {
-        pushConstantStageFlags_ = ranges.front().stageFlags;
-    }
-    layoutInfo.setSetLayouts(setLayouts.getLayoutHandles())
-              .setPushConstantRanges(ranges);
-    pipelineLayout_ = vk::raii::PipelineLayout(rct_.device, layoutInfo);
-
+    // The pipeline layout is owned by PipelineLayoutLibrary and shared with the
+    // other pipeline families; Pipeline only borrows the handle.
     // dynamic rendering
     vk::StructureChain<vk::GraphicsPipelineCreateInfo,
                        vk::PipelineRenderingCreateInfo> chain{};
@@ -180,7 +166,7 @@ void Pipeline::create(const DescriptorSetLayout& setLayouts,
          .setPMultisampleState(&multisampling)
          .setPColorBlendState(&colorBlending)
          .setPDynamicState(&dynamicState)
-         .setLayout(*pipelineLayout_)
+         .setLayout(layoutHandle_)
          .setRenderPass(nullptr);
     chain.get<vk::PipelineRenderingCreateInfo>()
          .setColorAttachmentCount(1)

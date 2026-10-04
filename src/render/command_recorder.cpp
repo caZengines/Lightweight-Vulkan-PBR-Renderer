@@ -1,4 +1,5 @@
 #include "render/command_recorder.hpp"
+// DEPRECATED!
 
 #include "render/instance_buffer.hpp"
 #include "resource/material.hpp"
@@ -71,7 +72,7 @@ void CommandRecorder::record(vk::raii::CommandBuffer& cmd,
                  .setPDepthAttachment(&depthInfo);
 
     cmd.beginRendering(renderingInfo);
-        cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, *pipeline_.binding());
+        cmd.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline_.binding());
         const float w = static_cast<float>(swapchain_.getExtent().width);
         const float h = static_cast<float>(swapchain_.getExtent().height);
         cmd.setViewport(0, vk::Viewport(0.0f, 0.0f, w, h, 0.0f, 1.0f));
@@ -79,7 +80,7 @@ void CommandRecorder::record(vk::raii::CommandBuffer& cmd,
 
         // Set 0: per-frame UBO, shared by all draws of this frame.
         cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
-                               *pipeline_.layout(), 0, frameSet, nullptr);
+                               pipeline_.layout(), 0, frameSet, nullptr);
 
         // Per-material push constants are only legal when the pipeline layout
         // actually declares a range — the shader may not use any.
@@ -90,10 +91,10 @@ void CommandRecorder::record(vk::raii::CommandBuffer& cmd,
 
             // Set 1: per-material textures/samplers.
             cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
-                                   *pipeline_.layout(), 1,
+                                   pipeline_.layout(), 1,
                                    item.material->getDescriptorSet(), nullptr);
             if (pushConstantStages) {
-                cmd.pushConstants<resource::PushConstantBlock>(*pipeline_.layout(),
+                cmd.pushConstants<resource::PushConstantBlock>(pipeline_.layout(),
                                                                pushConstantStages, 0,
                                                                 item.material->getPushConstantBlock());
             }

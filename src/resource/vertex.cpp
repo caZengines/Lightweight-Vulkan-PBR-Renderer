@@ -1,8 +1,6 @@
-#include "rhi/vertex.hpp"
+#include "resource/vertex.hpp"
 
-namespace rhi {
-
-
+namespace resource {
 
 void Vertex::setNormal(const glm::vec3& n){
     normal[0] = static_cast<int8_t>(glm::round(glm::clamp(n.x, -1.0f, 1.0f) * 127.0f));
