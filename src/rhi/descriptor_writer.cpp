@@ -79,7 +79,7 @@ uint32_t DescriptorWriter::reserveBinding(std::string_view name, const Resolved&
     if (std::ranges::find(writtenBindings_, resolved.binding) != writtenBindings_.end()) {
         fail("binding '" + std::string(name) + "' written twice in one flush");
     }
-    writtenBindings_.push_back(resolved.binding);
+    writtenBindings_.emplace_back(resolved.binding);
     return resolved.binding;
 }
 
@@ -90,13 +90,13 @@ DescriptorWriter& DescriptorWriter::writeImage(std::string_view name,
     const Resolved resolved = resolve(name, /*forImage=*/true);
     reserveBinding(name, resolved);
 
-    images_.push_back(info);   // stable address: the write points here
+    images_.emplace_back(info);   // stable address: the write points here
     vk::WriteDescriptorSet write{};
     write.setDstSet(set_)
          .setDstBinding(resolved.binding)
          .setDescriptorType(resolved.type)
          .setImageInfo(images_.back());
-    writes_.push_back(write);
+    writes_.emplace_back(write);
     return *this;
 }
 
@@ -107,13 +107,13 @@ DescriptorWriter& DescriptorWriter::writeBuffer(std::string_view name,
     const Resolved resolved = resolve(name, /*forImage=*/false);
     reserveBinding(name, resolved);
 
-    buffers_.push_back(info);   // stable address: the write points here
+    buffers_.emplace_back(info);   // stable address: the write points here
     vk::WriteDescriptorSet write{};
     write.setDstSet(set_)
          .setDstBinding(resolved.binding)
          .setDescriptorType(resolved.type)
          .setBufferInfo(buffers_.back());
-    writes_.push_back(write);
+    writes_.emplace_back(write);
     return *this;
 }
 
