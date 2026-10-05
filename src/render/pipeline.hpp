@@ -17,8 +17,7 @@ namespace render {
 
 class PipelineLayout;
 
-// One compiled graphics pipeline described by GraphicsPipelineSpec (Phase 3:
-// the formerly hardcoded rasterization/depth/blending knobs became data).
+// One compiled graphics pipeline described by GraphicsPipelineSpec.
 //
 // Shaders come from resource::ShaderLibrary (stage name per spec.vertEntry/
 // fragEntry — no auto-sync of those names, they are the C++↔shader contract) and
@@ -38,9 +37,7 @@ public:
     [[nodiscard]] vk::PipelineLayout layout()  const { return layoutHandle_; }
 
     // Stages covered by the layout's push constant ranges (empty when the shader
-    // declares none); recorders gate pushes on this.  Union over all ranges —
-    // taking only ranges.front() silently drops stages when a second range is
-    // added (the old B1 defect).
+    // declares none); recorders gate pushes on this.  Union over all ranges.
     [[nodiscard]] vk::ShaderStageFlags pushConstantStageFlags() const { return pushConstantStageFlags_; }
 
 private:

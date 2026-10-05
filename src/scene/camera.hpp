@@ -68,8 +68,8 @@ private:
 
     static constexpr float kPolarEpsilon = 0.001f;
 
-    // Projection state; defaults are the literals FrameParams used to carry,
-    // so the first frame stays identical.
+    // Projection state; per-camera, so each camera carries its own projection
+    // mode and parameters.
     Projection projection_ = Projection::Perspective;
     float fovDegrees_  = 45.0f;   // perspective vertical fov
     float orthoHeight_ = 10.0f;   // orthographic view height (world units)

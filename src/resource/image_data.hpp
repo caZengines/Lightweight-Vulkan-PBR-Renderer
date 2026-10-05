@@ -6,7 +6,7 @@ namespace resource {
 
 // host image: RGBA8 pixel data + dimensions (Layer 2 discipline: pure
 // data, no Vulkan/GPU types). GPU image/view creation happens later in
-// ResourceRegistry — Texture/TextureGPU no longer create buffers themselves.
+// ResourceRegistry.
 class ImageData {
     public:
         ImageData() = default;

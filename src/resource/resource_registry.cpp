@@ -141,7 +141,7 @@ const TextureGPU& ResourceRegistry::texture(const AssetHandle& handle) const {
 
 const TextureGPU& ResourceRegistry::defaultAlbedo() const {
     if (!defaultAlbedo_) {
-        // 1×1 opaque white — same pixels as the old Texture::createDefaultAlbedo.
+        // 1×1 opaque white.
         constexpr uint8_t kWhite[4] = {255, 255, 255, 255};
         ImageData data(std::vector<uint8_t>(kWhite, kWhite + 4), 1, 1);
         defaultAlbedo_ = buildTextureGPU(data, vk::Format::eR8G8B8A8Srgb, vk::Filter::eLinear);
@@ -152,7 +152,6 @@ const TextureGPU& ResourceRegistry::defaultAlbedo() const {
 const TextureGPU& ResourceRegistry::defaultNormal() const {
     if (!defaultNormal_) {
         // 1×1 flat tangent-space normal (0,0,1): (R=128, G=128, B=255, A=255)
-        // — same pixels as the old Texture::createDefaultNormal.
         constexpr uint8_t kFlatNormal[4] = {128, 128, 255, 255};
         ImageData data(std::vector<uint8_t>(kFlatNormal, kFlatNormal + 4), 1, 1);
         defaultNormal_ = buildTextureGPU(data, vk::Format::eR8G8B8A8Unorm, vk::Filter::eNearest);

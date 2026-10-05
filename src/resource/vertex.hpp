@@ -10,10 +10,8 @@
 
 namespace resource {
 
-// Pure vertex/instance data. The Vulkan binding/attribute descriptions that
-// used to live here moved to render/pipeline.cpp
-// these structs must stay GPU-free so the scene layer can
-// use them.
+// Pure vertex/instance data, GPU-free so the scene layer can use it.  The
+// Vulkan binding/attribute descriptions live in render/pipeline.cpp.
 struct Vertex {
     glm::vec3 pos;
     glm::vec2 texCoord;

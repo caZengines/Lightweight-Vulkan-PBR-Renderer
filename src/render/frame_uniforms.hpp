@@ -5,16 +5,15 @@
 
 namespace render {
 
-// Per-frame shader-facing data (was inlined in renderer.hpp; Phase 3 moved it
-// out so the UBO layout has a single authoritative home).
+// Per-frame shader-facing data; the single authoritative home of the UBO layout.
 struct Light {
     alignas(16) glm::vec4 pos = {0.0, 12.0f, 0.0f, 1.0f};
     alignas(16) glm::vec4 color = glm::vec4(1.0f);
     alignas(16) float intensity = 300;
 };
 
-// Layout is shared with shaders/slang.spv — keep member order and alignment
-// in sync with the shader block.
+// Layout is shared with shaders/raster/shader.slang — keep member order and
+// alignment in sync with the shader block.
 struct UniformBufferObject {
     alignas(16) glm::mat4 view;
     alignas(16) glm::mat4 proj;
@@ -24,9 +23,8 @@ struct UniformBufferObject {
 
 static_assert(sizeof(UniformBufferObject) == 192, "UBO layout drifted from the slang shader");
 
-// CPU-side per-frame parameters fed by the content layer (app::DemoScene) and
-// consumed by Renderer::fillUniformBuffer — the light literal used to live in
-// the renderer itself.
+// CPU-side per-frame parameters supplied by the content layer (app::DemoScene)
+// and consumed by Renderer::fillUniformBuffer.
 struct FrameParams {
     Light light{};
 };

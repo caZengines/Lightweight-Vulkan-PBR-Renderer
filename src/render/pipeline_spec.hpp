@@ -7,9 +7,8 @@
 
 namespace render {
 
-// Value-type description of one graphics pipeline. What used to be hardcoded
-// inside Pipeline::createGraphicsPipeline is now data the upper layers can
-// author and vary (e.g., swap color formats or MSAA without touching code).
+// Value-type description of one graphics pipeline: the state the upper layers
+// author and vary (color format, MSAA, rasterization/depth/blending knobs).
 // Caches key on this struct, so defaulted equality must stay exhaustive.
 struct GraphicsPipelineSpec {
     vk::Format              colorFormat   = vk::Format::eUndefined;

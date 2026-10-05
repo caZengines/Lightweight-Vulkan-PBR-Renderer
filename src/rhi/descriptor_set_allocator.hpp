@@ -33,13 +33,13 @@
 #include <unordered_map>
 #include <vector>
 
+#include "rhi/descriptor_binding.hpp"
 #include "rhi/descriptor_set_id.hpp"
 
 namespace rhi {
 
 // Per-slab budget.  maxSets is the set limit of ONE slab; the number of slabs is
 // managed internally.  Every sizes[i].descriptorCount must be > 0
-// (VUID-VkDescriptorPoolSize-descriptorCount-00302).
 struct DescriptorPoolBudget {
     size_t                            maxSets = 0;
     std::vector<vk::DescriptorPoolSize> sizes;
@@ -66,10 +66,10 @@ class DescriptorSetAllocator final {
         // either, and the driver will NOT report a descriptor-count overrun
         [[nodiscard]] AllocatedSet              allocate(
             const vk::DescriptorSetLayout& layout,
-            std::span<const vk::DescriptorSetLayoutBinding> bindings);
+            std::span<const DescriptorBinding> bindings);
         [[nodiscard]] std::vector<AllocatedSet> allocate(
             const vk::DescriptorSetLayout& layout,
-            std::span<const vk::DescriptorSetLayoutBinding> bindings,
+            std::span<const DescriptorBinding> bindings,
             size_t count);
 
         // Returns the set and its descriptor quota to the slab it came from, and
@@ -105,7 +105,7 @@ class DescriptorSetAllocator final {
         // Per-type descriptor cost of ONE set built from `bindings`.
         // Throws if a binding type is absent from budget_.sizes.
         [[nodiscard]] std::vector<uint64_t> unitDemand(
-            std::span<const vk::DescriptorSetLayoutBinding> bindings) const;
+            std::span<const DescriptorBinding> bindings) const;
 
         [[nodiscard]] bool slabFits(const Slab& slab,
                                     std::span<const uint64_t> unit,

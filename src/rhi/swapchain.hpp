@@ -21,10 +21,9 @@ namespace rhi {
 class RhiFactory;
 
 // Swapchain + MSAA color resolve target + depth attachment.
-// Phase 3: image-view creation and depth-format probing go through the
-// injected rhi::RhiFactory (singleton removed); present-mode preference and
-// MSAA sample count come from RenderSettings instead of hardcodes.
-// (Moved render/ → rhi/ with its owning namespace, Phase 3 cleanup.)
+// Image-view creation and depth-format probing go through the injected
+// rhi::RhiFactory; present-mode preference and MSAA sample count come from
+// render::RenderSettings.
 class Swapchain final {
 public:
     explicit Swapchain(RenderContext& rct,

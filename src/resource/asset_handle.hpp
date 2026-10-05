@@ -14,8 +14,8 @@ class AssetLibrary;
 // Copying a handle retains the asset; the last release unloads it from the
 // registry (refcounting lives in AssetLibrary).
 //
-// Own header (Phase 4): AssetHandle is the CPU-side cross-layer contract, so
-// upper layers include this header without pulling in GPU-side declarations.
+// AssetHandle is the CPU-side cross-layer contract: upper layers include this
+// header without pulling in GPU-side declarations.
 // ---------------------------------------------------------------------------
 class AssetHandle {
     public:

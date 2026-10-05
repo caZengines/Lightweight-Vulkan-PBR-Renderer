@@ -24,7 +24,6 @@ inline constexpr uint32_t kMaxFramesInFlight = 2;
 // Owns everything that lives for kMaxFramesInFlight rotations: per-frame UBO
 // buffers, per-frame Set-0 descriptor sets, command buffers, and all
 // synchronization primitives (binary + timeline semaphores, fences).
-// Renderer keeps only orchestration; this type is state + small accessors.
 class FrameResources final {
 public:
     FrameResources() = default;
@@ -39,7 +38,7 @@ public:
               VmaAllocator alloc,
               rhi::DescriptorSetAllocator& descriptorSets,
               const vk::DescriptorSetLayout& set0Layout,
-              std::span<const vk::DescriptorSetLayoutBinding> set0Bindings,
+              std::span<const rhi::DescriptorBinding> set0Bindings,
               uint32_t imageCount);
 
     // Swapchain rebuilt: re-create sync objects against the new image count.
@@ -65,7 +64,7 @@ private:
     void createSyncObjects(uint32_t imageCount);
     void createPerFrameSets(rhi::DescriptorSetAllocator& descriptorSets,
                             const vk::DescriptorSetLayout& set0Layout,
-                            std::span<const vk::DescriptorSetLayoutBinding> set0Bindings);
+                            std::span<const rhi::DescriptorBinding> set0Bindings);
 
     vk::raii::Device*                     device_ = nullptr;  // non-owning, set by init()
     rhi::DescriptorSetAllocator*          descriptorSets_ = nullptr;  // non-owning

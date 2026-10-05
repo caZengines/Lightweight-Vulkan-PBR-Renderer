@@ -16,9 +16,8 @@ namespace resource {
 
 // One-shot GPU uploads through the transient command pool (Layer 2).
 // Owns the staging-buffer + single-submit logic, so MeshGPU/TextureGPU (and
-// Buffer<T>) never create or upload buffers themselves.
-// Phase 3: view creation / layout transitions come from an injected
-// rhi::RhiFactory instead of the removed singleton.
+// Buffer<T>) never create or upload buffers themselves.  View creation and
+// layout transitions come from the injected rhi::RhiFactory.
 class UploadQueue {
     public:
         explicit UploadQueue(rhi::CommandPool& transientPool, const rhi::RhiFactory& factory,

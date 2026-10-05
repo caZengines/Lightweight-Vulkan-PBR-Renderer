@@ -6,7 +6,7 @@
 namespace render {
 
 // User-tunable rendering knobs injected from app::Config via the composition
-// root. Replaces the former hardcoded MSAA 4x and mailbox-only present pick
+// root.
 struct RenderSettings {
     vk::SampleCountFlagBits msaaSamples          = vk::SampleCountFlagBits::e4;
     vk::PresentModeKHR      preferredPresentMode = vk::PresentModeKHR::eMailbox;  // falls back to FIFO

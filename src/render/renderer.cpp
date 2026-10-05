@@ -45,9 +45,7 @@ Renderer::Renderer(Dependencies deps, const RenderSettings& settings)
     swapchain_ = std::make_unique<rhi::Swapchain>(rct_, deps.alloc, surface_, window_,
                                                   rhiFactory_, settings_);
 
-    // The set-0 layout and table are the same objects the app used to size the
-    // pool and fill the material sets, so pipeline layouts and allocated sets
-    // agree by construction.
+    // Set 0's layout and table come from the shared DescriptorSetLayoutLibrary.
     const std::string_view layoutPaths[]{spirvPath_};
     const LayoutSet& layouts = setLayoutLibrary_->layoutSetFor(layoutPaths);
 
@@ -77,7 +75,7 @@ void Renderer::createPipeline() {
     // shader the way a hand-written range would.
     std::vector<PushConstantRangeSpec> pushConstants;
     if (const auto& pc = shaders_.pushConstant(spirvPath_)) {
-        pushConstants.push_back(PushConstantRangeSpec{pc->stageFlags, pc->offset, pc->size});
+        pushConstants.emplace_back(PushConstantRangeSpec{pc->stageFlags, pc->offset, pc->size});
     }
     const std::string_view layoutPaths[]{spirvPath_};
     const PipelineLayout& layout = pipelineLayouts_->getFor(layoutPaths, pushConstants);

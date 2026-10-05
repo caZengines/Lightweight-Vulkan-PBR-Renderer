@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <map>
 #include "render_context.hpp"
+#include "rhi/descriptor_binding.hpp"
 #include "vulkan/vulkan.hpp"
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include "vulkan/vulkan_raii.hpp"
@@ -15,22 +16,18 @@ namespace render {
 
 struct LayoutSet {            
     std::vector<vk::DescriptorSetLayout> bySetIndex;
-    std::vector<std::vector<vk::DescriptorSetLayoutBinding>> bindingTables;
-
-    // Parallel to bindingTables: the reflected variable name of each binding.
-    // vk::DescriptorSetLayoutBinding carries no name, so name-based writing
-    // (rhi::DescriptorWriter) needs this side table.  Entries are empty for
-    // hand-made layouts (set 0), whose bindings are only reachable by number.
-    std::vector<std::vector<std::string>> bindingNames;
+    // One table per set: index i describes set i.  Each entry pairs the
+    // vk::DescriptorSetLayoutBinding with its reflected variable name.
+    // Entries for hand-made layouts (set 0) have an empty name: those bindings
+    // are reachable by number only.
+    std::vector<rhi::DescriptorBindingTable> bindingTables;
 };
 
-// The hand-made set-0 binding table.  Set 0 is the one set NOT derived from
-// reflection: it is shared by every pipeline family and must stay the same
-// object at index 0 (see docs/pipeline-descriptor-refactor-plan.md D4 / §8).
+
 // Adding to set 0 (e.g. the light array) means adding here AND to the pool
 // budget (render::PoolBudgetBuilder).  The library forces stageFlags to eAll,
-// so they need not be set here.
-[[nodiscard]] std::vector<vk::DescriptorSetLayoutBinding> globalSetBindings();
+// so they need not be set here.  Names left empty = written by number.
+[[nodiscard]] rhi::DescriptorBindingTable globalSetBindings();
 
 class DescriptorSetLayoutLibrary final {
     public:
@@ -42,9 +39,9 @@ class DescriptorSetLayoutLibrary final {
 
         DescriptorSetLayoutLibrary(RenderContext& rct, 
                                    const resource::ShaderLibrary&,
-                                   std::span<const vk::DescriptorSetLayoutBinding> globalBindings = {}
+                                   std::span<const rhi::DescriptorBinding> globalBindings = {}
                                 );
-        void setGlobalLayout(const std::vector<vk::DescriptorSetLayoutBinding>&);
+        void setGlobalLayout(const rhi::DescriptorBindingTable&);
 
         [[nodiscard]] const LayoutSet& layoutSetFor(std::span<const std::string_view> spirvPaths) const;
 
@@ -73,21 +70,13 @@ class DescriptorSetLayoutLibrary final {
         };
         using LayoutFingerprint = std::vector<BindingFingerprint>; // sorted by binding number
 
-        // Reflection output for one call: the per-set binding tables plus the
-        // parallel per-set variable names (vk::DescriptorSetLayoutBinding has no
-        // name field, so names must travel beside the tables).
-        struct ReflectedTables {
-            std::vector<std::vector<vk::DescriptorSetLayoutBinding>> bindings;
-            std::vector<std::vector<std::string>>                    names;
-        };
-
         RenderContext&                  rct_;
         const resource::ShaderLibrary&  library_;
 
         vk::raii::DescriptorSetLayout               emptyLayout_     = nullptr;
         vk::raii::DescriptorSetLayout               globalLayout_    = nullptr;
 
-        std::vector<vk::DescriptorSetLayoutBinding> globalBindings_;
+        rhi::DescriptorBindingTable                 globalBindings_;
         bool                                        hasGlobalLayout_ = false;
 
         // NOTE: cache_ and uniqueLayouts_ are mutable but not thread-safe.
@@ -99,15 +88,17 @@ class DescriptorSetLayoutLibrary final {
             std::span<const std::string_view> spirvPaths);
 
         [[nodiscard]] static LayoutFingerprint fingerprint(
-            const std::vector<vk::DescriptorSetLayoutBinding>&);
+            const rhi::DescriptorBindingTable&);
 
         [[nodiscard]] const vk::raii::DescriptorSetLayout& internLayout(
-            const std::vector<vk::DescriptorSetLayoutBinding>&) const;
+            const rhi::DescriptorBindingTable&) const;
 
         [[nodiscard]] vk::raii::DescriptorSetLayout createLayout(
-            const std::vector<vk::DescriptorSetLayoutBinding>&) const;
+            const rhi::DescriptorBindingTable&) const;
 
-        [[nodiscard]] ReflectedTables buildReflectedTables(const cacheKey&) const;
+        // One table per set, each binding paired with its reflected name.
+        [[nodiscard]] std::vector<rhi::DescriptorBindingTable> buildReflectedTables(
+            const cacheKey&) const;
 
         [[nodiscard]] LayoutSet buildCachedLayoutSet(const cacheKey& Paths) const;
 };

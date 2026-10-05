@@ -78,7 +78,6 @@ void RhiFactory::transitionImageLayout(vk::raii::CommandBuffer& cmd,
                                        vk::ImageLayout newLayout,
                                        uint32_t mipLevels) const {
     assert(physicalDevice_ && device_);
-    // Ported 1:1 from the legacy implementation — upload semantics unchanged.
     vk::ImageMemoryBarrier barrier;
     vk::ImageSubresourceRange subresourceRange;
     subresourceRange.setAspectMask(vk::ImageAspectFlagBits::eColor)

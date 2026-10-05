@@ -3,8 +3,8 @@
 #include "app/action_context.hpp"
 #include "app/game_loop.hpp"
 #include "platform/input.hpp"
-#include "rhi/command_pool.hpp"
 #include "resource/material.hpp"
+#include "rhi/command_pool.hpp"
 #include "resource/sampler.hpp"
 #include "platform/log.hpp"
 #include "render/descriptor_budget.hpp"
@@ -202,9 +202,6 @@ void App::initRender() {
         throw std::runtime_error("shader declares no set 1; material sets cannot be built");
     }
 
-    // --- Pool budget derived from those tables (D5.3) ---
-    // Sheet 0 x frames in flight, set 1 x materials: the peak simultaneously
-    // alive, not the total ever created (released sets return their quota).
     const size_t materialCount = demoScene_.materials().size();
     render::PoolBudgetBuilder budget;
     budget.add(layouts.bindingTables[0], render::kMaxFramesInFlight);
@@ -212,16 +209,12 @@ void App::initRender() {
     descriptorSetAllocator_ = std::make_unique<rhi::DescriptorSetAllocator>(
         vulkanDevice_.device, budget.build());
 
-    // --- One Set-1 set per material; the material describes the writes (D10) ---
-    // Binding numbers and types come from the layout table, so the material only
-    // names what it is binding — a drift throws instead of silently binding the
-    // wrong sampler.
     for (const auto& material : demoScene_.materials()) {
         const auto set = descriptorSetAllocator_->allocate(layouts.bySetIndex[1],
                                                           layouts.bindingTables[1]);
-        rhi::DescriptorWriter writer(vulkanDevice_.device, set.set,
-                                     layouts.bindingTables[1], layouts.bindingNames[1]);
-        material->bind(writer);
+        const std::vector<rhi::DescriptorWrite> values = material->descriptorWrites();
+        rhi::DescriptorWriter writer(vulkanDevice_.device, set.set, layouts.bindingTables[1]);
+        writer.writeAll(values);
         writer.flush();
         material->attachSet(set.id, set.set);
     }

@@ -1,6 +1,5 @@
 #include "rhi/descriptor_writer.hpp"
 
-#include <algorithm>
 #include <stdexcept>
 #include <string>
 
@@ -37,91 +36,105 @@ bool acceptsBuffer(vk::DescriptorType type) {
     }
 }
 
+std::string describeBinding(const DescriptorBinding& binding) {
+    return "binding " + std::to_string(binding.vk.binding) + " ('" +
+           (binding.name.empty() ? std::string("<unnamed>") : binding.name) + "', " +
+           vk::to_string(binding.vk.descriptorType) + ")";
+}
+
 }  // namespace
 
 DescriptorWriter::DescriptorWriter(vk::raii::Device& device,
                                    vk::DescriptorSet set,
-                                   std::span<const vk::DescriptorSetLayoutBinding> table,
-                                   std::span<const std::string> names)
-    : device_(&device), set_(set), table_(table), names_(names) {
+                                   std::span<const DescriptorBinding> table)
+    : device_(&device), set_(set), table_(table) {
     if (set_ == nullptr) {
         fail("constructed with a null descriptor set");
     }
-    if (names_.size() != table_.size()) {
-        fail("binding table and name table are not parallel (" + std::to_string(table_.size()) +
-             " bindings vs " + std::to_string(names_.size()) + " names)");
-    }
 }
 
-DescriptorWriter::Resolved DescriptorWriter::resolve(std::string_view name, bool forImage) const {
-    for (size_t i = 0; i < names_.size(); ++i) {
-        if (names_[i] != name) continue;
-
-        const vk::DescriptorType type = table_[i].descriptorType;
-        if (!(forImage ? acceptsImage(type) : acceptsBuffer(type))) {
-            fail("binding '" + std::string(name) + "' is " + vk::to_string(type) +
-                 ", which does not accept a " + (forImage ? "image" : "buffer") + " write");
-        }
-        return Resolved{table_[i].binding, type};
+size_t DescriptorWriter::indexOfName(std::string_view name) const {
+    for (size_t i = 0; i < table_.size(); ++i) {
+        // Empty names are not addressable: hand-made layouts (set 0) are written
+        // by number, deliberately.
+        if (!table_[i].name.empty() && table_[i].name == name) return i;
     }
 
     std::string available;
-    for (const auto& n : names_) {
-        if (n.empty()) continue;
+    for (const auto& binding : table_) {
+        if (binding.name.empty()) continue;
         if (!available.empty()) available += ", ";
-        available += n;
+        available += binding.name;
     }
     fail("no binding named '" + std::string(name) + "'; available: " +
          (available.empty() ? std::string("(none)") : available));
 }
 
-uint32_t DescriptorWriter::reserveBinding(std::string_view name, const Resolved& resolved) {
-    if (std::ranges::find(writtenBindings_, resolved.binding) != writtenBindings_.end()) {
-        fail("binding '" + std::string(name) + "' written twice in one flush");
+void DescriptorWriter::apply(const DescriptorBinding& binding, const DescriptorWrite& value) {
+    if (const auto* image = std::get_if<ImageWrite>(&value)) {
+        if (!acceptsImage(binding.vk.descriptorType)) {
+            fail(describeBinding(binding) + " does not accept an image write");
+        }
+        imageArrays_.emplace_back(image->infos.begin(), image->infos.end());
+        vk::WriteDescriptorSet write{};
+        write.setDstSet(set_)
+             .setDstBinding(binding.vk.binding)
+             .setDescriptorType(binding.vk.descriptorType)
+             .setImageInfo(imageArrays_.back());   // sets descriptorCount too
+        writes_.emplace_back(write);
+        return;
     }
-    writtenBindings_.emplace_back(resolved.binding);
-    return resolved.binding;
-}
 
-DescriptorWriter& DescriptorWriter::writeImage(std::string_view name,
-                                               const vk::DescriptorImageInfo& info) {
-    if (flushed_) fail("write after flush()");
-
-    const Resolved resolved = resolve(name, /*forImage=*/true);
-    reserveBinding(name, resolved);
-
-    images_.emplace_back(info);   // stable address: the write points here
+    const auto* buffer = std::get_if<BufferWrite>(&value);
+    if (buffer == nullptr) {
+        fail("value for " + describeBinding(binding) + " is neither an image nor a buffer write");
+    }
+    if (!acceptsBuffer(binding.vk.descriptorType)) {
+        fail(describeBinding(binding) + " does not accept a buffer write");
+    }
+    bufferArrays_.emplace_back(buffer->infos.begin(), buffer->infos.end());
     vk::WriteDescriptorSet write{};
     write.setDstSet(set_)
-         .setDstBinding(resolved.binding)
-         .setDescriptorType(resolved.type)
-         .setImageInfo(images_.back());
+         .setDstBinding(binding.vk.binding)
+         .setDescriptorType(binding.vk.descriptorType)
+         .setBufferInfo(bufferArrays_.back());
     writes_.emplace_back(write);
-    return *this;
 }
 
-DescriptorWriter& DescriptorWriter::writeBuffer(std::string_view name,
-                                                const vk::DescriptorBufferInfo& info) {
-    if (flushed_) fail("write after flush()");
+void DescriptorWriter::writeAll(std::span<const DescriptorWrite> values) {
+    if (flushed_) fail("writeAll() called after flush()");
 
-    const Resolved resolved = resolve(name, /*forImage=*/false);
-    reserveBinding(name, resolved);
+    constexpr size_t kUnbound = static_cast<size_t>(-1);
+    std::vector<size_t> valueOf(table_.size(), kUnbound);
 
-    buffers_.emplace_back(info);   // stable address: the write points here
-    vk::WriteDescriptorSet write{};
-    write.setDstSet(set_)
-         .setDstBinding(resolved.binding)
-         .setDescriptorType(resolved.type)
-         .setBufferInfo(buffers_.back());
-    writes_.emplace_back(write);
-    return *this;
+    for (size_t v = 0; v < values.size(); ++v) {
+        const std::string_view name = nameOf(values[v]);
+        const size_t slot = indexOfName(name);
+        if (valueOf[slot] != kUnbound) {
+            fail("two values for binding '" + std::string(name) + "'");
+        }
+        const uint32_t expected = table_[slot].vk.descriptorCount;
+        if (countOf(values[v]) != expected) {
+            fail("value for binding '" + std::string(name) + "' supplies " +
+                 std::to_string(countOf(values[v])) + " descriptor(s) but the layout declares " +
+                 std::to_string(expected));
+        }
+        valueOf[slot] = v;
+    }
+
+    for (size_t slot = 0; slot < table_.size(); ++slot) {
+        if (valueOf[slot] == kUnbound) {
+            fail(describeBinding(table_[slot]) +
+                 " has no value; every binding in the layout must be written");
+        }
+        apply(table_[slot], values[valueOf[slot]]);
+    }
 }
 
 void DescriptorWriter::flush() {
     if (flushed_) fail("flush() called twice");
-    if (!writes_.empty()) {
-        device_->updateDescriptorSets(writes_, {});
-    }
+    if (writes_.empty()) fail("flush() with nothing written");
+    device_->updateDescriptorSets(writes_, {});
     flushed_ = true;
 }
 

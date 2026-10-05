@@ -5,9 +5,9 @@
 
 namespace rhi {
 
-// Validation-layer output hook, split out of the old god-config Context.
-// Created after instance creation; silently no-ops (with a log warning) when
-// validation layers are disabled or the debug-utils extension is absent.
+// Validation-layer output hook.  Created after instance creation; silently
+// no-ops (with a log warning) when validation layers are disabled or the
+// debug-utils extension is absent.
 class DebugMessenger final {
 public:
     // enableValidationLayers mirrors the app's global toggle; when false the

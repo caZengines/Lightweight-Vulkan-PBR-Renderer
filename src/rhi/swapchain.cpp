@@ -150,7 +150,7 @@ void Swapchain::cleanupSwapChain() {
     Image_.views.clear();
     swapChain_ = nullptr;
     // color/depth VmaImages and their views release via RAII when this object
-    // dies (known pre-existing trait; not silently "fixed" here).
+    // dies.
 }
 
 uint32_t Swapchain::chooseMinImageCount(const Capabilities& caps) {

@@ -16,6 +16,11 @@ enum class AlphaMode { Opaque, Mask, Blend };
 
 // Material texture slots in glTF field order
 // (pbrMetallicRoughness → normal → occlusion → emissive).
+//
+// This enum is the shared vocabulary between C++ and the shader: the shader's
+// `maps[]`/`samplers[]` arrays are indexed by it (shaders/raster/shader.slang).
+// Adding a slot means adding it here AND growing the shader's arrays; the element
+// count is checked against the descriptor set layout at startup.
 enum class MaterialTextureSlot : uint32_t {
     BaseColor = 0,
     MetallicRoughness,
@@ -25,6 +30,8 @@ enum class MaterialTextureSlot : uint32_t {
     Count,
 };
 
+inline constexpr size_t kMaterialSlotCount = static_cast<size_t>(MaterialTextureSlot::Count);
+
 // One texture reference inside a material.
 struct TextureSlot {
     int32_t  texture  = -1;   // index into GltfScene::textures; -1 = none
@@ -32,7 +39,7 @@ struct TextureSlot {
     float    scale    = 1.0f; // normal: scale; occlusion: strength; ignored elsewhere
 };
 
-// glTF material: factors plus per-slot texture references (pure CPU data).
+// glTF material: factors plus per-slot texture references.
 struct MaterialData {
     glm::vec4 baseColorFactor{1.0f};
     float     metallic  = 1.0f;

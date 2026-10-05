@@ -21,21 +21,21 @@ namespace render {
 
 DescriptorSetLayoutLibrary::DescriptorSetLayoutLibrary(RenderContext& rct, 
                                                        const resource::ShaderLibrary& shaderLibrary,
-                                                       std::span<const vk::DescriptorSetLayoutBinding> globalBindings)
+                                                       std::span<const rhi::DescriptorBinding> globalBindings)
     : rct_(rct), library_(shaderLibrary) 
 {
     vk::DescriptorSetLayoutCreateInfo ci{};
     emptyLayout_ = vk::raii::DescriptorSetLayout(rct_.device, ci);
     if (globalBindings.empty()) return;
-    std::vector<vk::DescriptorSetLayoutBinding> bindings(globalBindings.begin(), globalBindings.end());
+    rhi::DescriptorBindingTable bindings(globalBindings.begin(), globalBindings.end());
     setGlobalLayout(bindings);
 }
 
-void DescriptorSetLayoutLibrary::setGlobalLayout(const std::vector<vk::DescriptorSetLayoutBinding>& bindings) {
+void DescriptorSetLayoutLibrary::setGlobalLayout(const rhi::DescriptorBindingTable& bindings) {
     auto sorted = bindings;
-    std::ranges::sort(sorted, {}, &vk::DescriptorSetLayoutBinding::binding);
+    std::ranges::sort(sorted, {}, [](const rhi::DescriptorBinding& b) { return b.vk.binding; });
 
-    for (auto& b : sorted) b.setStageFlags(vk::ShaderStageFlagBits::eAll);
+    for (auto& b : sorted) b.vk.setStageFlags(vk::ShaderStageFlagBits::eAll);
     globalLayout_   = createLayout(sorted);
     globalBindings_ = std::move(sorted);
     hasGlobalLayout_ = true;
@@ -53,12 +53,12 @@ DescriptorSetLayoutLibrary::cacheKey DescriptorSetLayoutLibrary::makeCacheKey(
 }
 
 DescriptorSetLayoutLibrary::LayoutFingerprint DescriptorSetLayoutLibrary::fingerprint(
-            const std::vector<vk::DescriptorSetLayoutBinding>& bindings) {
+            const rhi::DescriptorBindingTable& bindings) {
     LayoutFingerprint fp{};
     fp.reserve(bindings.size());
     for(const auto& b : bindings) {
         fp.emplace_back(BindingFingerprint{
-            b.binding, b.descriptorType, b.descriptorCount, b.stageFlags
+            b.vk.binding, b.vk.descriptorType, b.vk.descriptorCount, b.vk.stageFlags
         });
     }
     std::ranges::sort(fp, {}, &BindingFingerprint::binding);
@@ -66,7 +66,7 @@ DescriptorSetLayoutLibrary::LayoutFingerprint DescriptorSetLayoutLibrary::finger
 }
 
 const vk::raii::DescriptorSetLayout& DescriptorSetLayoutLibrary::internLayout(
-            const std::vector<vk::DescriptorSetLayoutBinding>& bindings) const {
+            const rhi::DescriptorBindingTable& bindings) const {
     LayoutFingerprint fp = fingerprint(bindings);
 
     auto it = uniqueLayouts_.find(fp);
@@ -92,19 +92,12 @@ LayoutSet DescriptorSetLayoutLibrary::buildCachedLayoutSet(const cacheKey& paths
     auto tables = buildReflectedTables(paths);
 
     if (hasGlobalLayout_) {
-        if (tables.bindings.empty()) {
-            tables.bindings.resize(1);
-            tables.names.resize(1);
-        }
-        // preserve reserved-but-unused bindings
-        tables.bindings[0] = globalBindings_;
-        // Set 0 is hand-made from a nameless vk::DescriptorSetLayoutBinding table,
-        // so it has no names: its bindings are only reachable by number.
-        tables.names[0].assign(globalBindings_.size(), std::string{});
+        // Set 0 is the hand-made layout.  Its entries have empty names; the
+        // renderer writes it by number.
+        if (tables.empty()) tables.resize(1);
+        tables[0] = globalBindings_;
     }
-    cached.bindingTables = std::move(tables.bindings);
-    cached.bindingNames  = std::move(tables.names);
-    cached.bindingNames.resize(cached.bindingTables.size());   // keep the two parallel
+    cached.bindingTables = std::move(tables);
     const size_t n = cached.bindingTables.size();
     cached.bySetIndex.reserve(n);
 
@@ -126,30 +119,27 @@ LayoutSet DescriptorSetLayoutLibrary::buildCachedLayoutSet(const cacheKey& paths
 }
 
 vk::raii::DescriptorSetLayout DescriptorSetLayoutLibrary::createLayout(
-            const std::vector<vk::DescriptorSetLayoutBinding>& bindings) const {
+            const rhi::DescriptorBindingTable& bindings) const {
+    const std::vector<vk::DescriptorSetLayoutBinding> vkBindings = rhi::vkBindingsOf(bindings);
     vk::DescriptorSetLayoutCreateInfo info{};
-    info.setBindings(bindings);
+    info.setBindings(vkBindings);
     return vk::raii::DescriptorSetLayout(rct_.device, info);
 }
 
-std::vector<vk::DescriptorSetLayoutBinding> globalSetBindings() {
-    // Set 0 today: the per-frame uniform buffer (binding 0), written every frame
-    // by the renderer.  The light array will land here next.
-    std::vector<vk::DescriptorSetLayoutBinding> bindings;
-    vk::DescriptorSetLayoutBinding ubo{};
-    ubo.setBinding(0)
-       .setDescriptorType(vk::DescriptorType::eUniformBuffer)
-       .setDescriptorCount(1)
-       .setStageFlags(vk::ShaderStageFlagBits::eAll);   // the library forces eAll anyway
-    bindings.emplace_back(ubo);
-    return bindings;
+rhi::DescriptorBindingTable globalSetBindings() {
+    rhi::DescriptorBinding ubo{};
+    ubo.vk.setBinding(0)
+          .setDescriptorType(vk::DescriptorType::eUniformBuffer)
+          .setDescriptorCount(1)
+          .setStageFlags(vk::ShaderStageFlagBits::eAll);   // the library forces eAll anyway
+    rhi::DescriptorBindingTable table;
+    table.emplace_back(std::move(ubo));
+    return table;
 }
 
-DescriptorSetLayoutLibrary::ReflectedTables
+std::vector<rhi::DescriptorBindingTable>
         DescriptorSetLayoutLibrary::buildReflectedTables(const cacheKey& paths) const {
-    // Names must stay aligned with bindings through the merge and the sort, so
-    // work on pairs and split at the end.
-    std::vector<std::vector<std::pair<vk::DescriptorSetLayoutBinding, std::string>>> tables;
+    std::vector<rhi::DescriptorBindingTable> tables;
 
     for(const auto& path : paths) {
         for(const ReflectBinding& rb : library_.bindings(path)) {
@@ -158,44 +148,42 @@ DescriptorSetLayoutLibrary::ReflectedTables
             if(rb.set >= tables.size()) tables.resize(rb.set + 1);
             auto& dst = tables[rb.set];
 
-            auto it = std::ranges::find_if(dst, [&](const auto& b) {
-                return b.first.binding == rb.binding;
+            auto it = std::ranges::find_if(dst, [&](const rhi::DescriptorBinding& b) {
+                return b.vk.binding == rb.binding;
             });
             if(it == dst.end()) {
-                vk::DescriptorSetLayoutBinding binding{};
-                binding.setBinding(rb.binding)
-                       .setDescriptorType(rb.descriptorType)
-                       .setStageFlags(rb.stageFlags)
-                       .setDescriptorCount(rb.count);
-                dst.emplace_back(binding, rb.name);
+                rhi::DescriptorBinding binding{};
+                binding.vk.setBinding(rb.binding)
+                          .setDescriptorType(rb.descriptorType)
+                          .setStageFlags(rb.stageFlags)
+                          .setDescriptorCount(rb.count);
+                binding.name = rb.name;
+                dst.emplace_back(std::move(binding));
             }
             else {
-                if(it->first.descriptorType != rb.descriptorType) throw std::runtime_error("descriptor conflict at set=" + 
+                if(it->vk.descriptorType != rb.descriptorType) throw std::runtime_error("descriptor conflict at set=" + 
                       std::to_string(rb.set) +
                     " binding=" + std::to_string(rb.binding) +
                     " (shader: " + path + "): type mismatch");
-                if(it->first.descriptorCount != rb.count) throw std::runtime_error("descriptor conflict at set=" + 
+                if(it->vk.descriptorCount != rb.count) throw std::runtime_error("descriptor conflict at set=" + 
                       std::to_string(rb.set) +
                     " binding=" + std::to_string(rb.binding) +
                     " (shader: " + path + "): count mismatch");
-                it->first.stageFlags |= rb.stageFlags;
+                // A binding shared by two modules must carry the same name in both.
+                if(it->name != rb.name) throw std::runtime_error("descriptor conflict at set=" +
+                      std::to_string(rb.set) +
+                    " binding=" + std::to_string(rb.binding) +
+                    " (shader: " + path + "): name mismatch ('" + it->name +
+                    "' vs '" + rb.name + "')");
+                it->vk.stageFlags |= rb.stageFlags;
             }
         }
     }
 
-    ReflectedTables out;
-    out.bindings.resize(tables.size());
-    out.names.resize(tables.size());
-    for (size_t i = 0; i < tables.size(); ++i) {
-        std::ranges::sort(tables[i], {}, [](const auto& p) { return p.first.binding; });
-        out.bindings[i].reserve(tables[i].size());
-        out.names[i].reserve(tables[i].size());
-        for (auto& [binding, name] : tables[i]) {
-            out.bindings[i].emplace_back(binding);
-            out.names[i].emplace_back(std::move(name));
-        }
+    for (auto& table : tables) {
+        std::ranges::sort(table, {}, [](const rhi::DescriptorBinding& b) { return b.vk.binding; });
     }
-    return out;
+    return tables;
 }
 
 

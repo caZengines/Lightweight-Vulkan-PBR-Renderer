@@ -28,10 +28,9 @@ namespace app {
 
 struct Config;
 
-// Demo content (from the old composition root's createMaterials/initScene):
-// light/projection constants that used to be literals inside the renderer's
-// uniform fill. Materials are owned here; the composition root allocates one
-// Set-1 descriptor set per material after build().
+// Demo content: it owns the materials and the per-frame light parameters.
+// The composition root allocates one Set-1 descriptor set per material after
+// build().
 class DemoScene {
 public:
     DemoScene(const Config& config, scene::Scene& scene);

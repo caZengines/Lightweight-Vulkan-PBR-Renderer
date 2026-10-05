@@ -24,7 +24,7 @@ class ResourceRegistry;
 
 // ---------------------------------------------------------------------------
 // MeshGPU — GPU half of a mesh: vertex + index buffers only
-// Created and owned by ResourceRegistry; Mesh no longer creates buffers.
+// Created and owned by ResourceRegistry.
 // ---------------------------------------------------------------------------
 class MeshGPU {
     public:
@@ -48,8 +48,7 @@ class MeshGPU {
 
 // ---------------------------------------------------------------------------
 // TextureGPU — GPU half of a texture: image + image view + mip count
-// (no CPU pixels). Created and owned by ResourceRegistry; Texture no longer
-// creates buffers.
+// (no CPU pixels). Created and owned by ResourceRegistry.
 // ---------------------------------------------------------------------------
 class TextureGPU {
     public:

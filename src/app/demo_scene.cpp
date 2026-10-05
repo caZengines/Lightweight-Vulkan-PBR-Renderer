@@ -19,8 +19,8 @@ namespace app {
 DemoScene::DemoScene(const Config& config, scene::Scene& scene)
     : config_(config), scene_(scene)
 {
-    // Demo light — the exact value the renderer used to hardcode, now owned by
-    // the content. Projection params are per-camera (scene::Camera defaults).
+    // Demo light, owned by the content and handed to the renderer via
+    // FrameParams.  Projection params are per-camera (scene::Camera defaults).
     frameParams_ = render::FrameParams{
         .light{
             .pos       = glm::vec4(2.0f, 6.0f, 0.0f, 1.0f),
@@ -49,22 +49,21 @@ void DemoScene::buildglTFdemo(const Sampler& albedoSampler, const Sampler& norma
     // materials_[0] is the fallback for primitives without a material;
     // glTF material i lives at materials_[i + 1].
     materials_.reserve(imported.materials.size() + 1);
-    materials_.emplace_back(std::make_shared<resource::Material>(resource::AssetHandle{},
-                                                    resource::AssetHandle{},
-                                                    resource::AssetHandle{},
-                                                    resource::AssetHandle{},
-                                                    resource::AssetHandle{},
-                                                    resource::MaterialData{},
-                                                    albedoSampler, normalSampler, registry));
+    materials_.emplace_back(std::make_shared<resource::Material>(
+        resource::Material::SlotHandles{},
+        resource::MaterialData{},
+        albedoSampler, normalSampler, registry));
     for (const resource::MaterialData& data : imported.materials) {
+        // Slot handles are gathered in a loop over the same enum the shader
+        // indexes its arrays with.
+        resource::Material::SlotHandles handles{};
+        for (size_t slot = 0; slot < resource::kMaterialSlotCount; ++slot) {
+            handles[slot] = resolveSlotTexture(imported, data,
+                                               static_cast<resource::MaterialTextureSlot>(slot),
+                                               assets);
+        }
         materials_.emplace_back(std::make_shared<resource::Material>(
-            resolveSlotTexture(imported, data, resource::MaterialTextureSlot::BaseColor, assets),
-            resolveSlotTexture(imported, data, resource::MaterialTextureSlot::MetallicRoughness, assets),
-            resolveSlotTexture(imported, data, resource::MaterialTextureSlot::Normal, assets),
-            resolveSlotTexture(imported, data, resource::MaterialTextureSlot::Occlusion, assets),
-            resolveSlotTexture(imported, data, resource::MaterialTextureSlot::Emissive, assets),
-            data,
-            albedoSampler, normalSampler, registry));
+            std::move(handles), data, albedoSampler, normalSampler, registry));
     }
 
     glm::mat4 placement = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 1.0f, 1.0f));

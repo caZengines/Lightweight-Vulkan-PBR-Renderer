@@ -44,9 +44,8 @@ class PipelineLayoutLibrary;
 class Pipeline;
 
 // Fills one frame: acquire → [app records] → submit/present.
-// Phase 3 made this class an orchestrator: per-frame state lives in
-// FrameResources, drawing lives in CommandRecorder, the pipeline is built from a
-// GraphicsPipelineSpec.
+// Orchestration only: per-frame state lives in FrameResources, drawing lives in
+// CommandRecorder, the pipeline is built from a GraphicsPipelineSpec.
 class Renderer final {
 public:
     struct FrameContext {
@@ -109,7 +108,7 @@ private:
     std::unique_ptr<Pipeline>                   pipeline_;
     std::unique_ptr<CommandRecorder>            recorder_;
 
-    uint32_t frameCursor_ = 0;   // mirrors legacy frameIndex semantics
+    uint32_t frameCursor_ = 0;   // frame-in-flight slot for this frame
     bool     cleaned_     = false;
 };
 

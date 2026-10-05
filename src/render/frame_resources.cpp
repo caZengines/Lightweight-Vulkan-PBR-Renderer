@@ -20,7 +20,7 @@ void FrameResources::init(RenderContext& rct,
                           VmaAllocator alloc,
                           rhi::DescriptorSetAllocator& descriptorSets,
                           const vk::DescriptorSetLayout& set0Layout,
-                          std::span<const vk::DescriptorSetLayoutBinding> set0Bindings,
+                          std::span<const rhi::DescriptorBinding> set0Bindings,
                           uint32_t imageCount) {
     device_          = &rct.device;
     descriptorSets_  = &descriptorSets;
@@ -90,7 +90,7 @@ void FrameResources::createSyncObjects(uint32_t imageCount) {
 
 void FrameResources::createPerFrameSets(rhi::DescriptorSetAllocator& descriptorSets,
                                         const vk::DescriptorSetLayout& set0Layout,
-                                        std::span<const vk::DescriptorSetLayoutBinding> set0Bindings) {
+                                        std::span<const rhi::DescriptorBinding> set0Bindings) {
     const auto allocated = descriptorSets.allocate(set0Layout, set0Bindings, kMaxFramesInFlight);
 
     perFrameSetIds_.clear();

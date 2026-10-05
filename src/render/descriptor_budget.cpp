@@ -2,14 +2,14 @@
 
 namespace render {
 
-void PoolBudgetBuilder::add(std::span<const vk::DescriptorSetLayoutBinding> table,
+void PoolBudgetBuilder::add(std::span<const rhi::DescriptorBinding> table,
                             size_t setCount) {
     if (setCount == 0) return;
 
     maxSets_ += setCount;
     for (const auto& binding : table) {
-        counts_[binding.descriptorType] +=
-            static_cast<uint64_t>(binding.descriptorCount) * setCount;
+        counts_[binding.vk.descriptorType] +=
+            static_cast<uint64_t>(binding.vk.descriptorCount) * setCount;
     }
 }
 

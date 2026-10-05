@@ -7,6 +7,8 @@ namespace render {
 
 PipelineLayout::PipelineLayout(RenderContext& rct, PipelineLayoutSpec layoutSpec) : spec_(std::move(layoutSpec))
 {
+    // setPushConstantRanges() / setSetLayouts() store pointers into the arrays
+    // they are handed, so both must still be alive at the create call below.
     std::vector<vk::PushConstantRange> ranges;
     ranges.reserve(spec_.pushConstants.size());
     for(const auto& pc : spec_.pushConstants) {
@@ -21,8 +23,7 @@ PipelineLayout::PipelineLayout(RenderContext& rct, PipelineLayoutSpec layoutSpec
     if(!ranges.empty()) {
         layoutInfo.setPushConstantRanges(ranges);
     }
-    // the moved-from vector is empty, which silently produced a layout declaring ZERO sets — binding
-    // any descriptor set against it then faults in the driver.
+    // spec_ is the live copy; layoutSpec has been moved from.
     layoutInfo.setSetLayouts(spec_.setLayouts);
     layout_ = vk::raii::PipelineLayout(rct.device, layoutInfo);
 }

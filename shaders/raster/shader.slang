@@ -35,16 +35,23 @@ struct UniformBuffer {
 };
 
 [[vk::binding(0, 0)]] ConstantBuffer<UniformBuffer> ubo;
-[[vk::binding(0, 1)]] Texture2D baseColorMap;
-[[vk::binding(1, 1)]] SamplerState baseColorSampler;
-[[vk::binding(2, 1)]] Texture2D metallicRoughnessMap;
-[[vk::binding(3, 1)]] SamplerState mrSampler;
-[[vk::binding(4, 1)]] Texture2D normalMap;
-[[vk::binding(5, 1)]] SamplerState normalSampler;
-[[vk::binding(6, 1)]] Texture2D occlusionMap;
-[[vk::binding(7, 1)]] SamplerState aoSampler;
-[[vk::binding(8, 1)]] Texture2D emissiveMap;
-[[vk::binding(9, 1)]] SamplerState emiSampler;
+
+// --- Material texture slots -------------------------------------------------
+// The INDEX IS THE SLOT.  0..4 follow resource::MaterialTextureSlot
+// (src/resource/gltf_importer.hpp), which is glTF's field order:
+//   baseColor -> metallicRoughness -> normal -> occlusion -> emissive.
+//
+// The array size must equal kMaterialSlotCount; the element count is checked
+// against the descriptor set layout at startup.
+static const int kBaseColorSlot         = 0;
+static const int kMetallicRoughnessSlot = 1;
+static const int kNormalSlot            = 2;
+static const int kOcclusionSlot         = 3;
+static const int kEmissiveSlot          = 4;
+static const int kMaterialSlotCount     = 5;
+
+[[vk::binding(0, 1)]] Texture2D    maps[kMaterialSlotCount];
+[[vk::binding(1, 1)]] SamplerState samplers[kMaterialSlotCount];
 
 // Push constant
 struct PushConstants {
@@ -97,20 +104,20 @@ float4 fragMain(VertexOutput inVert) : SV_Target {
     // === MATERIAL PROPERTY SAMPLING ===
     // Sample base color texture and apply material color factor
     float4 baseColor;
-    baseColor = baseColorMap.Sample(baseColorSampler, inVert.UV) * material.baseColorFactor;
+    baseColor = maps[kBaseColorSlot].Sample(samplers[kBaseColorSlot], inVert.UV) * material.baseColorFactor;
 
     // Sample metallic-roughness texture (metallic=B channel, roughness=G channel)
-    float2 metallicRoughness = metallicRoughnessMap.Sample(mrSampler, inVert.UV).bg;
+    float2 metallicRoughness = maps[kMetallicRoughnessSlot].Sample(samplers[kMetallicRoughnessSlot], inVert.UV).bg;
     float metallic = metallicRoughness.x * material.metallicFactor;
     float roughness = metallicRoughness.y * material.roughnessFactor;
 
     // Sample ambient occlusion (typically stored in red channel)
-    float ao = occlusionMap.Sample(aoSampler, inVert.UV).r;
+    float ao = maps[kOcclusionSlot].Sample(samplers[kOcclusionSlot], inVert.UV).r;
     // Sample emissive texture for self-illuminating materials
-    float3 emissive = emissiveMap.Sample(emiSampler, inVert.UV).rgb;
+    float3 emissive = maps[kEmissiveSlot].Sample(samplers[kEmissiveSlot], inVert.UV).rgb;
 
     float3 N;
-    float3 tn = normalMap.Sample(normalSampler, inVert.UV).rgb;
+    float3 tn = maps[kNormalSlot].Sample(samplers[kNormalSlot], inVert.UV).rgb;
     tn.rgb = tn.rgb * 2 - 1.0;
     N = normalize(tn);
 

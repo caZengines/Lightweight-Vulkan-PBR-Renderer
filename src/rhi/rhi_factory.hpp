@@ -12,11 +12,9 @@ namespace rhi {
 
 // Stateless GPU helper operations shared by the resource and render layers.
 //
-// Phase 3 replaces the ResourceFactory singleton: the composition root
-// constructs exactly one RhiFactory and threads it down explicitly
-// (Core Guidelines / GPP Service Locator: prefer injection over reachable
-// globals). Format selection and image barriers were consolidated here from
-// their duplicate homes (old ResourceFactory + Renderer/Pipeline copies).
+// The composition root constructs exactly one RhiFactory and threads it down
+// explicitly (GPP Service Locator: prefer injection over reachable globals).
+// Format selection and image barriers live here.
 class RhiFactory {
 public:
     RhiFactory(vk::raii::PhysicalDevice& physicalDevice,
@@ -47,8 +45,8 @@ public:
                       vk::PipelineStageFlags2 dstStage,
                       vk::ImageAspectFlags aspect) const;
 
-    // Legacy sync1 wrapper kept verbatim for the Phase 2 one-shot upload
-    // paths (Undefined→TransferDst, TransferDst→ShaderReadOnly).
+    // sync1 barrier path for one-shot uploads (Undefined→TransferDst,
+    // TransferDst→ShaderReadOnly).
     void transitionImageLayout(vk::raii::CommandBuffer& cmd,
                                const VmaImage& image,
                                vk::ImageLayout oldLayout,

@@ -11,9 +11,8 @@
 namespace {
 
 // Vertex layout consumed by the raster pipeline: binding 0 = mesh vertices,
-// binding 1 = per-instance model matrices. (Moved here from Vertex/
-// InstanceData in Phase 4 — the data structs stay GPU-free; input layout is a
-// pipeline concern.)
+// binding 1 = per-instance model matrices.  The data structs stay GPU-free;
+// input layout is a pipeline concern.
 vk::VertexInputBindingDescription meshVertexBinding() {
     vk::VertexInputBindingDescription description;
     description.setBinding(0).setStride(sizeof(resource::Vertex)).setInputRate(vk::VertexInputRate::eVertex);
@@ -74,9 +73,8 @@ Pipeline::Pipeline(RenderContext& rct,
 void Pipeline::create(const resource::ShaderLibrary& shaders,
                       std::string_view spirvPath,
                       const GraphicsPipelineSpec& spec) {
-    // Stage create infos come from the library, which owns the module and has
-    // already validated that the entry point exists (it throws, listing the
-    // available names, if the shader-side name drifted).
+    // Stage create infos come from the library, which owns the module and throws
+    // (listing the available names) when an entry point is missing.
     const auto vertStageInfo = shaders.stage(spirvPath, spec.vertEntry);
     const auto fragStageInfo = shaders.stage(spirvPath, spec.fragEntry);
     const std::array<vk::PipelineShaderStageCreateInfo, 2> stages{vertStageInfo, fragStageInfo};

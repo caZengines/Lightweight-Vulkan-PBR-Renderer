@@ -60,16 +60,17 @@ DescriptorSetAllocator::DescriptorSetAllocator(vk::raii::Device& device,
 }
 
 std::vector<uint64_t> DescriptorSetAllocator::unitDemand(
-    std::span<const vk::DescriptorSetLayoutBinding> bindings) const {
+    std::span<const DescriptorBinding> bindings) const {
     std::vector<uint64_t> demand(budget_.sizes.size(), 0);
     for (const auto& binding : bindings) {
-        const auto it = typeIndex_.find(binding.descriptorType);
+        const auto it = typeIndex_.find(binding.vk.descriptorType);
         if (it == typeIndex_.end()) {
-            fail(std::string("binding ") + std::to_string(binding.binding) +
-                 " uses " + describeType(binding.descriptorType) +
+            fail("binding " + std::to_string(binding.vk.binding) + " ('" +
+                 (binding.name.empty() ? std::string("<unnamed>") : binding.name) + "') uses " +
+                 describeType(binding.vk.descriptorType) +
                  ", which the pool budget never declares (" + describeBudget(budget_) + ")");
         }
-        demand[it->second] += binding.descriptorCount;
+        demand[it->second] += binding.vk.descriptorCount;
     }
     return demand;
 }
@@ -119,7 +120,7 @@ DescriptorSetId DescriptorSetAllocator::acquireId() {
 
 std::vector<DescriptorSetAllocator::AllocatedSet> DescriptorSetAllocator::allocate(
                                       const vk::DescriptorSetLayout& layout,
-                                      std::span<const vk::DescriptorSetLayoutBinding> bindings,
+                                      std::span<const DescriptorBinding> bindings,
                                       size_t count) {
     if (count == 0) return {};
 
@@ -197,7 +198,7 @@ std::vector<DescriptorSetAllocator::AllocatedSet> DescriptorSetAllocator::alloca
 
 DescriptorSetAllocator::AllocatedSet DescriptorSetAllocator::allocate(
     const vk::DescriptorSetLayout& layout,
-    std::span<const vk::DescriptorSetLayoutBinding> bindings) {
+    std::span<const DescriptorBinding> bindings) {
     return std::move(allocate(layout, bindings, 1).front());
 }
 
