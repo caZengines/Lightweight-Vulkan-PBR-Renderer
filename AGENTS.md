@@ -23,7 +23,7 @@ cd bin && ./main.exe
 ```
 
 - 验证层：Debug 开 / Release 关（`app::Config::enableValidationLayers`，由 `NDEBUG` 推导）。
-- shader：`shaders/shader.slang` 由 CMake 自定义命令经 `slangc` 编译为 `shaders/slang.spv`，随构建执行。
+- shader：`shaders/raster/shader.slang` 由 CMake 自定义命令经 `slangc` 编译为 `shaders/raster/slang.spv`（按管线族分目录），随构建执行；路径与 `app::Config::shaderPath` 必须一致。
 - **bin/ 是自包含的**：CMake POST_BUILD 会把 ucrt64 工具链的 `libstdc++-6.dll / libgcc_s_seh-1.dll / libwinpthread-1.dll / glfw3.dll` 拷到 exe 旁边。背景：PATH 里 mingw64/bin 排在 ucrt64/bin 之前，若不落地本地 DLL，加载器可能解析到 MSVCRT 版运行库导致 `STATUS_ENTRYPOINT_NOT_FOUND (0xC0000139)` 启动即崩。
 - `bin/main.exe` 若有残留进程未退出，链接会失败——先结束进程再构建。
 - 修改 `src/` 下任何文件名/目录（新增、移动、删除）后**必须重新 cmake 配置**再构建：源列表来自 `GLOB_RECURSE`（Phase 6 计划换成显式列表）。
@@ -81,8 +81,8 @@ Layer 1  Platform     — src/platform/ 窗口/输入/日志/路径（GLFW 唯�
 | `render::CommandRecorder` | 无状态录制：3 次布局过渡 → dynamic rendering → Set0/逐项 Set1 + push flags + 实例绘制 |
 | `render::RenderItem` | **场景↔渲染契约**：扁平 POD {MeshGPU*, Material*, InstanceBuffer*, firstInstance, instanceCount}，无 Vulkan 类型 |
 | `render::InstanceBuffer` | 单对象 GPU 实例流（vertex binding 1，每实例一个 mat4）；路径追踪时被 TLAS instance 取代 |
-| `render::GraphicsPipelineSpec` + `PipelineCache` + `Pipeline` | 管线状态 POD 化 + 按 spec 缓存创建；顶点输入布局在 `pipeline.cpp` 内部定义 |
-| `render::ShaderManager` / `DescriptorSetLayout/Pool` | SPIR-V 读取缓存 / SPIRV-Reflect 自动布局与池估算 |
+| `render::GraphicsPipelineSpec` + `Pipeline` | 管线状态 POD 化；`Pipeline` 只借用 `PipelineLayout&` 与 `ShaderLibrary&`，不拥有 module/layout；顶点输入布局在 `pipeline.cpp` 内部定义（`PipelineCache` 已删，双族的 `PipelineLibrary` 留到 M4） |
+| `render::DescriptorSetLayoutLibrary` / `PipelineLayoutLibrary` / `DescriptorBudget` | **手工 Set0 + 反射 Set1+ 的单张 set 表**（`rhi::DescriptorBinding` = vk binding + 反射名字）/ 按 `(paths, pushConstants)` 缓存 `vk::PipelineLayout`（与已分配的 set 出自同一张表）/ `bindingTables × 用途个数 → 池预算`（取代原 `ShaderManager` / `DescriptorSetLayout` / `DescriptorPool`，均已删） |
 | `render::FrameUniforms` | `UniformBufferObject/Light/FrameParams` 唯一定义处（static_assert 192B 对齐 shader） |
 | `render::RenderSettings` | MSAA + present mode（Config 注入、按设备上限钳制） |
 
@@ -113,10 +113,10 @@ Layer 1  Platform     — src/platform/ 窗口/输入/日志/路径（GLFW 唯�
 > | 移动 | 内容 |
 > |---|---|
 > | `resource` ← `render` | `ShaderLibrary`（路径 → 模块 + 反射 + 入口点校验；取代 `render::ShaderManager`） |
-> | `render` ← `resource` | `Material`（收窄为只持自己的 `DescriptorSet` + 其 set layout，不再自己分配/写入） |
-> | `rhi` 新增 | `DescriptorSetAllocator`、`DescriptorWriter`（纯 Vulkan；**不得引用 `resource/`**，故 Writer 收 `vk::DescriptorSetLayoutBinding` 而非 `ReflectBinding`）。分配器只收 `vk::raii::Device&`，固定带 `eFreeDescriptorSet`、**不暴露 `reset()`**、耗尽时按同一预算再建一块板；**自己持有 set**（对外发 `DescriptorSetId` + 裸句柄，`release(id)` 归还并记账递减）——实测依据见计划 §D5.1/§D5.1b/§D5.6.1 |
+> | `render` ← `resource` | `Material`（收窄为**只描述数据**：`descriptorWrites()` 产出两条按 `MaterialTextureSlot` 索引的**数组值**（`maps`/`samplers`）+ 非拥有 `DescriptorSetId`/裸句柄，不再自己分配、写入或调用 writer） |
+> | `rhi` 新增 | `DescriptorSetAllocator`、`DescriptorWriter`（纯 Vulkan；**不得引用 `resource/`**，故 Writer 收 `rhi::DescriptorBinding`＝`vk::DescriptorSetLayoutBinding` **+ 反射名字**，而非 `ReflectBinding`）。名字与 binding **同处一个结构体**（单表，见计划 §9B）。Writer 的入口是**表驱动**的 `writeAll(values)`：遍历 layout 表逐 binding 解析，**漏写即抛**；值的元素数必须等于 `descriptorCount`（计划 §9C 靠这条检查抓「shader 改了、C++ 没改」）。分配器只收 `vk::raii::Device&`，固定带 `eFreeDescriptorSet`、**不暴露 `reset()`**、耗尽时按同一预算再建一块板；**自己持有 set**（对外发 `DescriptorSetId` + 裸句柄，`release(id)` 归还并记账递减）——实测依据见计划 §D5.1/§D5.1b/§D5.6.1 |
 > | `render` 内部 | **`Material` 不再是 GPU 属主**：持 `DescriptorSetId` + 裸句柄，析构时把释放排进延迟队列 |
-> | `render` 新增 | `DescriptorSetLayoutLibrary`（手工 Set0 + 反射 Set1+ + no-holes set 表）**已实现**；**Set0 反射校验延后**（计划 D4.2，延后期间靠启动日志对照两张表）；`PoolBudgetBuilder`（`bindingTables` × 用途个数 → 池预算）；`DeferredReleaseQueue`（计划 D5.6.3，**属「运行时增删模型」特性**） |
+> | `render` 新增 | `DescriptorSetLayoutLibrary`（手工 Set0 + 反射 Set1+ + no-holes set 表）**已实现**；**Set0 反射校验延后**（计划 D4.2）；`PoolBudgetBuilder`（`bindingTables` × 用途个数 → 池预算）；`DeferredReleaseQueue`（计划 D5.6.3，**属「运行时增删模型」特性**） |
 >
 > 三条 grep 不变量：`src/render` 无读盘、`src/resource` 无 descriptor 类型、`src/rhi` 无 `resource/` 引用。
 > 一条所有权不变量：**`vk::raii::DescriptorSet` 只允许出现在 `rhi/descriptor_set_allocator.*` 内部**
@@ -130,11 +130,14 @@ Layer 1  Platform     — src/platform/ 窗口/输入/日志/路径（GLFW 唯�
 
 ```
 装配（App 构造，自下而上）
-window → VulkanDevice → VMA → RhiFactory/ShaderManager → DebugMessenger/Surface → CommandPools
+window → VulkanDevice → VMA → RhiFactory → DebugMessenger/Surface → CommandPools
       → UploadQueue → ResourceRegistry → AssetLibrary → Samplers
       → DemoScene.build()（材质 + SceneObject + InstanceBuffer 上传）
-      → DescriptorSetLayout → DescriptorPool → 材质 Set-1（每材质一次）
-      → Renderer（依赖聚合：RenderContext/池/layout/CameraManager/FrameParams/surface/window）
+      → resource::ShaderLibrary（唯一实例；SPIR-V 读取 + 反射）
+      → DescriptorSetLayoutLibrary（手工 Set0 + 反射 Set1+ 的单张 set 表）
+      → PoolBudgetBuilder（bindingTables × 用途个数）→ rhi::DescriptorSetAllocator
+      → 每材质：allocate → descriptorWrites() → writeAll → flush → attachSet
+      → Renderer（DL 库移交 + PipelineLayoutLibrary + FrameResources：Set0/UBO/同步；依赖聚合）
 
 每帧（GameLoop）
 pollEvents → input.poll → update(dt)（ActionContext::update(input) → CameraController 语义消费 → scene::CameraManager.active()；键位表见 docs/input-action-layer-plan.md）

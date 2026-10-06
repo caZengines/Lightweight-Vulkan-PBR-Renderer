@@ -4,13 +4,13 @@
 
 namespace resource {
 class MeshGPU;
-class Material;
 }  // namespace resource
 
 
 namespace render {
 
 class InstanceBuffer;
+class Material;
 
 // Pure-data draw unit: scene::Scene fills these, CommandRecorder consumes
 // them. Flat POD on purpose — zero virtuals and no pointer chasing in the hot
@@ -22,7 +22,7 @@ class InstanceBuffer;
 // replaces draw items with TLAS instances built from the same scene data.
 struct RenderItem {
     const resource::MeshGPU*           mesh      = nullptr;
-    const resource::Material*          material  = nullptr;
+    const Material*          material  = nullptr;
     const InstanceBuffer*              instances = nullptr;
     uint32_t                           firstInstance = 0;
     uint32_t                           instanceCount = 0;

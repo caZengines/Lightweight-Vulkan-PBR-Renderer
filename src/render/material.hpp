@@ -1,7 +1,6 @@
 #pragma once
 #include "rhi/descriptor_set_id.hpp"
 #include "rhi/descriptor_write.hpp"
-
 #include "resource/asset_handle.hpp"
 #include "resource/gltf_importer.hpp"   // MaterialData + MaterialTextureSlot (shared vocabulary)
 #include "resource/sampler.hpp"
@@ -13,7 +12,7 @@
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
 
-namespace resource {
+namespace render {
 
 struct PushConstantBlock {
     glm::vec4 baseColorFactor;            // RGB base color and alpha
@@ -30,13 +29,13 @@ static_assert(offsetof(PushConstantBlock, emissiveFactor) == 16);
 class Material{
     public:
         // One asset handle per glTF texture slot, indexed by MaterialTextureSlot.
-        using SlotHandles = std::array<resource::AssetHandle, kMaterialSlotCount>;
+        using SlotHandles = std::array<resource::AssetHandle, resource::kMaterialSlotCount>;
 
         // `handles` are asset-library handles (empty = fall back to the registry's
         // built-in default textures, Null Object semantics).  `data` supplies the
         // scalar factors that ride in the push constant block.
         Material(SlotHandles handles,
-                 const MaterialData& data,
+                 const resource::MaterialData& data,
                  const Sampler& texSampler, const Sampler& norSampler,
                  const resource::ResourceRegistry& registry);
 
@@ -69,8 +68,8 @@ class Material{
 
         // Indexed by MaterialTextureSlot: the single storage location for a slot's
         // descriptor value.  Both arrays are filled by one loop in the constructor.
-        std::array<vk::DescriptorImageInfo, kMaterialSlotCount> mapInfos_{};
-        std::array<vk::DescriptorImageInfo, kMaterialSlotCount> samplerInfos_{};
+        std::array<vk::DescriptorImageInfo, resource::kMaterialSlotCount> mapInfos_{};
+        std::array<vk::DescriptorImageInfo, resource::kMaterialSlotCount> samplerInfos_{};
 
         rhi::DescriptorSetId                   descriptorSetId_ = rhi::kInvalidDescriptorSet;
         vk::DescriptorSet                      descriptorSet_   = nullptr;

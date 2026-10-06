@@ -3,7 +3,7 @@
 #include "app/action_context.hpp"
 #include "app/game_loop.hpp"
 #include "platform/input.hpp"
-#include "resource/material.hpp"
+#include "render/material.hpp"
 #include "rhi/command_pool.hpp"
 #include "resource/sampler.hpp"
 #include "platform/log.hpp"

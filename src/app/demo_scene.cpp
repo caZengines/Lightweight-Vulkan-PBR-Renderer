@@ -3,7 +3,7 @@
 #include "app/config.hpp"
 #include "platform/log.hpp"
 #include "resource/gltf_importer.hpp"
-#include "resource/material.hpp"
+#include "render/material.hpp"
 #include "resource/sampler.hpp"
 #include "resource/vertex.hpp"
 #include "resource/asset_library.hpp"
@@ -49,20 +49,20 @@ void DemoScene::buildglTFdemo(const Sampler& albedoSampler, const Sampler& norma
     // materials_[0] is the fallback for primitives without a material;
     // glTF material i lives at materials_[i + 1].
     materials_.reserve(imported.materials.size() + 1);
-    materials_.emplace_back(std::make_shared<resource::Material>(
-        resource::Material::SlotHandles{},
+    materials_.emplace_back(std::make_shared<render::Material>(
+        render::Material::SlotHandles{},
         resource::MaterialData{},
         albedoSampler, normalSampler, registry));
     for (const resource::MaterialData& data : imported.materials) {
         // Slot handles are gathered in a loop over the same enum the shader
         // indexes its arrays with.
-        resource::Material::SlotHandles handles{};
+        render::Material::SlotHandles handles{};
         for (size_t slot = 0; slot < resource::kMaterialSlotCount; ++slot) {
             handles[slot] = resolveSlotTexture(imported, data,
                                                static_cast<resource::MaterialTextureSlot>(slot),
                                                assets);
         }
-        materials_.emplace_back(std::make_shared<resource::Material>(
+        materials_.emplace_back(std::make_shared<render::Material>(
             std::move(handles), data, albedoSampler, normalSampler, registry));
     }
 
@@ -86,7 +86,7 @@ void DemoScene::buildglTFdemo(const Sampler& albedoSampler, const Sampler& norma
         const std::string key = config_.modelPath + "#prim" + std::to_string(i);
         auto meshHandle = assets.loadMeshData(key, prim.mesh);
 
-        const std::shared_ptr<resource::Material>& material =
+        const std::shared_ptr<render::Material>& material =
             prim.materialIndex < imported.materials.size()
                 ? materials_[prim.materialIndex + 1]
                 : materials_[0];

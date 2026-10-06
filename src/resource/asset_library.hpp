@@ -8,8 +8,8 @@
 namespace resource {
 
 // ---------------------------------------------------------------------------
-// AssetLibrary — path-keyed asset cache with refcounting (replaces the old
-// AssetManager). loadMesh/loadImage return AssetHandle; duplicate loads of
+// AssetLibrary — path-keyed asset cache with refcounting 
+// loadMesh/loadImage return AssetHandle; duplicate loads of
 // the same path reuse the cached GPU asset (uploaded once). find* returns a
 // null handle when the path was never loaded (Null Object semantics — the
 // render layer falls back to the registry's built-in default textures).

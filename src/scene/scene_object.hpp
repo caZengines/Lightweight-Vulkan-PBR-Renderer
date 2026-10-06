@@ -15,11 +15,11 @@
 
 namespace render {
 class InstanceBuffer;
+class Material; 
 }  // namespace render
 
 namespace resource {
 class MeshGPU;
-class Material; 
 class ResourceRegistry;
 class UploadQueue;
 }  // namespace resource
@@ -35,7 +35,7 @@ public:
     // mesh: asset handle (must be valid; resolved to MeshGPU here and kept
     // alive by the handle for the object's lifetime).
     SceneObject(const resource::AssetHandle& mesh,
-                std::shared_ptr<resource::Material> material,
+                std::shared_ptr<render::Material> material,
                 const resource::ResourceRegistry& registry);
 
     // Uploads the instance matrices (staging + single submit). The object
@@ -53,14 +53,14 @@ public:
     [[nodiscard]] const glm::mat4& worldMatrix() const;
 
     [[nodiscard]] const resource::MeshGPU& mesh() const { return *meshGPU_; }
-    [[nodiscard]] resource::Material& material() const { return *material_; }
+    [[nodiscard]] render::Material& material() const { return *material_; }
     [[nodiscard]] const render::InstanceBuffer& instanceBuffer() const { return *instanceBuffer_; }
     [[nodiscard]] uint32_t instanceCount() const { return instanceCount_; }
 
 private:
     resource::AssetHandle                   meshHandle_;         // keeps the GPU mesh loaded
     const resource::MeshGPU*                meshGPU_ = nullptr;  // registry-owned
-    std::shared_ptr<resource::Material>     material_;
+    std::shared_ptr<render::Material>     material_;
     Transform                               transform_{};
     std::vector<resource::InstanceData>          instances_;          // object-local placements
     std::shared_ptr<render::InstanceBuffer> instanceBuffer_;

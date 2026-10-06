@@ -2,7 +2,7 @@
 // DEPRECATED!
 
 #include "render/instance_buffer.hpp"
-#include "resource/material.hpp"
+#include "render/material.hpp"
 #include "rhi/rhi_factory.hpp"
 #include "render/pipeline.hpp"
 #include "rhi/swapchain.hpp"
@@ -94,7 +94,7 @@ void CommandRecorder::record(vk::raii::CommandBuffer& cmd,
                                    pipeline_.layout(), 1,
                                    item.material->getDescriptorSet(), nullptr);
             if (pushConstantStages) {
-                cmd.pushConstants<resource::PushConstantBlock>(pipeline_.layout(),
+                cmd.pushConstants<render::PushConstantBlock>(pipeline_.layout(),
                                                                pushConstantStages, 0,
                                                                 item.material->getPushConstantBlock());
             }

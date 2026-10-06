@@ -2,7 +2,7 @@
 
 #include <stdexcept>
 
-#include "resource/material.hpp"
+#include "render/material.hpp"
 #include "render/instance_buffer.hpp"
 #include "resource/resource_registry.hpp"
 #include "resource/upload_queue.hpp"
@@ -10,7 +10,7 @@
 namespace scene {
 
 SceneObject::SceneObject(const resource::AssetHandle& mesh,
-                         std::shared_ptr<resource::Material> material,
+                         std::shared_ptr<render::Material> material,
                          const resource::ResourceRegistry& registry)
     : meshHandle_(mesh), material_(std::move(material))
 {
