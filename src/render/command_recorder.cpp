@@ -43,7 +43,7 @@ void CommandRecorder::record(vk::raii::CommandBuffer& cmd,
                           vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests,
                           vk::ImageAspectFlagBits::eDepth);
 
-    vk::ClearValue clearColor = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
+    vk::ClearValue clearColor = vk::ClearColorValue(0.027f, 0.034f, 0.051f, 1.0f);
     vk::ClearValue clearDepth = vk::ClearDepthStencilValue(1.0f, 0);
 
     vk::RenderingAttachmentInfo attachmentInfo;

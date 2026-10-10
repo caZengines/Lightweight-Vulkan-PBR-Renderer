@@ -19,7 +19,7 @@ struct RenderContext;
 namespace render {
 
 // Frames allowed to be in flight simultaneously.
-inline constexpr uint32_t kMaxFramesInFlight = 2;
+inline constexpr uint32_t kMaxFramesInFlight = 1;
 
 // Owns everything that lives for kMaxFramesInFlight rotations: per-frame UBO
 // buffers, per-frame Set-0 descriptor sets, command buffers, and all

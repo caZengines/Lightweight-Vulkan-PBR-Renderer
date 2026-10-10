@@ -23,7 +23,7 @@ class Camera {
 public:
     Camera(float azimuth   = glm::radians(45.0f),
            float polar     = glm::radians(45.0f),
-           float distance = 32.0f);
+           float distance = 16.0f);
 
     // Rotate the orbit; polar is clamped away from the singularities.
     void orbit(float dxPixels, float dyPiexls);

@@ -1,4 +1,5 @@
 #include "rhi/command_pool.hpp"
+#include <tuple>
 
 namespace rhi {
 
@@ -33,7 +34,7 @@ void CommandPool::endSingleTimeCommands(vk::raii::CommandBuffer &&commandBuffer)
     vk::SubmitInfo submitInfo{};
     submitInfo.setCommandBuffers(*commandBuffer);
     queue_.submit(submitInfo, commandFence);
-    (void)device_->waitForFences({commandFence}, VK_TRUE, UINT64_MAX);
+    std::ignore = device_->waitForFences({commandFence}, VK_TRUE, UINT64_MAX);
 }
 
 }

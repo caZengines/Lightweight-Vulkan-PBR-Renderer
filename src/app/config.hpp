@@ -27,20 +27,26 @@ struct Config {
         true;
 #endif
     std::vector<const char*> validationLayers = {"VK_LAYER_KHRONOS_validation"};
-    // Swapchain is the only required device extension today; the ray-tracing
-    // extensions (see refactor plan §6) will be appended here later.
-    std::vector<const char*> requiredDeviceExtensions = {vk::KHRSwapchainExtensionName};
+    // the ray-tracing extensions will be appended here later.
+    std::vector<const char*> requiredDeviceExtensions = {
+        vk::KHRSwapchainExtensionName,
+        vk::KHRPresentId2ExtensionName,
+        vk::EXTPresentTimingExtensionName
+    };
 
     // --- Rendering quality / presentation ---
     // msaaSamples is clamped to device-supported counts at renderer assembly.
     uint32_t           msaaSamples            = 4;
     vk::PresentModeKHR preferredPresentMode   = vk::PresentModeKHR::eMailbox;
+    // Frame-pacing target for VK_EXT_present_timing (ignored if the surface does
+    // not support present-at-relative-time). 0 disables the request.
+    double             targetFPS              = 120.0;
 
     // Absolute asset root (project root).
     std::string assetRoot;
 
     // Asset paths — stored relative, resolved to absolute in the constructor.
-    std::string modelPath         = "assets/models/ship_in_a_bottle.glb";
+    std::string modelPath         = "assets/models/free_1975_porsche_911_930_turbo.glb";
     std::string rockPath          = "assets/models/rock.obj";
     std::string planetPath        = "assets/models/planet.obj";
     std::string texturePath       = "assets/textures/container.png";

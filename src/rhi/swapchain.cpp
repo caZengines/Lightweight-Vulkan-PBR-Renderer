@@ -1,13 +1,16 @@
 #include "rhi/swapchain.hpp"
+#include "vulkan/vulkan.hpp"
 
 #include <algorithm>
 #include <cassert>
 #include <limits>
+#include <string>
 
 #define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
 
+#include "platform/log.hpp"
 #include "platform/window.hpp"
 #include "rhi/rhi_factory.hpp"
 #include "render_context.hpp"
@@ -41,6 +44,8 @@ void Swapchain::createSwapChain(const vk::raii::SurfaceKHR& surface, platform::W
     const vk::PresentModeKHR presentMode =
         choosePresentMode(availablePresent, settings_.preferredPresentMode);
 
+    querySurfaceTimingCapabilities(surface);
+
     vk::SwapchainCreateInfoKHR ci{};
     ci.setSurface(*surface)
       .setMinImageCount(minCount)
@@ -55,9 +60,44 @@ void Swapchain::createSwapChain(const vk::raii::SurfaceKHR& surface, platform::W
       .setPresentMode(presentMode)
       .setClipped(true)
       .setOldSwapchain(nullptr);
+    // Timing queries and present-at-* requests only exist on a swapchain that
+    // opted in, so the flag goes on exactly when the surface can honor it.
+    if (timingCaps_.presentTimingSupported) {
+        ci.setFlags(vk::SwapchainCreateFlagBitsKHR::ePresentTimingEXT);
+    }
 
     swapChain_    = vk::raii::SwapchainKHR(rct_.device, ci);
     Image_.images = swapChain_.getImages();
+}
+
+// Device features (VkPhysicalDevicePresentTimingFeaturesEXT) only say the
+// implementation *could* do present timing. Whether this particular
+// VkSurfaceKHR can is a separate question: on Windows the desktop compositor
+// may not cooperate even though the GPU does. Ask the surface directly by
+// extending VkSurfaceCapabilities2KHR, otherwise every present-at-* request is
+// silently dropped by the driver and frame pacing appears to do nothing.
+void Swapchain::querySurfaceTimingCapabilities(const vk::raii::SurfaceKHR& surface) {
+    timingCaps_ = SurfaceTimingCapabilities{};
+
+    vk::PhysicalDeviceSurfaceInfo2KHR surfaceInfo{};
+    surfaceInfo.setSurface(*surface);
+
+    // PresentTimingSurfaceCapabilitiesEXT only reaches the driver when it is
+    // linked into the pNext chain of SurfaceCapabilities2KHR. The chain-returning
+    // overload builds that chain for us, so the queried struct cannot be
+    // forgotten.
+    const vk::StructureChain<vk::SurfaceCapabilities2KHR,
+                             vk::PresentTimingSurfaceCapabilitiesEXT>
+        chain = rct_.physicalDevice
+                    .getSurfaceCapabilities2KHR<vk::SurfaceCapabilities2KHR,
+                                                vk::PresentTimingSurfaceCapabilitiesEXT>(surfaceInfo);
+
+    const auto& caps = chain.get<vk::PresentTimingSurfaceCapabilitiesEXT>();
+    timingCaps_.queried                      = true;
+    timingCaps_.presentTimingSupported       = caps.presentTimingSupported == vk::True;
+    timingCaps_.presentAtAbsoluteTimeSupport = caps.presentAtAbsoluteTimeSupported == vk::True;
+    timingCaps_.presentAtRelativeTimeSupport = caps.presentAtRelativeTimeSupported == vk::True;
+    timingCaps_.presentStageQueries          = caps.presentStageQueries;
 }
 
 vk::Extent2D Swapchain::chooseExtent(const Capabilities& caps, platform::Window& window) {

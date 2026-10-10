@@ -10,6 +10,8 @@ namespace render {
 struct RenderSettings {
     vk::SampleCountFlagBits msaaSamples          = vk::SampleCountFlagBits::e4;
     vk::PresentModeKHR      preferredPresentMode = vk::PresentModeKHR::eMailbox;  // falls back to FIFO
+    // Frame-pacing target for VK_EXT_present_timing. 0 disables the request.
+    double                  targetFPS            = 120.0;
 };
 
 }  // namespace render

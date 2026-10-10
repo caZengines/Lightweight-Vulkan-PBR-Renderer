@@ -22,7 +22,7 @@ class Material;
 // replaces draw items with TLAS instances built from the same scene data.
 struct RenderItem {
     const resource::MeshGPU*           mesh      = nullptr;
-    const Material*          material  = nullptr;
+    const Material*                    material  = nullptr;
     const InstanceBuffer*              instances = nullptr;
     uint32_t                           firstInstance = 0;
     uint32_t                           instanceCount = 0;

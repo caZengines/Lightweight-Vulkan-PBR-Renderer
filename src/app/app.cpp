@@ -224,7 +224,7 @@ void App::initRender() {
     const vk::SampleCountFlagBits chosenMsaa =
         pickMsaaCount(vulkanDevice_.physicalDevice, config_.msaaSamples);
     vulkanDevice_.msaaSamples = chosenMsaa;
-    const render::RenderSettings settings{chosenMsaa, config_.preferredPresentMode};
+    const render::RenderSettings settings{chosenMsaa, config_.preferredPresentMode, config_.targetFPS};
 
     RenderContext rctForRenderer = vulkanDevice_.renderContext();
     render::Renderer::Dependencies deps{

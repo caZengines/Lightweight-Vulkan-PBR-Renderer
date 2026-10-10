@@ -17,8 +17,18 @@ struct RenderContext;
 
 namespace rhi {
 
-// forward declarations within the rhi namespace
+// Forward declarations within the rhi namespace
 class RhiFactory;
+
+// What the *surface* (not just the physical device) can actually do with
+
+struct SurfaceTimingCapabilities {
+    bool                       queried                      = false;
+    bool                       presentTimingSupported       = false;
+    bool                       presentAtAbsoluteTimeSupport = false;
+    bool                       presentAtRelativeTimeSupport = false;
+    vk::PresentStageFlagsEXT   presentStageQueries          = {};
+};
 
 // Swapchain + MSAA color resolve target + depth attachment.
 // Image-view creation and depth-format probing go through the injected
@@ -47,6 +57,12 @@ public:
     [[nodiscard]] vk::SurfaceFormatKHR      getSurfaceFormat() const { return surfaceFormat_; }
     [[nodiscard]] vk::raii::SwapchainKHR&   swapChain()              { return swapChain_; }
 
+    // Present-timing capabilities of the surface this swapchain was built on.
+    // Queried once per swapchain creation (surface support never changes).
+    [[nodiscard]] const SurfaceTimingCapabilities& timingCapabilities() const {
+        return timingCaps_;
+    }
+
     // Format of the depth attachment created alongside the swapchain — the
     // pipeline spec must match it exactly.
     [[nodiscard]] vk::Format                depthFormat()      const { return depthFormat_; }
@@ -66,6 +82,7 @@ private:
                                                vk::PresentModeKHR preferred);
 
     void createSwapChain(const vk::raii::SurfaceKHR& surface, platform::Window& window);
+    void querySurfaceTimingCapabilities(const vk::raii::SurfaceKHR& surface);
     void createImageViews();
     void createColorAndDepthResources();
 
@@ -78,6 +95,8 @@ private:
     vk::SurfaceFormatKHR    surfaceFormat_{};
     vk::Extent2D            extent_{};
     vk::Format              depthFormat_   = vk::Format::eUndefined;
+
+    SurfaceTimingCapabilities timingCaps_{};
 
     rhi::VmaImage           colorImage_;
     vk::raii::ImageView     colorImageView_ = nullptr;

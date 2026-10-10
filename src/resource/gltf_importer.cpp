@@ -926,6 +926,7 @@ GltfScene GltfSceneImporter::load(const std::string& modelPath) {
         throw std::runtime_error("glTF: default scene index out of range in " + modelPath);
     }
 
+    // determine whether the node call forms a loop.
     std::vector<bool> onStack(model->nodes_count, false);
     const tg3_scene& sceneRoot = model->scenes[defaultScene];
     for (uint32_t n = 0; n < sceneRoot.nodes_count; ++n) {

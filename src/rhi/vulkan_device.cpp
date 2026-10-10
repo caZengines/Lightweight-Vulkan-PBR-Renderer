@@ -1,5 +1,6 @@
 #include "rhi/vulkan_device.hpp"
 #include "platform/log.hpp"
+#include "vulkan/vulkan.hpp"
 #include <map>
 #include <string>
 
@@ -58,11 +59,25 @@ void VulkanDevice::createInstance(){
     instance = vk::raii::Instance(context_, createInfo);
 }
 std::vector<const char*> VulkanDevice::GetRequiredExtension(){
-    // Instance extensions come from the platform layer (window system),
-    // not from GLFW directly.
+    // Instance extensions come from the platform layer (window system)
     std::vector extensions = info_.instanceExtensions_;
     if(info_.enableValidationLayers_){
         extensions.push_back(vk::EXTDebugUtilsExtensionName);
+    }
+
+    const auto available = vk::enumerateInstanceExtensionProperties();
+    const bool hasCapabilities2 = std::ranges::any_of(
+        available,
+        [](const vk::ExtensionProperties& property) {
+            return strcmp(property.extensionName, vk::KHRGetSurfaceCapabilities2ExtensionName) == 0;
+        });
+    if(hasCapabilities2){
+        extensions.push_back(vk::KHRGetSurfaceCapabilities2ExtensionName);
+    }
+    else{
+        platform::LogLocator::get().write(platform::LogLevel::Warning,
+            "[device] 'VK_KHR_get_surface_capabilities2' is not advertised; present timing capabilitie"
+            "s of the surface cannot be queried");
     }
     return extensions;
 }
@@ -162,17 +177,20 @@ void VulkanDevice::createLogicalDevice(){
                     vk::PhysicalDeviceVulkan13Features,
                     vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT,
                     vk::PhysicalDeviceShaderDrawParametersFeatures,
-                    vk::PhysicalDeviceTimelineSemaphoreFeaturesKHR> featureChain;
+                    vk::PhysicalDeviceTimelineSemaphoreFeaturesKHR,
+                    vk::PhysicalDevicePresentTimingFeaturesEXT> featureChain;
     auto& deviceFeatures2 = featureChain.get<vk::PhysicalDeviceFeatures2>();
-    deviceFeatures2.features.setFillModeNonSolid(true);
-    deviceFeatures2.features.setGeometryShader(false);
-    deviceFeatures2.features.setSamplerAnisotropy(true);
+    deviceFeatures2.features.setFillModeNonSolid(vk::True);
+    deviceFeatures2.features.setGeometryShader(vk::False);
+    deviceFeatures2.features.setSamplerAnisotropy(vk::True);
 
-    featureChain.get<vk::PhysicalDeviceVulkan13Features>().setDynamicRendering(true);
-    featureChain.get<vk::PhysicalDeviceVulkan13Features>().setSynchronization2(true);
-    featureChain.get<vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>().setExtendedDynamicState(true);
-    featureChain.get<vk::PhysicalDeviceShaderDrawParametersFeatures>().setShaderDrawParameters(true);
-    featureChain.get<vk::PhysicalDeviceTimelineSemaphoreFeaturesKHR>().setTimelineSemaphore(true);
+    featureChain.get<vk::PhysicalDeviceVulkan13Features>().setDynamicRendering(vk::True);
+    featureChain.get<vk::PhysicalDeviceVulkan13Features>().setSynchronization2(vk::True);
+    featureChain.get<vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>().setExtendedDynamicState(vk::True);
+    featureChain.get<vk::PhysicalDeviceShaderDrawParametersFeatures>().setShaderDrawParameters(vk::True);
+    featureChain.get<vk::PhysicalDeviceTimelineSemaphoreFeaturesKHR>().setTimelineSemaphore(vk::True);
+    featureChain.get<vk::PhysicalDevicePresentTimingFeaturesEXT>().setPresentTiming(vk::True)
+                                                                  .setPresentAtRelativeTime(vk::True);
 
     vk::DeviceCreateInfo deviceCreateInfo{};
     deviceCreateInfo.setPNext(&featureChain.get<vk::PhysicalDeviceFeatures2>())
