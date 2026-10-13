@@ -71,8 +71,10 @@ target_compile_definitions(main
 
 set_target_properties(main PROPERTIES 
     RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin
-    WIN32_EXECUTABLE FALSE
 )
+if(WIN32)
+    set_target_properties(main PROPERTIES WIN32_EXECUTABLE TRUE)
+endif()
 
 target_link_libraries(
     main
@@ -94,9 +96,7 @@ target_include_directories(
 # ===== Self-contained bin/: app-local runtime DLLs =====
 # The UCRT64-built exe must not resolve libstdc++/libgcc/libwinpthread (or
 # glfw3) from a foreign toolchain earlier on PATH (mingw64 builds are
-# MSVCRT-based and cause STATUS_ENTRYPOINT_NOT_FOUND at load). Copying the
-# compiler's own runtime DLLs next to the exe makes bin/ deterministic and
-# double-click runnable.
+# MSVCRT-based and cause STATUS_ENTRYPOINT_NOT_FOUND at load).
 get_filename_component(MINGW_BIN_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
 foreach(dll
         libstdc++-6.dll
