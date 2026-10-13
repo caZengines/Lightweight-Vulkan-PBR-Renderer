@@ -39,7 +39,14 @@ vk::SampleCountFlagBits pickMsaaCount(const vk::raii::PhysicalDevice& physicalDe
 namespace app {
 
 App::App() {
-    platform::LogLocator::initialize();   // default console logging provider
+    if (!fileLog.isOpen()) {
+        platform::LogLocator::initialize(); 
+        platform::LogLocator::get().write(
+            platform::LogLevel::Error, "failed to open logs/engine.log");
+    } else {
+        platform::LogLocator::provide(&fileLog);
+    }
+    platform::LogLocator::get().write(platform::LogLevel::Info, "started");
     initWindow();
     initRhi();
     initActionContext();
@@ -57,6 +64,7 @@ App::~App() {
         renderer_->cleanup();
     }
     window_.reset();   // destroys the GLFW window and terminates GLFW
+    fileLog.flush();
 }
 
 void App::run() {

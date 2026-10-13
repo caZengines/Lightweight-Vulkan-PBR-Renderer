@@ -14,6 +14,9 @@
 // ============================================================================
 
 #include <cstdint>
+#include <filesystem>
+#include <fstream>
+#include <mutex>
 #include <string>
 
 namespace platform {
@@ -24,11 +27,29 @@ class Log {
 public:
     virtual ~Log() = default;
     virtual void write(LogLevel level, const std::string& message) = 0;
+    virtual void flush() {}
 };
 
 class ConsoleLog final : public Log {
 public:
     void write(LogLevel level, const std::string& message) override;
+};
+
+class FileLog final : public Log {
+public:
+    explicit FileLog(const std::filesystem::path& path, bool truncate = true);
+    ~FileLog() override;
+    
+    FileLog(const FileLog&) = delete;
+    FileLog& operator=(const FileLog&) = delete;;
+
+    void write(LogLevel level, const std::string& message) override;
+    void flush() override;
+
+    bool isOpen() const { return file_.is_open(); }
+private:
+    std::ofstream file_;
+    std::mutex    mutex_;
 };
 
 class NullLog final : public Log {

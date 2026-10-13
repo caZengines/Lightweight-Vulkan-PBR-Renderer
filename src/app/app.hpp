@@ -3,7 +3,9 @@
 #include "app/action_context.hpp"
 #include "app/config.hpp"
 #include "app/demo_scene.hpp"
+#include "config.hpp"
 #include "platform/input.hpp"
+#include "platform/log.hpp"
 #include "platform/window.hpp"
 #include "render/renderer.hpp"
 #include "resource/asset_library.hpp"
@@ -57,6 +59,7 @@ private:
     // --- configuration, window & input (Layer 1) ---
     Config                            config_{};
     std::unique_ptr<platform::Window> window_;
+    platform::FileLog                 fileLog{config_.logPath, /*truncate=*/true};
     platform::Input                   input_{};
 
     // --- camera: scene-layer math + app-side input mapping ---
