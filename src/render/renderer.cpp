@@ -1,18 +1,21 @@
 #include "render/renderer.hpp"
 #include "platform/log.hpp"
-#include "vulkan/vulkan.hpp"
+#include "platform/cpu.h"
 
 
 #include <array>
 #include <cassert>
+#include <chrono>
 #include <cstdint>
 #include <cstring>
 #include <stdexcept>
 #include <string>
+#include <thread>
 
 #define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
+#include "vulkan/vulkan.hpp"
 
 #include "rhi/command_pool.hpp"
 #include "rhi/swapchain.hpp"
@@ -20,8 +23,9 @@
 #include "render/descriptor_set_layout_library.hpp"
 #include "render/frame_resources.hpp"
 #include "render/frame_uniforms.hpp"
-#include "render/pipeline.hpp"
+#include "render/pass.hpp"
 #include "render/pipeline_layout_library.hpp"
+#include "render/pipeline_library.hpp"
 #include "render/pipeline_spec.hpp"
 #include "resource/shader_library.hpp"
 #include "render_context.hpp"
@@ -43,7 +47,15 @@ auto toSurfaceSupport(const rhi::SurfaceTimingCapabilities& caps) {
     return support;
 }
 
+// First stage that consumes the acquired swapchain image.
+constexpr vk::PipelineStageFlags kPresentWaitStage =
+    vk::PipelineStageFlagBits::eColorAttachmentOutput;
+
 }  // namespace
+
+// ============================================================
+// ----------------- PresentTimingController ------------------
+// ============================================================
 
 void Renderer::PresentTimingController::setSurfaceSupport(SurfaceTimingSupport support) noexcept {
     support_ = support;
@@ -73,6 +85,10 @@ void Renderer::PresentTimingController::setSurfaceSupport(SurfaceTimingSupport s
                       : "[renderer] The surface supports present timing queries but neither "
                         "presentAtRelativeTime nor presentAtAbsoluteTime; no present-at-* request will "
                         "take effect");
+    } else if (support_.capabilitiesKnown && presentStage_ == vk::PresentStageFlagsEXT{}) {
+        log.write(platform::LogLevel::Warning,
+                  "[renderer] The surface exposes no display-near present stage (only end-of-queue "
+                  "operations); present-stage timestamps are unavailable, so PresentTimingController disable! ");
     }
 }
 
@@ -83,6 +99,7 @@ void Renderer::PresentTimingController::queryTimingProperties(vk::Device device,
         );
         if(!pfnGetSwapchainTimingProperties_) {
             platform::LogLocator::get().write(platform::LogLevel::Warning, "[renderer] Attempt to obtain 'PFN_vkGetSwapchainTimingPropertiesEXT' pointer failed, so refresh mode remains #UNKNOWN");
+            return;
         }
     }
     if(pfnGetSwapchainTimingProperties_) {
@@ -108,10 +125,18 @@ void Renderer::PresentTimingController::queryTimingProperties(vk::Device device,
             mode_ = RefreshMode::ARR;
             platform::LogLocator::get().write(platform::LogLevel::Info, "[renderer] Display Refresh Mode: ARR");
         }
-        return;
     }
-    mode_ = RefreshMode::UNKNOWN;
-    platform::LogLocator::get().write(platform::LogLevel::Info, "[renderer] Display Refresh Mode: #UNKNOWN");
+    // The pacer needs present-stage timestamps: vkGetCalibratedTimestampsKHR with
+    // a VkSwapchainCalibratedTimestampInfoEXT extension, which is what turns the
+    // opaque swapchain time domain into a readable moment.
+    if(!pfnGetCalibrated_) {
+        pfnGetCalibrated_ = reinterpret_cast<PFN_vkGetCalibratedTimestampsKHR>(
+            vkGetDeviceProcAddr(device, "vkGetCalibratedTimestampsKHR")
+        );
+        if(!pfnGetCalibrated_) {
+            platform::LogLocator::get().write(platform::LogLevel::Warning, "[renderer] Attempt to obtain 'PFN_vkGetCalibratedTimestampsKHR' pointer failed; present-stage pacing is unavailable");
+        }
+    }
 }
 
 void Renderer::PresentTimingController::queryTimeDomains(vk::Device device, vk::SwapchainKHR swapchain) {
@@ -126,6 +151,7 @@ void Renderer::PresentTimingController::queryTimeDomains(vk::Device device, vk::
 
     uint64_t count = 0;
     VkSwapchainTimeDomainPropertiesEXT props{};
+    props.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_TIME_DOMAIN_PROPERTIES_EXT;
     props.pTimeDomains = nullptr; props.pTimeDomainIds = nullptr;
 
     VkResult result = pfnGetSwapchainTimeDomainProperties_(device, swapchain, &props, &count);
@@ -134,13 +160,14 @@ void Renderer::PresentTimingController::queryTimeDomains(vk::Device device, vk::
         mode_ = RefreshMode::UNKNOWN;
         return;
     }
-    timeDomainIds_.resize(count);
-    timeDomains_.resize(count);
+    const uint32_t capacity = props.timeDomainCount;
+    timeDomainIds_.resize(capacity);
+    timeDomains_.resize(capacity);
     props.timeDomainCount = count;
     props.pTimeDomainIds = timeDomainIds_.data();
     props.pTimeDomains = timeDomains_.data();
     
-    std::ignore = pfnGetSwapchainTimeDomainProperties_(device, swapchain, &props, nullptr);
+    std::ignore = pfnGetSwapchainTimeDomainProperties_(device, swapchain, &props, &count);
     selectTimeDomain();
 }
 
@@ -155,9 +182,30 @@ void Renderer::PresentTimingController::selectTimeDomain() {
     platform::LogLocator::get().write(platform::LogLevel::Info, "[renderer] could not find suitable time domain, so refresh mode remains #UNKNOWN");
 }
 
+std::optional<uint64_t> Renderer::PresentTimingController::samplePresentStageTime(
+    vk::Device device, vk::SwapchainKHR swapchain) const {
+    if(!pfnGetCalibrated_ || !swapchain) return std::nullopt;
+    if(support_.capabilitiesKnown && !support_.presentTiming) return std::nullopt;
+    if(timeDomainId_ == 0) return std::nullopt;
+
+    vk::SwapchainCalibratedTimestampInfoEXT swapchainInfo{};
+    swapchainInfo.setSwapchain(swapchain)
+                 .setPresentStage(presentStage_)
+                 .setTimeDomainId(timeDomainId_);
+
+    vk::CalibratedTimestampInfoKHR info{};
+    info.setPNext(&swapchainInfo)
+        .setTimeDomain(vk::TimeDomainKHR::ePresentStageLocalEXT);
+
+    uint64_t timestamp = 0;
+    uint64_t maxDeviation = 0;
+    const VkResult result = pfnGetCalibrated_(device, 1, info, &timestamp, &maxDeviation);
+    if(result != VK_SUCCESS) return std::nullopt;
+    return timestamp;
+}
+
 uint64_t Renderer::PresentTimingController::snapToRefreshCycles(uint64_t duration) const {
     if(interval_ == 0 || duration == 0) return 0;
-
     // The presentation engine can only hold an image for a whole number of
     // refresh cycles, so a request always lands on a cycle boundary. Round to the
     // nearest cycle: rounding up would silently halve the frame rate (60 Hz panel,
@@ -171,23 +219,23 @@ uint64_t Renderer::PresentTimingController::snapToRefreshCycles(uint64_t duratio
 }
 
 uint64_t Renderer::PresentTimingController::targetDuration(double targetFPS) const {
-    // Without a usable timing mode and time domain there is no request to make,
-    // and the caller has to fall back to a blocking present mode.
     if (mode_ == RefreshMode::UNKNOWN || targetFPS <= 0.0 || duration_ == 0) return 0;
     // Without surface support the driver ignores the request entirely.
     if (support_.capabilitiesKnown && !support_.presentTiming) return 0;
-
+    targetPeriod_ = static_cast<uint64_t>(1e9 / targetFPS);
     if(mode_ == RefreshMode::VRR) {
-        return computeVRRTargetTime(duration_, targetFPS);
+        return computeVRRTargetTime(duration_);
     }
-    const uint64_t targetPeriod = static_cast<uint64_t>(1e9 / targetFPS);
-    return snapToRefreshCycles(targetPeriod);
+    return snapToRefreshCycles(targetPeriod_);
 }
 
-uint64_t Renderer::PresentTimingController::computeVRRTargetTime(uint64_t D, double targetFPS) const {
-    const uint64_t targetPeriod = static_cast<uint64_t>(1e9 / targetFPS);
-    return (targetPeriod < D) ? D : targetPeriod;
+uint64_t Renderer::PresentTimingController::computeVRRTargetTime(uint64_t duration) const {
+    return (targetPeriod_ < duration) ? duration : targetPeriod_;
 }
+
+// =================================================================
+// ----------------------  renderer  -------------------------------
+// =================================================================
 
 Renderer::Renderer(Dependencies deps, const RenderSettings& settings)
     : window_(deps.window),
@@ -199,6 +247,7 @@ Renderer::Renderer(Dependencies deps, const RenderSettings& settings)
       rhiFactory_(deps.factory),
       settings_(settings),
       spirvPath_(deps.spirvPath),
+      computeSpirvPath_(deps.computeSpirvPath),
       descriptorSets_(deps.descriptorSets),
       shaders_(deps.shaders),
       setLayoutLibrary_(std::move(deps.setLayoutLibrary)) {
@@ -211,14 +260,14 @@ Renderer::Renderer(Dependencies deps, const RenderSettings& settings)
     swapchain_ = std::make_unique<rhi::Swapchain>(rct_, deps.alloc, surface_, window_,
                                                   rhiFactory_, settings_);
 
-    // Surface-level support has to be known before the swapchain is created (the
-    // create flag depends on it); the per-swapchain timing properties come after.
     presentController.setSurfaceSupport(toSurfaceSupport(swapchain_->timingCapabilities()));
 
     presentController.queryTimingProperties(*rct_.device, *swapchain_->swapChain());
     presentController.queryTimeDomains(*rct_.device, *swapchain_->swapChain());
     // Set 0's layout and table come from the shared DescriptorSetLayoutLibrary.
-    const std::string_view layoutPaths[]{spirvPath_};
+    const std::array<std::string_view, 2> pathStorage{spirvPath_, computeSpirvPath_};
+    const std::span<const std::string_view> layoutPaths{
+        pathStorage.data(), computeSpirvPath_.empty() ? 1u : 2u};
     const LayoutSet& layouts = setLayoutLibrary_->layoutSetFor(layoutPaths);
 
     frames_ = std::make_unique<FrameResources>();
@@ -229,31 +278,73 @@ Renderer::Renderer(Dependencies deps, const RenderSettings& settings)
                   layouts.bySetIndex[0],
                   layouts.bindingTables[0],
                   static_cast<uint32_t>(swapchain_->Image_.images.size()));
-    createPipeline();
+    createPipelines();
 }
 
 Renderer::~Renderer() {
     if (!cleaned_) cleanup();
 }
 
-void Renderer::createPipeline() {
-    GraphicsPipelineSpec spec;
-    spec.colorFormat = swapchain_->getSurfaceFormat().format;
-    spec.depthFormat = swapchain_->depthFormat();
-    spec.msaaSamples = settings_.msaaSamples;
+void Renderer::createPipelines() {
+    const std::array<std::string_view, 2> pathStorage{spirvPath_, computeSpirvPath_};
+    const std::span<const std::string_view> layoutPaths{
+        pathStorage.data(), computeSpirvPath_.empty() ? 1u : 2u};
 
-    // Push constant ranges come from the shader's own reflection (ShaderLibrary
-    // merges them across entry points), so the layout cannot drift from the
-    // shader the way a hand-written range would.
-    std::vector<PushConstantRangeSpec> pushConstants;
+    std::vector<PushConstantRangeSpec> graphicsPushConstants;
     if (const auto& pc = shaders_.pushConstant(spirvPath_)) {
-        pushConstants.emplace_back(PushConstantRangeSpec{pc->stageFlags, pc->offset, pc->size});
+        graphicsPushConstants.emplace_back(
+            PushConstantRangeSpec{pc->stageFlags, pc->offset, pc->size});
     }
-    const std::string_view layoutPaths[]{spirvPath_};
-    const PipelineLayout& layout = pipelineLayouts_->getFor(layoutPaths, pushConstants);
 
-    pipeline_ = std::make_unique<Pipeline>(rct_, layout, shaders_, spirvPath_, spec);
-    recorder_ = std::make_unique<CommandRecorder>(*swapchain_, *pipeline_, rhiFactory_);
+    std::vector<PushConstantRangeSpec> computePushConstants;
+    if (!computeSpirvPath_.empty()) {
+        if (const auto& pc = shaders_.pushConstant(computeSpirvPath_)) {
+            computePushConstants.emplace_back(
+                PushConstantRangeSpec{pc->stageFlags, pc->offset, pc->size});
+        }
+    }
+
+    const PipelineLayout& graphicsLayout =
+        pipelineLayouts_->getFor(layoutPaths, graphicsPushConstants);
+    graphicsLayout_ = &graphicsLayout;
+
+    pipelines_ = std::make_unique<PipelineLibrary>(rct_.device, shaders_);
+
+    if (!computeSpirvPath_.empty()) {
+        const PipelineLayout& computeLayout =
+            pipelineLayouts_->getFor(layoutPaths, computePushConstants);
+        computePipeline_ = &pipelines_->compute(
+            computeLayout, computeSpirvPath_, ComputePipelineSpec{});
+        platform::LogLocator::get().write(
+            platform::LogLevel::Info,
+            "[renderer] compute pipeline created: " + std::string(computeSpirvPath_));
+    }
+
+    GraphicsPipelineSpec initialSpec;
+    initialSpec.colorFormat = swapchain_->getSurfaceFormat().format;
+    initialSpec.depthFormat = swapchain_->depthFormat();
+    initialSpec.msaaSamples = settings_.msaaSamples;
+    rasterPipeline_ = &pipelines_->graphics(graphicsLayout, spirvPath_, initialSpec);
+    platform::LogLocator::get().write(
+        platform::LogLevel::Info,
+        "[renderer] raster pipeline created: " + std::string(spirvPath_));
+
+    recorder_ = std::make_unique<CommandRecorder>(rhiFactory_);
+}
+
+void Renderer::ensureRasterPipeline(const RenderTarget& target) {
+    GraphicsPipelineSpec spec;
+    spec.colorFormat = target.colorFormat;
+    spec.depthFormat = target.depthFormat;
+    spec.msaaSamples = target.samples;
+
+    const Pipeline* next = &pipelines_->graphics(*graphicsLayout_, spirvPath_, spec);
+    if (next != rasterPipeline_) {
+        rasterPipeline_ = next;
+        platform::LogLocator::get().write(
+            platform::LogLevel::Info,
+            "[renderer] raster pipeline changed: " + std::string(spirvPath_));
+    }
 }
 
 void Renderer::cleanup() {
@@ -290,14 +381,89 @@ std::optional<Renderer::FrameContext> Renderer::beginFrame() {
     rct_.device.resetFences(*frames_->inFlightFence(frameCursor_));
     frames_->commandBuffer(frameCursor_).reset();
 
-    return FrameContext{imageIndex, frameCursor_};
+    const RenderTarget target{
+        .presentImage = swapchain_->Image_.images[imageIndex],
+        .presentView  = *swapchain_->Image_.views[imageIndex],
+        .msaaImage    = swapchain_->getcolorImage(),
+        .msaaView     = *swapchain_->getColorImageView(),
+        .depthImage   = swapchain_->getDepthImage(),
+        .depthView    = *swapchain_->getDepthImageView(),
+        .extent       = swapchain_->getExtent(),
+        .colorFormat  = swapchain_->getSurfaceFormat().format,
+        .depthFormat  = swapchain_->depthFormat(),
+        .samples      = settings_.msaaSamples,
+    };
+
+    return FrameContext{imageIndex, frameCursor_, target};
 }
 
 void Renderer::record(FrameContext& ctx, std::span<const RenderItem> items) {
-    recorder_->record(frames_->commandBuffer(ctx.frameIndex),
-                      ctx.imageIndex,
-                      frames_->descriptorSetHandles()[ctx.frameIndex],
-                      items);
+    ensureRasterPipeline(ctx.target);
+
+    vk::raii::CommandBuffer& cmd = frames_->commandBuffer(ctx.frameIndex);
+    const vk::DescriptorSet frameSet =
+        frames_->descriptorSetHandles()[ctx.frameIndex];
+    const PassContext passCtx{cmd, ctx.target, frameSet};
+
+    recorder_->begin(cmd, ctx.target);
+
+    if (computePipeline_) {
+        ComputePass computePass{*computePipeline_,
+                                ComputeBindings{2, nullptr},
+                                vk::Extent3D{1, 1, 1}};
+        computePass.record(passCtx);
+    }
+
+    const RasterBucket bucket{rasterPipeline_, items};
+    RasterPass rasterPass{std::span<const RasterBucket>{&bucket, 1}};
+    rasterPass.record(passCtx);
+
+    recorder_->end(cmd, ctx.target);
+}
+// FPS limit
+void Renderer::resetCpuPacer() noexcept {
+    cpuPacerPrimed_ = false;
+    lastSubmit_ = {};
+}
+void Renderer::paceBoreSubmit() {
+    using Clock = platform::SteadyClock;
+
+    const double targetFPS = settings_.targetFPS;
+    if (!std::isfinite(targetFPS) || targetFPS <= 0.0 ||
+        targetFPS > 1'000'000.0) {
+        resetCpuPacer();
+        return;
+    }
+    double effectiveFPS = targetFPS;
+    const uint64_t presentDuration = presentController.targetDuration(targetFPS);
+    if (presentDuration != 0 && presentDuration != UINT64_MAX) {
+        const double presentCapFPS = 1.0e9 / static_cast<double>(presentDuration);
+        if (std::isfinite(presentCapFPS) && presentCapFPS > 0.0) {
+            effectiveFPS = std::min(effectiveFPS, presentCapFPS);
+        }
+    }
+
+    const auto period = std::chrono::duration_cast<Clock::duration>(
+        std::chrono::duration<double>(1.0 / effectiveFPS)
+    );
+    if(period <= Clock::duration::zero()) {
+        resetCpuPacer();
+        return;
+    }
+
+    auto now = Clock::now();
+    if(!cpuPacerPrimed_) {
+        cpuPacerPrimed_ = true;
+        lastSubmit_ = now;
+        return;
+    }
+
+    const auto deadline = lastSubmit_ + period;
+    platform::sleepUntil(deadline);
+    while(Clock::now() < deadline) platform::relax();
+
+    lastSubmit_ = deadline;
+    if(now - deadline < period) lastSubmit_ = Clock::now();
 }
 
 void Renderer::endFrame(const FrameContext& ctx) {
@@ -311,17 +477,17 @@ void Renderer::endFrame(const FrameContext& ctx) {
     timelineSubmitInfo.setSignalSemaphoreValueCount(2)
                       .setPSignalSemaphoreValues(signalValues.data());
 
-    vk::PipelineStageFlags waitDestinationStageMask(
-        vk::PipelineStageFlagBits::eColorAttachmentOutput);
     const vk::SubmitInfo submitInfo = [&] {
         vk::SubmitInfo info;
         info.setWaitSemaphores(*frames_->presentComplete(ctx.frameIndex))
-            .setWaitDstStageMask(waitDestinationStageMask)
+            .setWaitDstStageMask(kPresentWaitStage)
             .setCommandBuffers(*frames_->commandBuffer(ctx.frameIndex))
             .setSignalSemaphores(signalSemaphores)
             .setPNext(&timelineSubmitInfo);
         return info;
     }();
+
+    paceBoreSubmit();
     graphicsPool_.queue().submit(submitInfo, *frames_->inFlightFence(ctx.frameIndex));
 
     vk::PresentInfoKHR presentInfoKHR{};
@@ -334,25 +500,20 @@ void Renderer::endFrame(const FrameContext& ctx) {
     const uint64_t targetDuration = presentController.targetDuration(settings_.targetFPS);
 
     if (targetDuration != 0 && support.presentAtRelative) {
-        // NEAREST_REFRESH_CYCLE lets the implementation realign a target that is a
-        // hair off a refresh boundary instead of silently landing a whole cycle
-        // later (a visible micro-stutter on FRR panels).
         timingInfo.setFlags(vk::PresentTimingInfoFlagBitsEXT::ePresentAtRelativeTime |
                             vk::PresentTimingInfoFlagBitsEXT::ePresentAtNearestRefreshCycle)
                   .setTargetTime(targetDuration)
                   .setTimeDomainId(presentController.timeDomainId())
-                  .setPresentStageQueries({})
                   .setTargetTimeDomainPresentStage(presentController.presentStage());
         presentInfoKHR.setPNext(&timingInfo);
     }
-    const auto result = graphicsPool_.queue().presentKHR(presentInfoKHR);
+    auto result = graphicsPool_.queue().presentKHR(presentInfoKHR);
     if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR ||
         framebufferResized) {
         framebufferResized = false;
         recreateAfterResize();
-    } else {
-        assert(result == vk::Result::eSuccess);
     }
+    else assert(result == vk::Result::eSuccess);
 
     frameCursor_ = (frameCursor_ + 1) % kMaxFramesInFlight;
 }
