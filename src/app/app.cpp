@@ -109,6 +109,7 @@ void App::initRhi() {
     deviceInfo.requiredDeviceExtensions_ = config_.requiredDeviceExtensions;
     deviceInfo.appName = "No Engine";
     deviceInfo.enableValidationLayers_ = config_.enableValidationLayers;
+    deviceInfo.validationLayers_       = config_.validationLayers;
     deviceInfo.instanceExtensions_ = window_->requiredInstanceExtensions();
     vulkanDevice_.init(deviceInfo);
 

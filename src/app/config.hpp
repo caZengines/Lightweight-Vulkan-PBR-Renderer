@@ -41,7 +41,7 @@ struct Config {
     vk::PresentModeKHR preferredPresentMode   = vk::PresentModeKHR::eFifo;
     // Frame-pacing target for VK_EXT_present_timing (ignored if the surface does
     // not support present-at-relative-time). 0 disables the request.
-    double             targetFPS              = 120.0;
+    double             targetFPS              = 144.0;
 
     // Absolute asset root (project root).
     std::string assetRoot;

@@ -140,7 +140,7 @@ private:
     std::chrono::steady_clock::time_point       lastSubmit_{};
     bool                                        cpuPacerPrimed_ = false;
 
-    void paceBoreSubmit();
+    void paceBeforeSubmit();
     void resetCpuPacer() noexcept;
 
     enum class RefreshMode : uint8_t {
@@ -164,9 +164,13 @@ private:
             [[nodiscard]] std::optional<uint64_t> samplePresentStageTime(vk::Device device,
                                                                         vk::SwapchainKHR swapchain) const;
 
-            // Minimum time (ns) one image must stay visible to cap the present
-            // rate at targetFPS. 0 = no timing request should be sent (which
-            // also means the app has to pace itself, e.g. with FIFO present).
+            // Frame period (ns) to hand to VkPresentTimingsInfoEXT for targetFPS,
+            // 0 = send no timing request (FIFO/the CPU pacer alone limit the rate).
+            // Returns the raw 1e9/targetFPS under FRR: the value is a per-frame
+            // minimum visible time, so snapping it to whole refresh cycles would
+            // cap the rate below the target (144 fps on 300 Hz -> 3 cycles -> 100).
+            // Rate ownership: paceBeforeSubmit() sets the average cadence, this
+            // value only tells the presentation engine how to align to vblank.
             [[nodiscard]] uint64_t targetDuration(double targetFPS) const;
 
             [[nodiscard]] RefreshMode mode() const noexcept { return mode_; }
@@ -195,7 +199,6 @@ private:
             vk::PresentStageFlagsEXT presentStage_ = {};
 
             void selectTimeDomain();
-            uint64_t snapToRefreshCycles(uint64_t duration) const;
             uint64_t computeVRRTargetTime(uint64_t duration) const;
     };
     PresentTimingController presentController;

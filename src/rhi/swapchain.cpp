@@ -59,7 +59,7 @@ void Swapchain::createSwapChain(const vk::raii::SurfaceKHR& surface, platform::W
       .setClipped(true)
       .setOldSwapchain(nullptr);
     // Timing queries and present-at-* requests only exist on a swapchain that
-    // opted in, so the flag goes on exactly when the surface can honor it.
+    // opted in
     if (timingCaps_.presentTimingSupported) {
         ci.setFlags(vk::SwapchainCreateFlagBitsKHR::ePresentTimingEXT);
     }

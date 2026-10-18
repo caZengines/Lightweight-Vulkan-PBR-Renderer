@@ -10,7 +10,6 @@
 #include <cstring>
 #include <stdexcept>
 #include <string>
-#include <thread>
 
 #define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
@@ -204,20 +203,6 @@ std::optional<uint64_t> Renderer::PresentTimingController::samplePresentStageTim
     return timestamp;
 }
 
-uint64_t Renderer::PresentTimingController::snapToRefreshCycles(uint64_t duration) const {
-    if(interval_ == 0 || duration == 0) return 0;
-    // The presentation engine can only hold an image for a whole number of
-    // refresh cycles, so a request always lands on a cycle boundary. Round to the
-    // nearest cycle: rounding up would silently halve the frame rate (60 Hz panel,
-    // 120 FPS target -> 33.3 ms = 30 FPS), and rounding down would ask for a
-    // shorter visible time than the display can actually deliver.
-    uint64_t cycles = 1;
-    if(duration > interval_) {
-        cycles = (duration + interval_ / 2) / interval_;
-    }
-    return cycles * interval_;
-}
-
 uint64_t Renderer::PresentTimingController::targetDuration(double targetFPS) const {
     if (mode_ == RefreshMode::UNKNOWN || targetFPS <= 0.0 || duration_ == 0) return 0;
     // Without surface support the driver ignores the request entirely.
@@ -226,7 +211,13 @@ uint64_t Renderer::PresentTimingController::targetDuration(double targetFPS) con
     if(mode_ == RefreshMode::VRR) {
         return computeVRRTargetTime(duration_);
     }
-    return snapToRefreshCycles(targetPeriod_);
+    // Under FRR the request is a per-frame *minimum visible time*, so rounding it
+    // to whole refresh cycles silently becomes a rate cap (144 fps on a 300 Hz
+    // panel rounds to 3 cycles = 100 fps, and the 2.5/1.5-cycle cases are decided
+    // by a +-1 ns difference in the driver-reported refresh duration). The CPU
+    // pacer owns the average rate, so hand the raw period to the presentation
+    // engine and let it align that to the nearest vblank.
+    return targetPeriod_;
 }
 
 uint64_t Renderer::PresentTimingController::computeVRRTargetTime(uint64_t duration) const {
@@ -420,12 +411,19 @@ void Renderer::record(FrameContext& ctx, std::span<const RenderItem> items) {
 
     recorder_->end(cmd, ctx.target);
 }
-// FPS limit
+// Pacing contract for one frame:
+//   - paceBeforeSubmit() owns the *average* cadence. It spaces submissions by
+//     1/targetFPS and accumulates the deadline so sleep overshoot does not leak
+//     into a lower average rate; a frame that is already late re-syncs instead of
+//     trying to catch up.
+//   - presentController.targetDuration() only tells the presentation engine when
+//     an image may become visible (VkPresentTimingsInfoEXT), so it must stay the
+//     raw period: any snapping to whole refresh cycles turns into a rate cap.
 void Renderer::resetCpuPacer() noexcept {
     cpuPacerPrimed_ = false;
     lastSubmit_ = {};
 }
-void Renderer::paceBoreSubmit() {
+void Renderer::paceBeforeSubmit() {
     using Clock = platform::SteadyClock;
 
     const double targetFPS = settings_.targetFPS;
@@ -434,17 +432,8 @@ void Renderer::paceBoreSubmit() {
         resetCpuPacer();
         return;
     }
-    double effectiveFPS = targetFPS;
-    const uint64_t presentDuration = presentController.targetDuration(targetFPS);
-    if (presentDuration != 0 && presentDuration != UINT64_MAX) {
-        const double presentCapFPS = 1.0e9 / static_cast<double>(presentDuration);
-        if (std::isfinite(presentCapFPS) && presentCapFPS > 0.0) {
-            effectiveFPS = std::min(effectiveFPS, presentCapFPS);
-        }
-    }
-
-    const auto period = std::chrono::duration_cast<Clock::duration>(
-        std::chrono::duration<double>(1.0 / effectiveFPS)
+    const auto period = std::chrono::round<Clock::duration>(
+        std::chrono::duration<double>(1.0 / targetFPS)
     );
     if(period <= Clock::duration::zero()) {
         resetCpuPacer();
@@ -459,11 +448,14 @@ void Renderer::paceBoreSubmit() {
     }
 
     const auto deadline = lastSubmit_ + period;
+    if (deadline <= now) {
+        lastSubmit_ = now;
+        return;
+    }
     platform::sleepUntil(deadline);
     while(Clock::now() < deadline) platform::relax();
 
     lastSubmit_ = deadline;
-    if(now - deadline < period) lastSubmit_ = Clock::now();
 }
 
 void Renderer::endFrame(const FrameContext& ctx) {
@@ -487,7 +479,7 @@ void Renderer::endFrame(const FrameContext& ctx) {
         return info;
     }();
 
-    paceBoreSubmit();
+    paceBeforeSubmit();
     graphicsPool_.queue().submit(submitInfo, *frames_->inFlightFence(ctx.frameIndex));
 
     vk::PresentInfoKHR presentInfoKHR{};
@@ -495,7 +487,8 @@ void Renderer::endFrame(const FrameContext& ctx) {
                   .setSwapchains(*swapchain_->swapChain())
                   .setImageIndices(ctx.imageIndex);
 
-    vk::PresentTimingInfoEXT timingInfo{};
+    vk::PresentTimingInfoEXT  timingInfo{};
+    vk::PresentTimingsInfoEXT timingsInfo{};
     const auto& support = presentController.surfaceSupport();
     const uint64_t targetDuration = presentController.targetDuration(settings_.targetFPS);
 
@@ -505,7 +498,8 @@ void Renderer::endFrame(const FrameContext& ctx) {
                   .setTargetTime(targetDuration)
                   .setTimeDomainId(presentController.timeDomainId())
                   .setTargetTimeDomainPresentStage(presentController.presentStage());
-        presentInfoKHR.setPNext(&timingInfo);
+        timingsInfo.setSwapchainCount(1).setPTimingInfos(&timingInfo);
+        presentInfoKHR.setPNext(&timingsInfo);
     }
     auto result = graphicsPool_.queue().presentKHR(presentInfoKHR);
     if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR ||
