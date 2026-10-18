@@ -63,6 +63,8 @@ class PipelineLayout final {
 
         [[nodiscard]] vk::PipelineLayout getHandle() const noexcept { return *layout_; }
         [[nodiscard]] const PipelineLayoutSpec& spec() const { return spec_; }
+        // Union of the stage flags of all push-constant ranges.
+        [[nodiscard]] vk::ShaderStageFlags pushConstantStages() const noexcept;
 
     private:
         explicit PipelineLayout(RenderContext& rct, PipelineLayoutSpec layoutSpec);

@@ -58,7 +58,7 @@ public:
     [[nodiscard]] vk::raii::SwapchainKHR&   swapChain()              { return swapChain_; }
 
     // Present-timing capabilities of the surface this swapchain was built on.
-    // Queried once per swapchain creation (surface support never changes).
+    // Queried once per swapchain creation.
     [[nodiscard]] const SurfaceTimingCapabilities& timingCapabilities() const {
         return timingCaps_;
     }

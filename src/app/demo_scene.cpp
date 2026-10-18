@@ -66,7 +66,7 @@ void DemoScene::buildglTFdemo(const Sampler& albedoSampler, const Sampler& norma
             std::move(handles), data, albedoSampler, normalSampler, registry));
     }
 
-    glm::mat4 placement = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 1.0f, 1.0f));
+    glm::mat4 placement = glm::scale(glm::mat4(1.0f), glm::vec3(.1f, .1f, .1f));
 
     glm::vec3 aabbMin(std::numeric_limits<float>::max());
     glm::vec3 aabbMax(std::numeric_limits<float>::lowest());

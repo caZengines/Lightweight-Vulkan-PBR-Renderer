@@ -111,7 +111,7 @@ void VulkanDevice::pickPhysicalDevice(){
         setSampleCount();
     }
     else{
-        throw std::runtime_error("failed to find a suitable GPU!");
+        throw std::runtime_error("failed to find a suitable GPU! ");
     }
 }
 bool VulkanDevice::isDeviceSuitable(vk::raii::PhysicalDevice const &physicalDevice){

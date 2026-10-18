@@ -31,13 +31,14 @@ struct Config {
     std::vector<const char*> requiredDeviceExtensions = {
         vk::KHRSwapchainExtensionName,
         vk::KHRPresentId2ExtensionName,
-        vk::EXTPresentTimingExtensionName
+        vk::EXTPresentTimingExtensionName,
+        vk::KHRCalibratedTimestampsExtensionName
     };
 
     // --- Rendering quality / presentation ---
     // msaaSamples is clamped to device-supported counts at renderer assembly.
     uint32_t           msaaSamples            = 4;
-    vk::PresentModeKHR preferredPresentMode   = vk::PresentModeKHR::eMailbox;
+    vk::PresentModeKHR preferredPresentMode   = vk::PresentModeKHR::eFifo;
     // Frame-pacing target for VK_EXT_present_timing (ignored if the surface does
     // not support present-at-relative-time). 0 disables the request.
     double             targetFPS              = 120.0;
@@ -46,7 +47,8 @@ struct Config {
     std::string assetRoot;
 
     // Asset paths — stored relative, resolved to absolute in the constructor.
-    std::string modelPath         = "assets/models/free_1975_porsche_911_930_turbo.glb";
+    std::string logPath           = "logs/engine.log";
+    std::string modelPath         = "assets/models/tiny_isometric_room/scene.gltf";
     std::string rockPath          = "assets/models/rock.obj";
     std::string planetPath        = "assets/models/planet.obj";
     std::string texturePath       = "assets/textures/container.png";
@@ -54,9 +56,11 @@ struct Config {
     std::string marsTexturePath   = "assets/textures/mars.png";
     std::string normalTexturePath = "assets/textures/container_normal_OpenGL.png";
     std::string shaderPath        = "shaders/raster/slang.spv";
+    std::string computeShaderPath = "shaders/compute/compute.spv";
 
     Config() {
         assetRoot         = platform::PlatformUtils::assetRoot();
+        logPath           = platform::PlatformUtils::assetPath(logPath);
         modelPath         = platform::PlatformUtils::assetPath(modelPath);
         rockPath          = platform::PlatformUtils::assetPath(rockPath);
         planetPath        = platform::PlatformUtils::assetPath(planetPath);
@@ -65,6 +69,7 @@ struct Config {
         marsTexturePath   = platform::PlatformUtils::assetPath(marsTexturePath);
         normalTexturePath = platform::PlatformUtils::assetPath(normalTexturePath);
         shaderPath        = platform::PlatformUtils::assetPath(shaderPath);
+        computeShaderPath = platform::PlatformUtils::assetPath(computeShaderPath);
     }
 };
 

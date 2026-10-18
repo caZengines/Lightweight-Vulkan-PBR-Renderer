@@ -12,14 +12,8 @@ namespace render {
 class InstanceBuffer;
 class Material;
 
-// Pure-data draw unit: scene::Scene fills these, CommandRecorder consumes
-// them. Flat POD on purpose — zero virtuals and no pointer chasing in the hot
-// recording loop (plan §2.6, data-oriented design). No Vulkan types: instance
-// streams are referenced through render::InstanceBuffer.
-//
-// Transitional shape: raw mesh/material pointers serve the current raster
-// path; the planned ray-tracing pipeline (post-refactor, see plan doc §6)
-// replaces draw items with TLAS instances built from the same scene data.
+// Pure-data draw unit: scene::Scene fills these, RasterPass consumes them.
+// Flat POD with no Vulkan types; instance streams use render::InstanceBuffer.
 struct RenderItem {
     const resource::MeshGPU*           mesh      = nullptr;
     const Material*                    material  = nullptr;

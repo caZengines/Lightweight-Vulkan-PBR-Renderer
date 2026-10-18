@@ -18,9 +18,8 @@ void CameraController::setWindow(platform::Window& window) {
     window_ = &window;
 }
 
-// Navigation mode is derived per frame from the ActionContext — no persistent
-// mode state here. The action layer guarantees gesture mutual exclusion and
-// gates the roam movement bindings, so plain if/else chains are sufficient.
+// Navigation mode is derived per frame from the ActionContext. The action layer guarantees gesture mutual exclusion and
+// gates the roam movement bindings
 void CameraController::update(const ActionContext& actions, const platform::Input& input, float deltaTime) {
     scene::Camera& camera = cameras_.active();
 

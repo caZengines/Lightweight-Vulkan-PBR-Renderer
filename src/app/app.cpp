@@ -15,7 +15,10 @@
 #include "resource/shader_library.hpp"
 #include "rhi/descriptor_writer.hpp"
 
+#include <array>
+#include <span>
 #include <stdexcept>
+#include <string_view>
 
 namespace {
 
@@ -197,14 +200,14 @@ void App::initRender() {
 
     shaderLibrary_ = std::make_unique<resource::ShaderLibrary>(rct);
 
-    // --- The set table: hand-made set 0 + reflected set 1+ (D4) ---
-    // The app builds it because the pool budget and the material sets both need
-    // it before the renderer exists; ownership then moves into the renderer, so
-    // the pipeline layouts are built against exactly this table.
+    // Set table: hand-made set 0 + reflected set 1+.
     auto setLayoutLibrary = std::make_unique<render::DescriptorSetLayoutLibrary>(
         rct, *shaderLibrary_, render::globalSetBindings());
 
-    const std::string_view layoutPaths[]{config_.shaderPath};
+    const std::array<std::string_view, 2> layoutPathStorage{
+        config_.shaderPath, config_.computeShaderPath};
+    const std::span<const std::string_view> layoutPaths{
+        layoutPathStorage.data(), config_.computeShaderPath.empty() ? 1u : 2u};
     const render::LayoutSet& layouts = setLayoutLibrary->layoutSetFor(layoutPaths);
     if (layouts.bySetIndex.size() < 2) {
         throw std::runtime_error("shader declares no set 1; material sets cannot be built");
@@ -247,6 +250,7 @@ void App::initRender() {
         .surface          = surface_->handle(),
         .window           = *window_,
         .spirvPath        = config_.shaderPath,
+        .computeSpirvPath = config_.computeShaderPath,
         .factory          = *rhiFactory_,
     };
     renderer_ = std::make_unique<render::Renderer>(std::move(deps), settings);

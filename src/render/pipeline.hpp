@@ -7,8 +7,6 @@
 
 #include "render/pipeline_spec.hpp"
 
-struct RenderContext;
-
 namespace resource {
 class ShaderLibrary;
 }  // namespace resource
@@ -17,38 +15,57 @@ namespace render {
 
 class PipelineLayout;
 
-// One compiled graphics pipeline described by GraphicsPipelineSpec.
-//
-// Shaders come from resource::ShaderLibrary (stage name per spec.vertEntry/
-// fragEntry — no auto-sync of those names, they are the C++↔shader contract) and
-// the layout comes from render::PipelineLayoutLibrary.  Pipeline owns neither:
-// both outlive it, which is what lets the same layout be shared by the compute
-// family later.
+class Pipeline;
+[[nodiscard]] Pipeline createGraphicsPipeline(
+    vk::raii::Device& device,
+    const PipelineLayout& layout,
+    const resource::ShaderLibrary& shaders,
+    std::string_view spirvPath,
+    const GraphicsPipelineSpec& spec);
+[[nodiscard]] Pipeline createComputePipeline(
+    vk::raii::Device& device,
+    const PipelineLayout& layout,
+    const resource::ShaderLibrary& shaders,
+    std::string_view spirvPath,
+    const ComputePipelineSpec& spec);
+
+// Owns one compiled Vulkan pipeline; borrows its PipelineLayout.
 class Pipeline final {
 public:
-    Pipeline(RenderContext& rct,
-             const PipelineLayout& layout,
-             const resource::ShaderLibrary& shaders,
-             std::string_view spirvPath,
-             const GraphicsPipelineSpec& spec);
+    Pipeline(const Pipeline&) = delete;
+    Pipeline& operator=(const Pipeline&) = delete;
+    Pipeline(Pipeline&&) noexcept = default;
+    Pipeline& operator=(Pipeline&&) noexcept = default;
     ~Pipeline() = default;
 
-    [[nodiscard]] vk::Pipeline       binding() const { return pipeline_; }
-    [[nodiscard]] vk::PipelineLayout layout()  const { return layoutHandle_; }
-
-    // Stages covered by the layout's push constant ranges (empty when the shader
-    // declares none); recorders gate pushes on this.  Union over all ranges.
-    [[nodiscard]] vk::ShaderStageFlags pushConstantStageFlags() const { return pushConstantStageFlags_; }
+    [[nodiscard]] vk::Pipeline binding() const noexcept { return *pipeline_; }
+    [[nodiscard]] vk::PipelineLayout layout() const noexcept { return layout_; }
+    [[nodiscard]] vk::PipelineBindPoint bindPoint() const noexcept { return bindPoint_; }
+    [[nodiscard]] vk::ShaderStageFlags pushConstantStages() const noexcept {
+        return pushConstantStages_;
+    }
 
 private:
-    void create(const resource::ShaderLibrary& shaders,
-                std::string_view spirvPath,
-                const GraphicsPipelineSpec& spec);
+    friend Pipeline createGraphicsPipeline(vk::raii::Device&,
+                                           const PipelineLayout&,
+                                           const resource::ShaderLibrary&,
+                                           std::string_view,
+                                           const GraphicsPipelineSpec&);
+    friend Pipeline createComputePipeline(vk::raii::Device&,
+                                          const PipelineLayout&,
+                                          const resource::ShaderLibrary&,
+                                          std::string_view,
+                                          const ComputePipelineSpec&);
 
-    RenderContext&                rct_;
-    vk::PipelineLayout            layoutHandle_ = nullptr;
-    vk::ShaderStageFlags          pushConstantStageFlags_{};
-    vk::raii::Pipeline            pipeline_ = nullptr;
+    Pipeline(vk::raii::Pipeline&& pipeline,
+             vk::PipelineLayout layout,
+             vk::PipelineBindPoint bindPoint,
+             vk::ShaderStageFlags pushConstantStages);
+
+    vk::raii::Pipeline    pipeline_;
+    vk::PipelineLayout    layout_ = nullptr;
+    vk::PipelineBindPoint bindPoint_ = vk::PipelineBindPoint::eGraphics;
+    vk::ShaderStageFlags  pushConstantStages_{};
 };
 
 }  // namespace render

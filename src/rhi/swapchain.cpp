@@ -4,13 +4,11 @@
 #include <algorithm>
 #include <cassert>
 #include <limits>
-#include <string>
 
 #define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
 
-#include "platform/log.hpp"
 #include "platform/window.hpp"
 #include "rhi/rhi_factory.hpp"
 #include "render_context.hpp"
@@ -73,19 +71,11 @@ void Swapchain::createSwapChain(const vk::raii::SurfaceKHR& surface, platform::W
 // Device features (VkPhysicalDevicePresentTimingFeaturesEXT) only say the
 // implementation *could* do present timing. Whether this particular
 // VkSurfaceKHR can is a separate question: on Windows the desktop compositor
-// may not cooperate even though the GPU does. Ask the surface directly by
-// extending VkSurfaceCapabilities2KHR, otherwise every present-at-* request is
-// silently dropped by the driver and frame pacing appears to do nothing.
+// may not cooperate even though the GPU does. 
 void Swapchain::querySurfaceTimingCapabilities(const vk::raii::SurfaceKHR& surface) {
-    timingCaps_ = SurfaceTimingCapabilities{};
-
     vk::PhysicalDeviceSurfaceInfo2KHR surfaceInfo{};
     surfaceInfo.setSurface(*surface);
 
-    // PresentTimingSurfaceCapabilitiesEXT only reaches the driver when it is
-    // linked into the pNext chain of SurfaceCapabilities2KHR. The chain-returning
-    // overload builds that chain for us, so the queried struct cannot be
-    // forgotten.
     const vk::StructureChain<vk::SurfaceCapabilities2KHR,
                              vk::PresentTimingSurfaceCapabilitiesEXT>
         chain = rct_.physicalDevice

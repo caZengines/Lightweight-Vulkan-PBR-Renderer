@@ -1,85 +1,117 @@
 #include "render/pipeline.hpp"
 
-#include "resource/vertex.hpp"
-#include "resource/shader_library.hpp"
 #include "render/pipeline_layout_library.hpp"
-#include "render_context.hpp"
+#include "resource/shader_library.hpp"
+#include "resource/vertex.hpp"
+
 #include <array>
 #include <cstddef>
 #include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace {
 
 // Vertex layout consumed by the raster pipeline: binding 0 = mesh vertices,
-// binding 1 = per-instance model matrices.  The data structs stay GPU-free;
-// input layout is a pipeline concern.
+// binding 1 = per-instance model matrices.
 vk::VertexInputBindingDescription meshVertexBinding() {
     vk::VertexInputBindingDescription description;
-    description.setBinding(0).setStride(sizeof(resource::Vertex)).setInputRate(vk::VertexInputRate::eVertex);
+    description.setBinding(0)
+               .setStride(sizeof(resource::Vertex))
+               .setInputRate(vk::VertexInputRate::eVertex);
     return description;
 }
 
 std::array<vk::VertexInputAttributeDescription, 4> meshVertexAttributes() {
     vk::VertexInputAttributeDescription posAttribute;
-    posAttribute.setBinding(0).setLocation(0).setFormat(vk::Format::eR32G32B32Sfloat).setOffset(offsetof(resource::Vertex, pos));
+    posAttribute.setBinding(0).setLocation(0).setFormat(vk::Format::eR32G32B32Sfloat)
+                .setOffset(offsetof(resource::Vertex, pos));
     vk::VertexInputAttributeDescription uvAttribute;
-    uvAttribute.setBinding(0).setLocation(1).setFormat(vk::Format::eR32G32Sfloat).setOffset(offsetof(resource::Vertex, texCoord));
+    uvAttribute.setBinding(0).setLocation(1).setFormat(vk::Format::eR32G32Sfloat)
+               .setOffset(offsetof(resource::Vertex, texCoord));
     vk::VertexInputAttributeDescription norAttribute;
-    norAttribute.setBinding(0).setLocation(2).setFormat(vk::Format::eR8G8B8A8Snorm).setOffset(offsetof(resource::Vertex, normal));
+    norAttribute.setBinding(0).setLocation(2).setFormat(vk::Format::eR8G8B8A8Snorm)
+                .setOffset(offsetof(resource::Vertex, normal));
     vk::VertexInputAttributeDescription tanAttribute;
-    tanAttribute.setBinding(0).setLocation(3).setFormat(vk::Format::eR8G8B8A8Snorm).setOffset(offsetof(resource::Vertex, tangent));
+    tanAttribute.setBinding(0).setLocation(3).setFormat(vk::Format::eR8G8B8A8Snorm)
+                .setOffset(offsetof(resource::Vertex, tangent));
 
     return {posAttribute, uvAttribute, norAttribute, tanAttribute};
 }
 
 vk::VertexInputBindingDescription instanceBinding() {
     vk::VertexInputBindingDescription description;
-    description.setBinding(1).setStride(sizeof(resource::InstanceData)).setInputRate(vk::VertexInputRate::eInstance);
+    description.setBinding(1)
+               .setStride(sizeof(resource::InstanceData))
+               .setInputRate(vk::VertexInputRate::eInstance);
     return description;
 }
 
 std::array<vk::VertexInputAttributeDescription, 4> instanceAttributes() {
     std::array<vk::VertexInputAttributeDescription, 4> attribute;
-    // mat4 model = 4 × vec4, locations 4-7
     for (uint32_t i = 0; i < 4; ++i) {
-        attribute[i].setBinding(1).setLocation(4 + i).setFormat(vk::Format::eR32G32B32A32Sfloat)
+        attribute[i].setBinding(1)
+                    .setLocation(4 + i)
+                    .setFormat(vk::Format::eR32G32B32A32Sfloat)
                     .setOffset(sizeof(glm::vec4) * i);
     }
     return attribute;
+}
+
+const char* stageLabel(vk::ShaderStageFlagBits stage) {
+    switch (stage) {
+        case vk::ShaderStageFlagBits::eVertex:   return "vertex";
+        case vk::ShaderStageFlagBits::eFragment: return "fragment";
+        case vk::ShaderStageFlagBits::eCompute:  return "compute";
+        default:                                 return "other";
+    }
+}
+
+void requireStage(const vk::PipelineShaderStageCreateInfo& stageInfo,
+                  vk::ShaderStageFlagBits expected,
+                  std::string_view entryPoint,
+                  std::string_view spirvPath) {
+    if (stageInfo.stage == expected) return;
+    throw std::runtime_error("entry point '" + std::string(entryPoint) + "' in " +
+                             std::string(spirvPath) + " is a " +
+                             stageLabel(stageInfo.stage) + " stage, expected " +
+                             stageLabel(expected));
 }
 
 }  // namespace
 
 namespace render {
 
-Pipeline::Pipeline(RenderContext& rct,
-                   const PipelineLayout& layout,
-                   const resource::ShaderLibrary& shaders,
-                   std::string_view spirvPath,
-                   const GraphicsPipelineSpec& spec)
-    : rct_(rct), layoutHandle_(layout.getHandle()) {
-    if (spec.colorFormat == vk::Format::eUndefined || spec.depthFormat == vk::Format::eUndefined) {
+Pipeline::Pipeline(vk::raii::Pipeline&& pipeline,
+                   vk::PipelineLayout layout,
+                   vk::PipelineBindPoint bindPoint,
+                   vk::ShaderStageFlags pushConstantStages)
+    : pipeline_(std::move(pipeline)),
+      layout_(layout),
+      bindPoint_(bindPoint),
+      pushConstantStages_(pushConstantStages) {}
+
+Pipeline createGraphicsPipeline(vk::raii::Device& device,
+                                const PipelineLayout& layout,
+                                const resource::ShaderLibrary& shaders,
+                                std::string_view spirvPath,
+                                const GraphicsPipelineSpec& spec) {
+    if (spec.colorFormat == vk::Format::eUndefined ||
+        spec.depthFormat == vk::Format::eUndefined) {
         throw std::invalid_argument("GraphicsPipelineSpec requires color and depth formats");
     }
-
-    // B1: union over ALL declared ranges, not just the first.
-    for (const auto& pc : layout.spec().pushConstants) {
-        pushConstantStageFlags_ |= pc.stages;
+    if (spec.vertEntry.empty() || spec.fragEntry.empty()) {
+        throw std::invalid_argument("GraphicsPipelineSpec requires vertex and fragment entry points");
     }
 
-    create(shaders, spirvPath, spec);
-}
-
-void Pipeline::create(const resource::ShaderLibrary& shaders,
-                      std::string_view spirvPath,
-                      const GraphicsPipelineSpec& spec) {
-    // Stage create infos come from the library, which owns the module and throws
-    // (listing the available names) when an entry point is missing.
     const auto vertStageInfo = shaders.stage(spirvPath, spec.vertEntry);
     const auto fragStageInfo = shaders.stage(spirvPath, spec.fragEntry);
+    requireStage(vertStageInfo, vk::ShaderStageFlagBits::eVertex, spec.vertEntry, spirvPath);
+    requireStage(fragStageInfo, vk::ShaderStageFlagBits::eFragment, spec.fragEntry, spirvPath);
+
     const std::array<vk::PipelineShaderStageCreateInfo, 2> stages{vertStageInfo, fragStageInfo};
 
-    // dynamic state
     vk::PipelineViewportStateCreateInfo viewportState{};
     viewportState.setViewportCount(1).setScissorCount(1);
     std::array<vk::DynamicState, 2> dynamicStates{
@@ -87,7 +119,6 @@ void Pipeline::create(const resource::ShaderLibrary& shaders,
     vk::PipelineDynamicStateCreateInfo dynamicState{};
     dynamicState.setDynamicStates(dynamicStates);
 
-    // vertex input (mesh vertices + per-instance data)
     const auto vertexBindingDesc   = meshVertexBinding();
     const auto vertexAttribDesc    = meshVertexAttributes();
     const auto instanceBindingDesc = instanceBinding();
@@ -102,56 +133,48 @@ void Pipeline::create(const resource::ShaderLibrary& shaders,
     vertexInput.setVertexBindingDescriptions(bindingDescriptions)
                .setVertexAttributeDescriptions(attributeDescriptions);
 
-    // assembly
     vk::PipelineInputAssemblyStateCreateInfo inputAssembly{};
     inputAssembly.setTopology(spec.topology)
-                  .setPrimitiveRestartEnable(vk::False);
+                 .setPrimitiveRestartEnable(vk::False);
 
-    // rasterizer
     vk::PipelineRasterizationStateCreateInfo rasterizer{};
     rasterizer.setDepthClampEnable(vk::False)
               .setRasterizerDiscardEnable(vk::False)
               .setPolygonMode(vk::PolygonMode::eFill)
               .setCullMode(spec.cullMode)
-              .setFrontFace(vk::FrontFace::eCounterClockwise)
+              .setFrontFace(spec.frontFace)
               .setDepthBiasEnable(vk::False)
               .setLineWidth(1.0f);
 
-    // multisampling
     vk::PipelineMultisampleStateCreateInfo multisampling{};
     multisampling.setRasterizationSamples(spec.msaaSamples)
                  .setSampleShadingEnable(vk::False);
 
-    // depth / stencil
     vk::PipelineDepthStencilStateCreateInfo depthStencil{};
     depthStencil.setDepthTestEnable(spec.depthTest ? vk::True : vk::False)
                 .setDepthWriteEnable(spec.depthWrite ? vk::True : vk::False)
-                .setDepthCompareOp(vk::CompareOp::eLess)
+                .setDepthCompareOp(spec.depthCompareOp)
                 .setDepthBoundsTestEnable(vk::False)
                 .setStencilTestEnable(vk::False);
 
-    // color blending
     vk::PipelineColorBlendAttachmentState colorBlendAttachment{};
-    colorBlendAttachment.setBlendEnable(vk::True)
-                   .setSrcColorBlendFactor(vk::BlendFactor::eSrcAlpha)
-                   .setDstColorBlendFactor(vk::BlendFactor::eOneMinusSrcAlpha)
-                   .setColorBlendOp(vk::BlendOp::eAdd)
-                   .setSrcAlphaBlendFactor(vk::BlendFactor::eOne)
-                   .setDstAlphaBlendFactor(vk::BlendFactor::eZero)
-                   .setAlphaBlendOp(vk::BlendOp::eAdd)
-                   .setColorWriteMask(vk::ColorComponentFlagBits::eR |
-                                      vk::ColorComponentFlagBits::eG |
-                                      vk::ColorComponentFlagBits::eB |
-                                      vk::ColorComponentFlagBits::eA);
+    colorBlendAttachment.setBlendEnable(spec.blendEnable ? vk::True : vk::False)
+                       .setSrcColorBlendFactor(vk::BlendFactor::eSrcAlpha)
+                       .setDstColorBlendFactor(vk::BlendFactor::eOneMinusSrcAlpha)
+                       .setColorBlendOp(vk::BlendOp::eAdd)
+                       .setSrcAlphaBlendFactor(vk::BlendFactor::eOne)
+                       .setDstAlphaBlendFactor(vk::BlendFactor::eZero)
+                       .setAlphaBlendOp(vk::BlendOp::eAdd)
+                       .setColorWriteMask(vk::ColorComponentFlagBits::eR |
+                                          vk::ColorComponentFlagBits::eG |
+                                          vk::ColorComponentFlagBits::eB |
+                                          vk::ColorComponentFlagBits::eA);
     vk::PipelineColorBlendStateCreateInfo colorBlending{};
     colorBlending.setLogicOpEnable(vk::False)
                  .setLogicOp(vk::LogicOp::eCopy)
                  .setAttachmentCount(1)
                  .setPAttachments(&colorBlendAttachment);
 
-    // The pipeline layout is owned by PipelineLayoutLibrary and shared with the
-    // other pipeline families; Pipeline only borrows the handle.
-    // dynamic rendering
     vk::StructureChain<vk::GraphicsPipelineCreateInfo,
                        vk::PipelineRenderingCreateInfo> chain{};
     chain.get<vk::GraphicsPipelineCreateInfo>()
@@ -164,15 +187,41 @@ void Pipeline::create(const resource::ShaderLibrary& shaders,
          .setPMultisampleState(&multisampling)
          .setPColorBlendState(&colorBlending)
          .setPDynamicState(&dynamicState)
-         .setLayout(layoutHandle_)
+         .setLayout(layout.getHandle())
          .setRenderPass(nullptr);
     chain.get<vk::PipelineRenderingCreateInfo>()
          .setColorAttachmentCount(1)
          .setPColorAttachmentFormats(&spec.colorFormat)
          .setDepthAttachmentFormat(spec.depthFormat);
 
-    pipeline_ = vk::raii::Pipeline(rct_.device, nullptr,
-                                   chain.get<vk::GraphicsPipelineCreateInfo>());
+    vk::raii::Pipeline pipeline(device, nullptr,
+                                chain.get<vk::GraphicsPipelineCreateInfo>());
+    return Pipeline(std::move(pipeline),
+                    layout.getHandle(),
+                    vk::PipelineBindPoint::eGraphics,
+                    layout.pushConstantStages());
+}
+
+Pipeline createComputePipeline(vk::raii::Device& device,
+                               const PipelineLayout& layout,
+                               const resource::ShaderLibrary& shaders,
+                               std::string_view spirvPath,
+                               const ComputePipelineSpec& spec) {
+    if (spec.entryPoint.empty()) {
+        throw std::invalid_argument("ComputePipelineSpec requires an entry point");
+    }
+
+    const auto stageInfo = shaders.stage(spirvPath, spec.entryPoint);
+    requireStage(stageInfo, vk::ShaderStageFlagBits::eCompute, spec.entryPoint, spirvPath);
+
+    vk::ComputePipelineCreateInfo createInfo{};
+    createInfo.setStage(stageInfo).setLayout(layout.getHandle());
+
+    vk::raii::Pipeline pipeline(device, nullptr, createInfo);
+    return Pipeline(std::move(pipeline),
+                    layout.getHandle(),
+                    vk::PipelineBindPoint::eCompute,
+                    layout.pushConstantStages());
 }
 
 }  // namespace render

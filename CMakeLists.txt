@@ -15,7 +15,7 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
     # Debug/Release compiler flags
     set(CMAKE_CXX_FLAGS_DEBUG   "-g -O0 "                 CACHE STRING "Flags for Debug"   FORCE)
-    set(CMAKE_CXX_FLAGS_RELEASE "-O2 -march=native -DNDEBUG"                     CACHE STRING "Flags for Release" FORCE)
+    set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG"                     CACHE STRING "Flags for Release" FORCE)
     set(CMAKE_C_FLAGS_DEBUG     "-g -O0 "                 CACHE STRING "C Flags Debug"     FORCE)
     set(CMAKE_C_FLAGS_RELEASE   "-O2 -DNDEBUG"                     CACHE STRING "C Flags Release"   FORCE)
 endif()
@@ -61,9 +61,9 @@ function(add_slang_shaders TARGET SOURCE OUT)
     add_dependencies(main ${TARGET})
 endfunction()
 
-# Output lands beside its source, so the raster family owns shaders/raster/ and the
-# compute family will own shaders/compute/. app::Config::shaderPath points here.
+# Each pipeline family owns its shader directory; app::Config points at the SPIR-V.
 add_slang_shaders(CompileRasterShaders  shaders/raster/shader.slang    shaders/raster/slang.spv)
+add_slang_shaders(CompileComputeShaders shaders/compute/compute.slang  shaders/compute/compute.spv)
 
 target_compile_definitions(main 
     PUBLIC SPIRV_REFLECT_USE_SYSTEM_SPIRV_H
