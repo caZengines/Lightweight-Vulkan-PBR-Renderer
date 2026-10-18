@@ -30,6 +30,7 @@ file(GLOB_RECURSE SRC_LIST
     "${PROJECT_SOURCE_DIR}/src/*.cpp"
     "${PROJECT_SOURCE_DIR}/src/*.cc"
     "${PROJECT_SOURCE_DIR}/src/*.c" 
+    "${PROJECT_SOURCE_DIR}/res/version.rc"
 )
 
 add_executable(
