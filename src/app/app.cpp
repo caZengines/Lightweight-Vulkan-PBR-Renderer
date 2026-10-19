@@ -218,6 +218,7 @@ void App::initRender() {
     render::PoolBudgetBuilder budget;
     budget.add(layouts.bindingTables[0], render::kMaxFramesInFlight);
     budget.add(layouts.bindingTables[1], materialCount);
+    budget.add(layouts.bindingTables[2], 2);
     descriptorSetAllocator_ = std::make_unique<rhi::DescriptorSetAllocator>(
         vulkanDevice_.device, budget.build());
 
