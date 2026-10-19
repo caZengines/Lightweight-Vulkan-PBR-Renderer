@@ -2,14 +2,14 @@
 
 #include "app/config.hpp"
 #include "platform/log.hpp"
-#include "resource/gltf_importer.hpp"
+#include "resource/import/gltf_importer.hpp"
 #include "render/material.hpp"
-#include "resource/sampler.hpp"
-#include "resource/vertex.hpp"
-#include "resource/asset_library.hpp"
-#include "resource/resource_registry.hpp"
-#include "resource/texture_importer.hpp"
-#include "resource/upload_queue.hpp"
+#include "resource/gpu/sampler.hpp"
+#include "resource/data/vertex.hpp"
+#include "resource/asset/asset_library.hpp"
+#include "resource/asset/resource_registry.hpp"
+#include "resource/import/texture_importer.hpp"
+#include "resource/gpu/upload_queue.hpp"
 #include "scene/scene.hpp"
 
 #include <limits>

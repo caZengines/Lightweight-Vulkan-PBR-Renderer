@@ -3,9 +3,9 @@
 #include <stdexcept>
 
 #include "render/material.hpp"
-#include "render/instance_buffer.hpp"
-#include "resource/resource_registry.hpp"
-#include "resource/upload_queue.hpp"
+#include "render/frame/instance_buffer.hpp"
+#include "resource/asset/resource_registry.hpp"
+#include "resource/gpu/upload_queue.hpp"
 
 namespace scene {
 

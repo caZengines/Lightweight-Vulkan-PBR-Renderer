@@ -1,0 +1,15 @@
+#include "render/frame/instance_buffer.hpp"
+
+#include "resource/gpu/upload_queue.hpp"
+
+namespace render {
+
+InstanceBuffer::InstanceBuffer(resource::UploadQueue& queue, const std::vector<resource::InstanceData>& instances)
+    : count_(static_cast<uint32_t>(instances.size()))
+{
+    buffer_ = queue.uploadBuffer(instances.data(),
+                                 sizeof(resource::InstanceData) * instances.size(),
+                                 vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer);
+}
+
+}  // namespace render

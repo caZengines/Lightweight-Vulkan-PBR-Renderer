@@ -6,9 +6,9 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 
-#include "render/frame_uniforms.hpp"
-#include "resource/asset_handle.hpp"
-#include "resource/gltf_importer.hpp"
+#include "render/frame/frame_uniforms.hpp"
+#include "resource/asset/asset_handle.hpp"
+#include "resource/import/gltf_importer.hpp"
 
 
 class Sampler;

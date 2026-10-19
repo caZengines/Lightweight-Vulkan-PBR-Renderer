@@ -7,8 +7,8 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 
-#include "resource/vertex.hpp"  // InstanceData (pure data: one mat4 per instance)
-#include "resource/asset_handle.hpp"
+#include "resource/data/vertex.hpp"  // InstanceData (pure data: one mat4 per instance)
+#include "resource/asset/asset_handle.hpp"
 #include "scene/transform.hpp"
 
 

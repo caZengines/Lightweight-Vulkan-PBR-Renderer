@@ -1,6 +1,6 @@
 #include "render/material.hpp"
-#include "resource/resource_registry.hpp"
-#include "rhi/descriptor_write.hpp"
+#include "resource/asset/resource_registry.hpp"
+#include "rhi/descriptor/descriptor_write.hpp"
 #include "vulkan/vulkan.hpp"
 
 namespace render {

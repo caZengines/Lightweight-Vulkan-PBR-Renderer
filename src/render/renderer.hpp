@@ -13,13 +13,13 @@
 #include <vulkan/vulkan_raii.hpp>
 #include "vulkan/vulkan.hpp"
 
-#include "render/frame_uniforms.hpp"
-#include "render/render_item.hpp"
-#include "render/render_settings.hpp"
-#include "render/render_target.hpp"
-#include "render_context.hpp"
-#include "rhi/descriptor_set_allocator.hpp"
-#include "rhi/vma_allocator.hpp"
+#include "render/frame/frame_uniforms.hpp"
+#include "render/frame/render_item.hpp"
+#include "render/frame/render_settings.hpp"
+#include "render/frame/render_target.hpp"
+#include "rhi/device/render_context.hpp"
+#include "rhi/descriptor/descriptor_set_allocator.hpp"
+#include "rhi/memory/vma_allocator.hpp"
 
 namespace platform {
 class Window;

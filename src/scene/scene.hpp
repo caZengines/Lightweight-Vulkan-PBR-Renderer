@@ -4,7 +4,7 @@
 #include <span>
 #include <vector>
 
-#include "render/render_item.hpp"  // the layer contract; Vulkan-free by design
+#include "render/frame/render_item.hpp"  // the layer contract; Vulkan-free by design
 #include "scene/scene_object.hpp"
 
 namespace scene {

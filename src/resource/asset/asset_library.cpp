@@ -1,0 +1,132 @@
+#include "resource/asset/asset_library.hpp"
+
+#include "resource/import/mesh_importer.hpp"
+#include "resource/import/texture_importer.hpp"
+#include "platform/log.hpp"
+
+namespace {
+    using log = platform::LogLocator;
+}
+
+namespace resource {
+
+AssetHandle AssetLibrary::loadMesh(const std::string& path) {
+    auto it = paths_.find(path);
+    if (it != paths_.end()) {
+        ++refCounts_[it->second];
+        log::get().write(platform::LogLevel::Info,
+            "AssetLibrary: mesh cache hit: " + path);
+        return AssetHandle(this, it->second);
+    }
+
+    MeshData data = MeshImporter::load(path);
+    const uint32_t id = registry_.createMeshGPU(data);
+    paths_[path] = id;
+    pathById_[id] = path;
+    refCounts_[id] = 1;
+    log::get().write(platform::LogLevel::Info,
+        "AssetLibrary: imported mesh: " + path + " (" +
+        std::to_string(data.vertices().size()) + " vertices, " +
+        std::to_string(data.indices().size()) + " indices)");
+    return AssetHandle(this, id);
+}
+
+AssetHandle AssetLibrary::loadMeshData(const std::string& cacheKey, const MeshData& data) {
+    auto it = paths_.find(cacheKey);
+    if (it != paths_.end()) {
+        ++refCounts_[it->second];
+        log::get().write(platform::LogLevel::Info,
+            "AssetLibrary: mesh cache hit: " + cacheKey);
+        return AssetHandle(this, it->second);
+    }
+
+    const uint32_t id = registry_.createMeshGPU(data);
+    paths_[cacheKey] = id;
+    pathById_[id] = cacheKey;
+    refCounts_[id] = 1;
+    log::get().write(platform::LogLevel::Info,
+        "AssetLibrary: imported mesh: " + cacheKey + " (" +
+        std::to_string(data.vertices().size()) + " vertices, " +
+        std::to_string(data.indices().size()) + " indices)");
+    return AssetHandle(this, id);
+}
+
+AssetHandle AssetLibrary::loadImage(const std::string& path, vk::Format format, vk::Filter filter) {
+    const std::string key = imageKey(path, format);
+    auto it = paths_.find(key);
+    if (it != paths_.end()) {
+        ++refCounts_[it->second];
+        log::get().write(platform::LogLevel::Info,
+            "AssetLibrary: image cache hit: " + key);
+        return AssetHandle(this, it->second);
+    }
+
+    ImageData image = TextureImporter::load(path);
+    const uint32_t id = registry_.createTextureGPU(image, format, filter);
+    paths_[key] = id;
+    pathById_[id] = key;
+    refCounts_[id] = 1;
+    log::get().write(platform::LogLevel::Info,
+        "AssetLibrary: imported image: " + key + " (" +
+        std::to_string(image.width()) + "x" + std::to_string(image.height()) + ")");
+    return AssetHandle(this, id);
+}
+
+AssetHandle AssetLibrary::loadImageData(const std::string& cacheKey, const ImageData& image,
+                                        vk::Format format, vk::Filter filter) {
+    const std::string key = imageKey(cacheKey, format);
+    auto it = paths_.find(key);
+    if (it != paths_.end()) {
+        ++refCounts_[it->second];
+        log::get().write(platform::LogLevel::Info,
+            "AssetLibrary: image cache hit: " + key);
+        return AssetHandle(this, it->second);
+    }
+
+    const uint32_t id = registry_.createTextureGPU(image, format, filter);
+    paths_[key] = id;
+    pathById_[id] = key;
+    refCounts_[id] = 1;
+    log::get().write(platform::LogLevel::Info,
+        "AssetLibrary: imported image: " + key + " (" +
+        std::to_string(image.width()) + "x" + std::to_string(image.height()) + ")");
+    return AssetHandle(this, id);
+}
+
+std::string AssetLibrary::imageKey(const std::string& path, vk::Format format) {
+    return path + '|' + std::to_string(static_cast<uint32_t>(format));
+}
+
+AssetHandle AssetLibrary::findMesh(const std::string& path) {
+    auto it = paths_.find(path);
+    if (it == paths_.end()) {
+        return AssetHandle();  // Null Object — empty handle
+    }
+    ++refCounts_[it->second];
+    return AssetHandle(this, it->second);
+}
+
+void AssetLibrary::retain(uint32_t id) {
+    ++refCounts_[id];
+}
+
+void AssetLibrary::release(uint32_t id) {
+    auto it = refCounts_.find(id);
+    if (it == refCounts_.end()) {
+        // Double release / release after an explicit unload — ignore.
+        return;
+    }
+    if (--it->second <= 0) {
+        refCounts_.erase(it);
+        registry_.unregister(id);
+        auto p = pathById_.find(id);
+        if (p != pathById_.end()) {
+            paths_.erase(p->second);
+            pathById_.erase(p);
+            log::get().write(platform::LogLevel::Info,
+                "AssetLibrary: unloaded asset id=" + std::to_string(id));
+        }
+    }
+}
+
+}  // namespace resource

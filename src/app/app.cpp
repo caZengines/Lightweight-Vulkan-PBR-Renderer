@@ -4,16 +4,16 @@
 #include "app/game_loop.hpp"
 #include "platform/input.hpp"
 #include "render/material.hpp"
-#include "rhi/command_pool.hpp"
-#include "resource/sampler.hpp"
+#include "rhi/command/command_pool.hpp"
+#include "resource/gpu/sampler.hpp"
 #include "platform/log.hpp"
-#include "render/descriptor_budget.hpp"
-#include "render/descriptor_set_layout_library.hpp"
-#include "render/frame_resources.hpp"   // kMaxFramesInFlight
-#include "render_context.hpp"
-#include "resource/resource_registry.hpp"
-#include "resource/shader_library.hpp"
-#include "rhi/descriptor_writer.hpp"
+#include "render/descriptor/descriptor_budget.hpp"
+#include "render/descriptor/descriptor_set_layout_library.hpp"
+#include "render/frame/frame_resources.hpp"   // kMaxFramesInFlight
+#include "rhi/device/render_context.hpp"
+#include "resource/asset/resource_registry.hpp"
+#include "resource/gpu/shader_library.hpp"
+#include "rhi/descriptor/descriptor_writer.hpp"
 
 #include <array>
 #include <span>
@@ -218,7 +218,7 @@ void App::initRender() {
     render::PoolBudgetBuilder budget;
     budget.add(layouts.bindingTables[0], render::kMaxFramesInFlight);
     budget.add(layouts.bindingTables[1], materialCount);
-    budget.add(layouts.bindingTables[2], 2);
+    if(layouts.bindingTables.size() > 2) budget.add(layouts.bindingTables[2], 2);
     descriptorSetAllocator_ = std::make_unique<rhi::DescriptorSetAllocator>(
         vulkanDevice_.device, budget.build());
 

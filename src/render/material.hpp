@@ -1,10 +1,10 @@
 #pragma once
-#include "rhi/descriptor_set_id.hpp"
-#include "rhi/descriptor_write.hpp"
-#include "resource/asset_handle.hpp"
-#include "resource/gltf_importer.hpp"   // MaterialData + MaterialTextureSlot (shared vocabulary)
-#include "resource/sampler.hpp"
-#include "resource/resource_registry.hpp"
+#include "rhi/descriptor/descriptor_set_id.hpp"
+#include "rhi/descriptor/descriptor_write.hpp"
+#include "resource/asset/asset_handle.hpp"
+#include "resource/import/gltf_importer.hpp"   // MaterialData + MaterialTextureSlot (shared vocabulary)
+#include "resource/gpu/sampler.hpp"
+#include "resource/asset/resource_registry.hpp"
 #include <array>
 #include <glm/glm.hpp>
 #include <vector>
