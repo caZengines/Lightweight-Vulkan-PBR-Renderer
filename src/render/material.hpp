@@ -23,6 +23,7 @@ struct PushConstantBlock {
     float occlusionStrength;
     float alphaMask;                      // Whether to use alpha masking
     float alphaMaskCutoff = 0.5f;         // Alpha threshold for masking
+    float _pad[2];
 };
 static_assert(sizeof(PushConstantBlock) == 64);
 static_assert(offsetof(PushConstantBlock, emissiveFactor) == 16);

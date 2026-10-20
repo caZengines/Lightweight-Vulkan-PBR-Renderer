@@ -62,7 +62,8 @@ struct PushConstants {
     float  normalScale;
     float  occlusionStrength;
     float  alphaMask;       // Alpha masking enable flag
-    float  alphaMaskCutoff; // Alpha cutoff threshold
+    float alphaMaskCutoff;  // Alpha cutoff threshold
+    float2 _pad;
 };
 [[vk::push_constant]] ConstantBuffer<PushConstants> material;
 
