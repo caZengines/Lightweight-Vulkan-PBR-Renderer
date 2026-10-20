@@ -20,5 +20,4 @@ CMakeUserPresets.json
 .cluade
 
 # Local cache & golden-frame artifacts (not part of the repo)
-.cache/
-.dsh-vision-router/
+.vscode/
