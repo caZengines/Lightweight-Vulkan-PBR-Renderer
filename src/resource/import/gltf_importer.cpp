@@ -663,9 +663,8 @@ resource::AlphaMode parseAlphaMode(tg3_str alphaMode) {
 // instead of failing the whole model. (Normal/occlusion texture infos are
 // distinct glTF structs with the same leading fields, so scalars in.)
 resource::TextureSlot parseTextureSlot(int32_t textureIndex, int32_t texCoord,
-                                       uint32_t textureCount, float scale) {
+                                       uint32_t textureCount) {
     resource::TextureSlot slot;
-    slot.scale = scale;
     if (textureIndex >= 0) {
         if (static_cast<uint32_t>(textureIndex) < textureCount) {
             slot.texture  = textureIndex;
@@ -690,6 +689,8 @@ void parseMaterial(const tg3_model& model, const tg3_material& src,
     out.emissiveFactor  = glm::vec3(static_cast<float>(src.emissive_factor[0]),
                                     static_cast<float>(src.emissive_factor[1]),
                                     static_cast<float>(src.emissive_factor[2]));
+    out.normalScale     = static_cast<float>(src.normal_texture.scale);
+    out.occlusionStrength = static_cast<float>(src.occlusion_texture.strength);
     out.alphaCutoff     = static_cast<float>(src.alpha_cutoff);
     out.alphaMode       = parseAlphaMode(src.alpha_mode);
     out.doubleSided     = src.double_sided != 0;
@@ -697,19 +698,19 @@ void parseMaterial(const tg3_model& model, const tg3_material& src,
     using S = resource::MaterialTextureSlot;
     out.slots[size_t(S::BaseColor)] =
         parseTextureSlot(pbr.base_color_texture.index, pbr.base_color_texture.tex_coord,
-                         model.textures_count, 1.0f);
+                         model.textures_count);
     out.slots[size_t(S::MetallicRoughness)] =
         parseTextureSlot(pbr.metallic_roughness_texture.index, pbr.metallic_roughness_texture.tex_coord,
-                         model.textures_count, 1.0f);
+                         model.textures_count);
     out.slots[size_t(S::Normal)] =
         parseTextureSlot(src.normal_texture.index, src.normal_texture.tex_coord,
-                         model.textures_count, static_cast<float>(src.normal_texture.scale));
+                         model.textures_count);
     out.slots[size_t(S::Occlusion)] =
         parseTextureSlot(src.occlusion_texture.index, src.occlusion_texture.tex_coord,
-                         model.textures_count, static_cast<float>(src.occlusion_texture.strength));
+                         model.textures_count);
     out.slots[size_t(S::Emissive)] =
         parseTextureSlot(src.emissive_texture.index, src.emissive_texture.tex_coord,
-                         model.textures_count, 1.0f);
+                         model.textures_count);
 }
 
 // glTF image URIs may carry percent escapes (%20 for a space).
@@ -978,7 +979,7 @@ GltfScene GltfSceneImporter::load(const std::string& modelPath) {
     std::string ignoredExtensions;
     for (uint32_t e = 0; e < model->extensions_used_count; ++e) {
         const tg3_str ext = model->extensions_used[e];
-        if (ext.len >= 14 && std::memcmp(ext.data, "KHR_materials_", 14) == 0) {
+        if (ext.len > 14 && std::memcmp(ext.data, "KHR_materials_", 14) == 0) {
             if (!ignoredExtensions.empty()) ignoredExtensions += ", ";
             ignoredExtensions += toString(ext);
         }

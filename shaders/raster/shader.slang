@@ -57,10 +57,12 @@ static const int kMaterialSlotCount     = 5;
 struct PushConstants {
     float4 baseColorFactor;
     float4 emissiveFactor;
-    float metallicFactor;
-    float roughnessFactor;
-    float alphaMask;       // Alpha masking enable flag
-    float alphaMaskCutoff; // Alpha cutoff threshold
+    float  metallicFactor;
+    float  roughnessFactor;
+    float  normalScale;
+    float  occlusionStrength;
+    float  alphaMask;       // Alpha masking enable flag
+    float  alphaMaskCutoff; // Alpha cutoff threshold
 };
 [[vk::push_constant]] ConstantBuffer<PushConstants> material;
 
@@ -113,12 +115,15 @@ float4 fragMain(VertexOutput inVert) : SV_Target {
 
     // Sample ambient occlusion (typically stored in red channel)
     float ao = maps[kOcclusionSlot].Sample(samplers[kOcclusionSlot], inVert.UV).r;
+    ao = lerp(1.0, ao, material.occlusionStrength);
     // Sample emissive texture for self-illuminating materials
     float3 emissive = maps[kEmissiveSlot].Sample(samplers[kEmissiveSlot], inVert.UV).rgb;
 
     float3 N;
     float3 tn = maps[kNormalSlot].Sample(samplers[kNormalSlot], inVert.UV).rgb;
-    tn.rgb = tn.rgb * 2 - 1.0;
+    tn.xyz = tn.xyz * 2 - 1.0;
+    tn.xy = tn.xy * material.normalScale;
+    tn.z = sqrt(max(0.0, 1.0 - dot(tn.xy, tn.xy)));
     N = normalize(tn);
 
     // === PBR MATERIAL SETUP ===

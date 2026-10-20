@@ -19,10 +19,12 @@ struct PushConstantBlock {
     alignas(16)glm::vec4 emissiveFactor;
     float metallicFactor;                 // How metallic the surface is
     float roughnessFactor;                // How rough the surface is
+    float normalScale;
+    float occlusionStrength;
     float alphaMask;                      // Whether to use alpha masking
     float alphaMaskCutoff = 0.5f;         // Alpha threshold for masking
 };
-static_assert(sizeof(PushConstantBlock) == 48);
+static_assert(sizeof(PushConstantBlock) == 64);
 static_assert(offsetof(PushConstantBlock, emissiveFactor) == 16);
 
 //It should be noticed that class::Material should not and cannot be copied
