@@ -1,6 +1,8 @@
 #include "platform/log.hpp"
 
+#include <atomic>
 #include <filesystem>
+#include <ios>
 #include <iostream>
 #include <mutex>
 
@@ -58,6 +60,15 @@ void ConsoleLog::write(LogLevel level, const std::string& message) {
 // FileLog
 // ---------------------------------------------------------------------------
 namespace fs = std::filesystem;
+
+thread_local FileLog::ThreadBuf FileLog::tls_{};
+
+FileLog::ThreadBuf::~ThreadBuf() {
+    if(owner && !pending.empty()) {
+        owner->flushRaw(pending.data(), pending.size());
+    }
+}
+
 FileLog::FileLog(const fs::path& path, bool truncate) {
     std::error_code ec;
     if(path.has_parent_path()) {
@@ -68,12 +79,9 @@ FileLog::FileLog(const fs::path& path, bool truncate) {
     mode |= truncate ? std::ios::trunc : std::ios::app;
 
     file_.open(path, mode);
-    static thread_local char buffer[64 * 1024];
-    if (file_.is_open()) {
-        file_.rdbuf()->pubsetbuf(buffer, sizeof(buffer));
-    }
 }
 FileLog::~FileLog() {
+    alive_.store(false, std::memory_order_release);
     std::lock_guard<std::mutex> lock(mutex_);
     if(file_.is_open()) {
         file_.flush();
@@ -82,18 +90,61 @@ FileLog::~FileLog() {
 }
 
 void FileLog::write(LogLevel level, const std::string& message) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (!file_.is_open()) return;
-
-    file_ << '[' << levelTag(level) << "] " << message << '\n';
-    if (level == LogLevel::Error) {
-        file_.flush();
+    auto& buf = tls_;
+    if(buf.owner != this) {
+        if (buf.owner && !buf.pending.empty()) {
+            buf.owner->flushRaw(buf.pending.data(), buf.pending.size());
+        }
+        buf.owner = this;
+        buf.pending.clear();
+        buf.lines = 0;
+        buf.hasError = false;
     }
+    buf.pending.reserve(buf.pending.size() + message.size() + 16);
+    buf.pending += '[';
+    buf.pending += levelTag(level);
+    buf.pending += "] ";
+    buf.pending += message;
+    buf.pending += '\n';
+    ++buf.lines;
+    buf.hasError |= (level == LogLevel::Error);
+
+    if(buf.lines > kFlushLines ||
+       buf.pending.size() > kFlushBytes ||
+       level == LogLevel::Error) {
+            drain(buf);
+       }
 }
 
 void FileLog::flush() {
+    if(tls_.owner == this && !tls_.pending.empty()) {
+        drain(tls_);
+    }
     std::lock_guard<std::mutex> lock(mutex_);
-    if (file_.is_open()) file_.flush();
+    if(file_.is_open()) file_.flush();
+}
+
+void FileLog::drain(ThreadBuf &buf) {
+    if(buf.pending.empty()) return;
+
+    const bool doFlush = buf.hasError;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if(alive_.load(std::memory_order_acquire) && file_.is_open()) {
+            file_.write(buf.pending.data(), 
+                        static_cast<std::streamsize>(buf.pending.size()));
+            if(doFlush) file_.flush();
+        }
+    }
+    buf.pending.clear();
+    buf.lines = 0;
+    buf.hasError = false;
+}
+
+void FileLog::flushRaw(const char* data, size_t n) {
+    if (!alive_.load(std::memory_order_acquire)) return;
+    std::lock_guard lock(mutex_);
+    if (file_.is_open()) file_.write(data, static_cast<std::streamsize>(n));
 }
 
 // ---------------------------------------------------------------------------

@@ -13,6 +13,7 @@
 // The locator is guaranteed to never return null (Null Object).
 // ============================================================================
 
+#include <atomic>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -48,8 +49,25 @@ public:
 
     bool isOpen() const { return file_.is_open(); }
 private:
+    struct ThreadBuf {
+        FileLog*    owner = nullptr;
+        std::string pending;
+        size_t      lines = 0;
+        bool        hasError = false;
+
+        ~ThreadBuf();
+    };
+    static thread_local ThreadBuf tls_;
+
+    void drain(ThreadBuf& buf);
+    void flushRaw(const char* data, size_t n);
+    std::atomic<bool> alive_{true};
+
     std::ofstream file_;
     std::mutex    mutex_;
+
+    static constexpr size_t kFlushLines = 32;
+    static constexpr size_t kFlushBytes = 32 * 1024;
 };
 
 class NullLog final : public Log {
