@@ -49,7 +49,7 @@ Layer 1  Platform     — src/platform/ 窗口/输入/日志/路径（GLFW 唯�
   |---|---|
   | `src/rhi/` | `device/`（VulkanDevice、DebugMessenger、RhiFactory、`render_context.hpp`）· `present/`（Surface、Swapchain）· `descriptor/`（Binding/SetId/Write/Allocator/Writer）· `memory/`（VMA）· `command/`（CommandPool） |
   | `src/resource/` | `import/`（OBJ/glTF/贴图导入器）· `data/`（MeshData/ImageData/Vertex）· `asset/`（AssetHandle/AssetLibrary/ResourceRegistry）· `gpu/`（UploadQueue/ShaderLibrary/Sampler） |
-  | `src/render/` | `pipeline/`（Pipeline/Spec/两库）· `descriptor/`（Budget/SetLayoutLibrary）· `frame/`（每帧状态与跨层契约）· `pass/`（Pass + CommandRecorder）· `compute/`（计算资源，暂空）· 根 `renderer.*` + `material.*`（层入口 + 场景↔渲染契约） |
+  | `src/render/` | `gpu/`（渲染层自建的常驻 GPU 数据：`InstanceBuffer`；`StorageBuffer`/`StorageImage` 待加）· `pipeline/`（光栅管线族 + 两族共用件：`GraphicsPipeline`/Spec/`GraphicsPipelineLibrary`、`PipelineBase`、`PipelineLayoutLibrary`、`shader_stage.hpp`）· `compute/`（计算管线族：`ComputePipeline`/Spec/`ComputePipelineLibrary` + `ComputePass` + `ComputeResources`）· `descriptor/`（Budget/SetLayoutLibrary）· `frame/`（每帧轮转状态与跨层契约）· `pass/`（`Pass` 抽象 + `RasterPass` + `CommandRecorder`）· 根 `renderer.*` + `material.*`（层入口 + 场景↔渲染契约） |
 
 - 根级残留已归位（Phase 6 清单相应项完成）：`command_manager.*` → `rhi/command/command_pool.*`，`render_context.hpp` → `rhi/device/render_context.hpp`。
 
@@ -88,8 +88,11 @@ Layer 1  Platform     — src/platform/ 窗口/输入/日志/路径（GLFW 唯�
 | `render::FrameResources` | per-frame 状态唯一属主：UBO、Set0、命令缓冲、binary+timeline 同步；`kMaxFramesInFlight=2` |
 | `render::CommandRecorder` | 无状态录制：3 次布局过渡 → dynamic rendering → Set0/逐项 Set1 + push flags + 实例绘制 |
 | `render::RenderItem` | **场景↔渲染契约**：扁平 POD {MeshGPU*, Material*, InstanceBuffer*, firstInstance, instanceCount}，无 Vulkan 类型 |
-| `render::InstanceBuffer` | 单对象 GPU 实例流（vertex binding 1，每实例一个 mat4）；路径追踪时被 TLAS instance 取代 |
-| `render::GraphicsPipelineSpec` + `Pipeline` | 管线状态 POD 化；`Pipeline` 只借用 `PipelineLayout&` 与 `ShaderLibrary&`，不拥有 module/layout；顶点输入布局在 `pipeline.cpp` 内部定义（`PipelineCache` 已删，双族的 `PipelineLibrary` 留到 M4） |
+| `render::InstanceBuffer` | 单对象 GPU 实例流（`render/gpu/`；vertex binding 1，每实例一个 mat4）；路径追踪时被 TLAS instance 取代。**边界**：`render/gpu/` = 按需创建、跨帧常驻的设备本地数据（实例流、SSBO、storage image）；`render/frame/` = 按 `kMaxFramesInFlight` 轮转的状态（UBO、Set0、同步、命令缓冲） |
+| `render::GraphicsPipelineSpec` + `GraphicsPipeline` | 光栅管线族：状态 POD + `createGraphicsPipeline()`；`GraphicsPipeline` 只借用 `PipelineLayout&` 与 `ShaderLibrary&`，不拥有 module/layout；顶点输入布局在 `graphics_pipeline.cpp` 内部定义 |
+| `render::ComputePipeline` + `ComputePipelineSpec` | 计算管线族（`src/render/compute/`）：单 compute stage + `createComputePipeline()`；与光栅族共用 `PipelineBase`（句柄/绑定点/push-constant stages）与 `PipelineLayoutLibrary` |
+| `render::GraphicsPipelineLibrary` / `ComputePipelineLibrary` | 按族缓存：graphics 以 `(path, layout, GraphicsPipelineSpec)` 为键、compute 以 `(path, layout, ComputePipelineSpec)` 为键；返回引用活到库析构 |
+| `render::RasterPass` / `render::ComputePass` | `Pass` 抽象的两个实现：光栅（dynamic rendering + 逐 item 绘制）在 `pass/`，计算（bind Set2 + `dispatch`）在 `compute/` |
 | `render::DescriptorSetLayoutLibrary` / `PipelineLayoutLibrary` / `DescriptorBudget` | **手工 Set0 + 反射 Set1+ 的单张 set 表**（`rhi::DescriptorBinding` = vk binding + 反射名字）/ 按 `(paths, pushConstants)` 缓存 `vk::PipelineLayout`（与已分配的 set 出自同一张表）/ `bindingTables × 用途个数 → 池预算`（取代原 `ShaderManager` / `DescriptorSetLayout` / `DescriptorPool`，均已删） |
 | `render::FrameUniforms` | `UniformBufferObject/Light/FrameParams` 唯一定义处（static_assert 192B 对齐 shader） |
 | `render::RenderSettings` | MSAA + present mode（Config 注入、按设备上限钳制） |
