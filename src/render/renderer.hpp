@@ -46,8 +46,10 @@ class FrameResources;
 class DescriptorSetLayoutLibrary;
 class PipelineLayout;
 class PipelineLayoutLibrary;
-class PipelineLibrary;
-class Pipeline;
+class GraphicsPipeline;
+class GraphicsPipelineLibrary;
+class ComputePipeline;
+class ComputePipelineLibrary;
 
 // Present-timing support as reported by
 // vkGetPhysicalDeviceSurfaceCapabilities2KHR for the window's surface. Device
@@ -63,7 +65,8 @@ struct SurfaceTimingSupport {
 
 // Fills one frame: acquire -> [app records] -> submit/present.
 // Orchestration only: per-frame state lives in FrameResources, drawing lives in
-// RasterPass/ComputePass, and pipeline objects are cached in PipelineLibrary.
+// RasterPass/ComputePass, and pipeline objects are cached per family in
+// GraphicsPipelineLibrary / ComputePipelineLibrary.
 class Renderer final {
 public:
     struct FrameContext {
@@ -125,14 +128,15 @@ private:
 
     std::unique_ptr<DescriptorSetLayoutLibrary> setLayoutLibrary_;
     std::unique_ptr<PipelineLayoutLibrary>      pipelineLayouts_;
-    std::unique_ptr<PipelineLibrary>            pipelines_;
+    std::unique_ptr<GraphicsPipelineLibrary>    graphicsPipelines_;
+    std::unique_ptr<ComputePipelineLibrary>     computePipelines_;
     std::unique_ptr<rhi::Swapchain>             swapchain_;
     std::unique_ptr<FrameResources>             frames_;
     std::unique_ptr<CommandRecorder>            recorder_;
 
-    const PipelineLayout* graphicsLayout_  = nullptr;
-    const Pipeline*       rasterPipeline_  = nullptr;
-    const Pipeline*       computePipeline_ = nullptr;
+    const PipelineLayout*     graphicsLayout_  = nullptr;
+    const GraphicsPipeline*   rasterPipeline_  = nullptr;
+    const ComputePipeline*    computePipeline_ = nullptr;
 
     uint32_t                frameCursor_     = 0;  // frame-in-flight slot for this frame
     bool                    cleaned_         = false;

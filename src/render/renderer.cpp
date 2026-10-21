@@ -23,9 +23,13 @@
 #include "render/frame/frame_resources.hpp"
 #include "render/frame/frame_uniforms.hpp"
 #include "render/pass/pass.hpp"
+#include "render/pass/raster_pass.hpp"
+#include "render/compute/compute_pass.hpp"
+#include "render/compute/compute_pipeline_library.hpp"
+#include "render/compute/compute_pipeline_spec.hpp"
+#include "render/pipeline/graphics_pipeline_library.hpp"
+#include "render/pipeline/graphics_pipeline_spec.hpp"
 #include "render/pipeline/pipeline_layout_library.hpp"
-#include "render/pipeline/pipeline_library.hpp"
-#include "render/pipeline/pipeline_spec.hpp"
 #include "resource/gpu/shader_library.hpp"
 #include "rhi/device/render_context.hpp"
 #include "scene/camera_manager.hpp"
@@ -299,12 +303,13 @@ void Renderer::createPipelines() {
         pipelineLayouts_->getFor(layoutPaths, graphicsPushConstants);
     graphicsLayout_ = &graphicsLayout;
 
-    pipelines_ = std::make_unique<PipelineLibrary>(rct_.device, shaders_);
+    graphicsPipelines_ = std::make_unique<GraphicsPipelineLibrary>(rct_.device, shaders_);
+    computePipelines_  = std::make_unique<ComputePipelineLibrary>(rct_.device, shaders_);
 
     if (!computeSpirvPath_.empty()) {
         const PipelineLayout& computeLayout =
             pipelineLayouts_->getFor(layoutPaths, computePushConstants);
-        computePipeline_ = &pipelines_->compute(
+        computePipeline_ = &computePipelines_->get(
             computeLayout, computeSpirvPath_, ComputePipelineSpec{});
         platform::LogLocator::get().write(
             platform::LogLevel::Info,
@@ -315,7 +320,7 @@ void Renderer::createPipelines() {
     initialSpec.colorFormat = swapchain_->getSurfaceFormat().format;
     initialSpec.depthFormat = swapchain_->depthFormat();
     initialSpec.msaaSamples = settings_.msaaSamples;
-    rasterPipeline_ = &pipelines_->graphics(graphicsLayout, spirvPath_, initialSpec);
+    rasterPipeline_ = &graphicsPipelines_->get(graphicsLayout, spirvPath_, initialSpec);
     platform::LogLocator::get().write(
         platform::LogLevel::Info,
         "[renderer] raster pipeline created: " + std::string(spirvPath_));
@@ -329,7 +334,7 @@ void Renderer::ensureRasterPipeline(const RenderTarget& target) {
     spec.depthFormat = target.depthFormat;
     spec.msaaSamples = target.samples;
 
-    const Pipeline* next = &pipelines_->graphics(*graphicsLayout_, spirvPath_, spec);
+    const GraphicsPipeline* next = &graphicsPipelines_->get(*graphicsLayout_, spirvPath_, spec);
     if (next != rasterPipeline_) {
         rasterPipeline_ = next;
         platform::LogLocator::get().write(

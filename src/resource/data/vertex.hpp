@@ -11,7 +11,7 @@
 namespace resource {
 
 // Pure vertex/instance data, GPU-free so the scene layer can use it.  The
-// Vulkan binding/attribute descriptions live in render/pipeline.cpp.
+// Vulkan binding/attribute descriptions live in render/pipeline/graphics_pipeline.cpp.
 struct Vertex {
     glm::vec3 pos;
     glm::vec2 texCoord;
@@ -20,7 +20,7 @@ struct Vertex {
     // Second UV set (glTF TEXCOORD_1). Loaded since the glTF scene importer;
     // NOT yet exposed to the shader — when the material work wires it up,
     // add the vertex input at location 4 and shift the instance matrix
-    // attributes to locations 5-8 in render/pipeline.cpp.
+    // attributes to locations 5-8 in render/pipeline/graphics_pipeline.cpp.
     glm::vec2 texCoord1;
 
     void setNormal(const glm::vec3& n);

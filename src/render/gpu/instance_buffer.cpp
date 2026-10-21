@@ -1,4 +1,4 @@
-#include "render/frame/instance_buffer.hpp"
+#include "render/gpu/instance_buffer.hpp"
 
 #include "resource/gpu/upload_queue.hpp"
 

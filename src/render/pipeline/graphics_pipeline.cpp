@@ -1,6 +1,7 @@
-#include "render/pipeline/pipeline.hpp"
+#include "render/pipeline/graphics_pipeline.hpp"
 
 #include "render/pipeline/pipeline_layout_library.hpp"
+#include "render/pipeline/shader_stage.hpp"
 #include "resource/gpu/shader_library.hpp"
 #include "resource/data/vertex.hpp"
 
@@ -59,44 +60,21 @@ std::array<vk::VertexInputAttributeDescription, 4> instanceAttributes() {
     return attribute;
 }
 
-const char* stageLabel(vk::ShaderStageFlagBits stage) {
-    switch (stage) {
-        case vk::ShaderStageFlagBits::eVertex:   return "vertex";
-        case vk::ShaderStageFlagBits::eFragment: return "fragment";
-        case vk::ShaderStageFlagBits::eCompute:  return "compute";
-        default:                                 return "other";
-    }
-}
-
-void requireStage(const vk::PipelineShaderStageCreateInfo& stageInfo,
-                  vk::ShaderStageFlagBits expected,
-                  std::string_view entryPoint,
-                  std::string_view spirvPath) {
-    if (stageInfo.stage == expected) return;
-    throw std::runtime_error("entry point '" + std::string(entryPoint) + "' in " +
-                             std::string(spirvPath) + " is a " +
-                             stageLabel(stageInfo.stage) + " stage, expected " +
-                             stageLabel(expected));
-}
-
 }  // namespace
 
 namespace render {
 
-Pipeline::Pipeline(vk::raii::Pipeline&& pipeline,
-                   vk::PipelineLayout layout,
-                   vk::PipelineBindPoint bindPoint,
-                   vk::ShaderStageFlags pushConstantStages)
-    : pipeline_(std::move(pipeline)),
-      layout_(layout),
-      bindPoint_(bindPoint),
-      pushConstantStages_(pushConstantStages) {}
+GraphicsPipeline::GraphicsPipeline(vk::raii::Pipeline&& pipeline,
+                                   vk::PipelineLayout layout,
+                                   vk::ShaderStageFlags pushConstantStages)
+    : PipelineBase(std::move(pipeline), layout,
+                   vk::PipelineBindPoint::eGraphics, pushConstantStages) {}
 
-Pipeline createGraphicsPipeline(vk::raii::Device& device,
-                                const PipelineLayout& layout,
-                                const resource::ShaderLibrary& shaders,
-                                std::string_view spirvPath,
-                                const GraphicsPipelineSpec& spec) {
+GraphicsPipeline createGraphicsPipeline(vk::raii::Device& device,
+                                       const PipelineLayout& layout,
+                                       const resource::ShaderLibrary& shaders,
+                                       std::string_view spirvPath,
+                                       const GraphicsPipelineSpec& spec) {
     if (spec.colorFormat == vk::Format::eUndefined ||
         spec.depthFormat == vk::Format::eUndefined) {
         throw std::invalid_argument("GraphicsPipelineSpec requires color and depth formats");
@@ -107,8 +85,8 @@ Pipeline createGraphicsPipeline(vk::raii::Device& device,
 
     const auto vertStageInfo = shaders.stage(spirvPath, spec.vertEntry);
     const auto fragStageInfo = shaders.stage(spirvPath, spec.fragEntry);
-    requireStage(vertStageInfo, vk::ShaderStageFlagBits::eVertex, spec.vertEntry, spirvPath);
-    requireStage(fragStageInfo, vk::ShaderStageFlagBits::eFragment, spec.fragEntry, spirvPath);
+    detail::requireStage(vertStageInfo, vk::ShaderStageFlagBits::eVertex, spec.vertEntry, spirvPath);
+    detail::requireStage(fragStageInfo, vk::ShaderStageFlagBits::eFragment, spec.fragEntry, spirvPath);
 
     const std::array<vk::PipelineShaderStageCreateInfo, 2> stages{vertStageInfo, fragStageInfo};
 
@@ -196,32 +174,9 @@ Pipeline createGraphicsPipeline(vk::raii::Device& device,
 
     vk::raii::Pipeline pipeline(device, nullptr,
                                 chain.get<vk::GraphicsPipelineCreateInfo>());
-    return Pipeline(std::move(pipeline),
-                    layout.getHandle(),
-                    vk::PipelineBindPoint::eGraphics,
-                    layout.pushConstantStages());
-}
-
-Pipeline createComputePipeline(vk::raii::Device& device,
-                               const PipelineLayout& layout,
-                               const resource::ShaderLibrary& shaders,
-                               std::string_view spirvPath,
-                               const ComputePipelineSpec& spec) {
-    if (spec.entryPoint.empty()) {
-        throw std::invalid_argument("ComputePipelineSpec requires an entry point");
-    }
-
-    const auto stageInfo = shaders.stage(spirvPath, spec.entryPoint);
-    requireStage(stageInfo, vk::ShaderStageFlagBits::eCompute, spec.entryPoint, spirvPath);
-
-    vk::ComputePipelineCreateInfo createInfo{};
-    createInfo.setStage(stageInfo).setLayout(layout.getHandle());
-
-    vk::raii::Pipeline pipeline(device, nullptr, createInfo);
-    return Pipeline(std::move(pipeline),
-                    layout.getHandle(),
-                    vk::PipelineBindPoint::eCompute,
-                    layout.pushConstantStages());
+    return GraphicsPipeline(std::move(pipeline),
+                            layout.getHandle(),
+                            layout.pushConstantStages());
 }
 
 }  // namespace render

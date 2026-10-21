@@ -1,0 +1,28 @@
+#include "render/pipeline/graphics_pipeline_library.hpp"
+
+#include "render/pipeline/pipeline_layout_library.hpp"
+
+#include <algorithm>
+#include <utility>
+
+namespace render {
+
+GraphicsPipelineLibrary::GraphicsPipelineLibrary(vk::raii::Device& device,
+                                                 const resource::ShaderLibrary& shaders)
+    : device_(device), shaders_(shaders) {}
+
+const GraphicsPipeline& GraphicsPipelineLibrary::get(const PipelineLayout& layout,
+                                                     std::string_view spirvPath,
+                                                     const GraphicsPipelineSpec& spec) {
+    Key key{std::string(spirvPath), layout.getHandle(), spec};
+    const auto it = std::find_if(
+        cache_.begin(), cache_.end(),
+        [&](const Entry& entry) { return entry.key == key; });
+    if (it != cache_.end()) return it->pipeline;
+
+    GraphicsPipeline created = createGraphicsPipeline(device_, layout, shaders_, spirvPath, spec);
+    cache_.push_back(Entry{std::move(key), std::move(created)});
+    return cache_.back().pipeline;
+}
+
+}  // namespace render
