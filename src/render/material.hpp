@@ -21,9 +21,10 @@ struct PushConstantBlock {
     float roughnessFactor;                // How rough the surface is
     float normalScale;
     float occlusionStrength;
-    float alphaMask;                      // Whether to use alpha masking
     float alphaMaskCutoff = 0.5f;         // Alpha threshold for masking
-    float _pad[2];
+    float clearcoatFactor = 0.0f;
+    float clearcoatRoughness = 1.0f;
+    uint32_t flags{};                     // Material properties
 };
 static_assert(sizeof(PushConstantBlock) == 64);
 static_assert(offsetof(PushConstantBlock, emissiveFactor) == 16);
@@ -60,6 +61,8 @@ class Material{
         [[nodiscard]] vk::DescriptorSet          getDescriptorSet()   const { return descriptorSet_; }
         [[nodiscard]] rhi::DescriptorSetId       descriptorSetId()    const { return descriptorSetId_; }
         [[nodiscard]] bool                       hasDescriptorSet()   const { return descriptorSet_ != nullptr; }
+
+        ~Material();
 
     private:
         PushConstantBlock                      pcBlock_{};

@@ -21,7 +21,7 @@ const ComputePipeline& ComputePipelineLibrary::get(const PipelineLayout& layout,
     if (it != cache_.end()) return it->pipeline;
 
     ComputePipeline created = createComputePipeline(device_, layout, shaders_, spirvPath, spec);
-    cache_.push_back(Entry{std::move(key), std::move(created)});
+    cache_.emplace_back(Entry{std::move(key), std::move(created)});
     return cache_.back().pipeline;
 }
 

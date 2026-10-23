@@ -21,7 +21,7 @@ const GraphicsPipeline& GraphicsPipelineLibrary::get(const PipelineLayout& layou
     if (it != cache_.end()) return it->pipeline;
 
     GraphicsPipeline created = createGraphicsPipeline(device_, layout, shaders_, spirvPath, spec);
-    cache_.push_back(Entry{std::move(key), std::move(created)});
+    cache_.emplace_back(Entry{std::move(key), std::move(created)});
     return cache_.back().pipeline;
 }
 

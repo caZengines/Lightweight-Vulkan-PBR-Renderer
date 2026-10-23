@@ -14,7 +14,7 @@ namespace resource {
 // Vulkan binding/attribute descriptions live in render/pipeline/graphics_pipeline.cpp.
 struct Vertex {
     glm::vec3 pos;
-    glm::vec2 texCoord;
+    glm::vec2 texCoord0;
     int8_t normal[4];
     int8_t tangent[4];
     // Second UV set (glTF TEXCOORD_1). Loaded since the glTF scene importer;
@@ -31,7 +31,7 @@ struct Vertex {
     // when tangents are computed later they are all zero here, so dedup
     // behaves exactly as before.
     bool operator==(const Vertex& other) const {
-        return pos == other.pos && texCoord == other.texCoord &&
+        return pos == other.pos && texCoord0 == other.texCoord0 &&
                texCoord1 == other.texCoord1 &&
                normal[0] == other.normal[0] && normal[1] == other.normal[1] &&
                normal[2] == other.normal[2] &&
@@ -51,7 +51,7 @@ namespace std {
     template<> struct hash<resource::Vertex>{
         size_t operator()(resource::Vertex const& v) const {
             size_t h1 = hash<glm::vec3>{}(v.pos);
-            size_t h2 = hash<glm::vec2>{}(v.texCoord);
+            size_t h2 = hash<glm::vec2>{}(v.texCoord0);
             size_t h4 = hash<glm::vec2>{}(v.texCoord1);
             size_t h3 = hash<uint8_t>{}(v.normal[0]) ^ (hash<uint8_t>{}(v.normal[1]) << 8) ^ (hash<uint8_t>{}(v.normal[2]) << 16);
             size_t h5 = hash<uint8_t>{}(v.tangent[0]) ^ (hash<uint8_t>{}(v.tangent[1]) << 8) ^

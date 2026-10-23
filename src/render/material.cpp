@@ -38,8 +38,8 @@ Material::Material(SlotHandles handles,
     pcBlock_.emissiveFactor  = glm::vec4(data.emissiveFactor, 0.0f);
     pcBlock_.normalScale     = data.normalScale;
     pcBlock_.occlusionStrength = data.occlusionStrength;
-    pcBlock_.alphaMask       = data.alphaMode == resource::AlphaMode::Mask ? 1.0f : 0.0f;
     pcBlock_.alphaMaskCutoff = data.alphaCutoff;
+    pcBlock_.flags          |= data.alphaMode == resource::AlphaMode::Mask ? 1u : 0u;
 }
 
 std::vector<rhi::DescriptorWrite> Material::descriptorWrites() const {

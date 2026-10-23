@@ -628,7 +628,7 @@ bool loadPrimitive(const tg3_model& model,
     for (uint64_t i = 0; i < vertexCount; ++i) {
         resource::Vertex vertex{};
         vertex.pos = glm::vec3(readAttributeElement(positionData, i));
-        vertex.texCoord  = uv0Data ? glm::vec2(readAttributeElement(*uv0Data, i))
+        vertex.texCoord0  = uv0Data ? glm::vec2(readAttributeElement(*uv0Data, i))
                                    : glm::vec2(0.0f);
         vertex.texCoord1 = uv1Data ? glm::vec2(readAttributeElement(*uv1Data, i))
                                    : glm::vec2(0.0f);

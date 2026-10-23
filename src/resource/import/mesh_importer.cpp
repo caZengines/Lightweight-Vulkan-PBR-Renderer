@@ -47,12 +47,12 @@ MeshData MeshImporter::loadObj(const std::string& modelPath) {
             if (!attrib.texcoords.empty() && index.texcoord_index >= 0) {
                 // OBJ texture V runs bottom-up; flip to match this project's
                 // image upload order (row 0 = top of image sampled at v=0).
-                vertex.texCoord = {
+                vertex.texCoord0 = {
                     attrib.texcoords[2 * index.texcoord_index + 0],
                     1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
                 };
             } else {
-                vertex.texCoord = {0.0f, 0.0f};
+                vertex.texCoord0 = {0.0f, 0.0f};
             }
             vertex.texCoord1 = {0.0f, 0.0f};  // OBJ has no second UV set
             if (hasFileNormals && index.normal_index >= 0) {

@@ -32,7 +32,7 @@ void MeshData::postProcess() {
         } else {
             missingNormals = true;
         }
-        if (v.texCoord.x != 0.0f || v.texCoord.y != 0.0f) hasTexCoords = true;
+        if (v.texCoord0.x != 0.0f || v.texCoord0.y != 0.0f) hasTexCoords = true;
     }
 
     // Models without normal data (or with partially missing normals) get smooth,
@@ -76,8 +76,8 @@ void MeshData::postProcess() {
 
             glm::vec3 deltaPos1 = vertices_[idx1].pos - vertices_[idx0].pos;
             glm::vec3 deltaPos2 = vertices_[idx2].pos - vertices_[idx0].pos;
-            glm::vec2 deltaUV1  = vertices_[idx1].texCoord - vertices_[idx0].texCoord;
-            glm::vec2 deltaUV2  = vertices_[idx2].texCoord - vertices_[idx0].texCoord;
+            glm::vec2 deltaUV1  = vertices_[idx1].texCoord0 - vertices_[idx0].texCoord0;
+            glm::vec2 deltaUV2  = vertices_[idx2].texCoord0 - vertices_[idx0].texCoord0;
             float denom = deltaUV1.x * deltaUV2.y - deltaUV1.y * deltaUV2.x;
             float area  = std::abs(denom);
             if (area > 1e-6f) {

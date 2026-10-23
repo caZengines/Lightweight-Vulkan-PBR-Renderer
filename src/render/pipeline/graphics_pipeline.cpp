@@ -30,7 +30,7 @@ std::array<vk::VertexInputAttributeDescription, 4> meshVertexAttributes() {
                 .setOffset(offsetof(resource::Vertex, pos));
     vk::VertexInputAttributeDescription uvAttribute;
     uvAttribute.setBinding(0).setLocation(1).setFormat(vk::Format::eR32G32Sfloat)
-               .setOffset(offsetof(resource::Vertex, texCoord));
+               .setOffset(offsetof(resource::Vertex, texCoord0));
     vk::VertexInputAttributeDescription norAttribute;
     norAttribute.setBinding(0).setLocation(2).setFormat(vk::Format::eR8G8B8A8Snorm)
                 .setOffset(offsetof(resource::Vertex, normal));

@@ -61,9 +61,10 @@ struct PushConstants {
     float  roughnessFactor;
     float  normalScale;
     float  occlusionStrength;
-    float  alphaMask;       // Alpha masking enable flag
-    float alphaMaskCutoff;  // Alpha cutoff threshold
-    float2 _pad;
+    float  alphaMaskCutoff;   // Alpha cutoff threshold
+    float  clearcoatFactor;   // KHR_materials_clearcoat
+    float  clearcoatRoughness;
+    uint   flags;             //Material properites
 };
 [[vk::push_constant]] ConstantBuffer<PushConstants> material;
 
@@ -148,6 +149,7 @@ float4 fragMain(VertexOutput inVert) : SV_Target {
     float NdotV = max(dot(N, V), 0.0); // View angle
     float NdotH = max(dot(N, H), 0.0);
     float HdotV = max(dot(H, V), 0.0); // For Fresnel calculation
+
 
     // Evaluate Cook-Torrance BRDF components
     float D = DistributionGGX(NdotH, roughness); // Normal distribution

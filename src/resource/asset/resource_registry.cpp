@@ -35,7 +35,13 @@ AssetHandle::AssetHandle(AssetHandle&& other) noexcept
       id_(std::exchange(other.id_, 0)) {}
 
 AssetHandle& AssetHandle::operator=(AssetHandle&& other) noexcept {
-    this->swap(other);
+    if(*this != other) {
+        if(library_ && id_) {
+            library_->release(id_);
+        }
+        library_ = std::exchange(other.library_, nullptr);
+        id_      = std::exchange(other.id_, 0);
+    }
     return *this;
 }
 
