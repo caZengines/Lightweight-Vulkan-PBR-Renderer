@@ -81,6 +81,16 @@ FileLog::FileLog(const fs::path& path, bool truncate) {
     file_.open(path, mode);
 }
 FileLog::~FileLog() {
+    if(tls_.owner && !tls_.pending.empty()) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if(file_.is_open()) {
+            file_.write(tls_.pending.data(), 
+                        static_cast<std::streamsize>(tls_.pending.size()));
+        }
+        tls_.pending.clear();
+        tls_.lines = 0;
+        tls_.hasError = false;
+    }
     alive_.store(false, std::memory_order_release);
     std::lock_guard<std::mutex> lock(mutex_);
     if(file_.is_open()) {
