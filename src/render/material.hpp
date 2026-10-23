@@ -62,7 +62,6 @@ class Material{
         [[nodiscard]] rhi::DescriptorSetId       descriptorSetId()    const { return descriptorSetId_; }
         [[nodiscard]] bool                       hasDescriptorSet()   const { return descriptorSet_ != nullptr; }
 
-        ~Material();
 
     private:
         PushConstantBlock                      pcBlock_{};
