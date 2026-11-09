@@ -1,5 +1,7 @@
+#language slang 2026
 import common;
 import brdf;
+import material_common;
 
 struct VertexInput {
     float3 inPosition;
@@ -36,37 +38,6 @@ struct UniformBuffer {
 
 [[vk::binding(0, 0)]] ConstantBuffer<UniformBuffer> ubo;
 
-// --- Material texture slots -------------------------------------------------
-// The INDEX IS THE SLOT.  0..4 follow resource::MaterialTextureSlot
-// (src/resource/gltf_importer.hpp), which is glTF's field order:
-//   baseColor -> metallicRoughness -> normal -> occlusion -> emissive.
-//
-// The array size must equal kMaterialSlotCount; the element count is checked
-// against the descriptor set layout at startup.
-static const int kBaseColorSlot         = 0;
-static const int kMetallicRoughnessSlot = 1;
-static const int kNormalSlot            = 2;
-static const int kOcclusionSlot         = 3;
-static const int kEmissiveSlot          = 4;
-static const int kMaterialSlotCount     = 5;
-
-[[vk::binding(0, 1)]] Texture2D    maps[kMaterialSlotCount];
-[[vk::binding(1, 1)]] SamplerState samplers[kMaterialSlotCount];
-
-// Push constant
-struct PushConstants {
-    float4 baseColorFactor;
-    float4 emissiveFactor;
-    float  metallicFactor;
-    float  roughnessFactor;
-    float  normalScale;
-    float  occlusionStrength;
-    float  alphaMaskCutoff;   // Alpha cutoff threshold
-    float  clearcoatFactor;   // KHR_materials_clearcoat
-    float  clearcoatRoughness;
-    uint   flags;             //Material properites
-};
-[[vk::push_constant]] ConstantBuffer<PushConstants> material;
 
 [shader("vertex")]
 VertexOutput vertMain(VertexInput Input, InstanceData instance) {
@@ -177,4 +148,39 @@ float4 fragMain(VertexOutput inVert) : SV_Target {
     color = color / (color + float3(1.0, 1.0, 1.0));
 
     return float4(color, baseColor.a);
+}
+
+// just for particle test, it should be cleared at a later time
+struct Particle {
+    float4 position;
+    float4 velocity;
+    float4 color;
+};
+[[vk::binding(0, 2)]] StructuredBuffer<Particle> particleIn;
+
+struct ParticleVertexOutput {
+    float4 pos : SV_POSITION;
+    float4 color : COLOR0;
+    float pointSize : SV_PointSize;
+};
+
+struct ParticleFragInput {
+    float4 pos : SV_POSITION;
+    float4 color : COLOR0;
+};
+
+[shader("vertex")]
+ParticleVertexOutput particleVertMain(uint vertexId : SV_VertexID) {
+    const Particle p = particleIn[vertexId];
+    ParticleVertexOutput o;
+
+    o.pos = mul(ubo.proj, mul(ubo.view, float4(p.position.xyz, 1.0)));
+    o.color = p.color;
+    o.pointSize = 2.0;
+    return o;
+}
+
+[shader("fragment")]
+float4 particleFragMain(ParticleFragInput i) : SV_Target {
+    return i.color;
 }

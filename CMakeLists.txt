@@ -51,7 +51,7 @@ function(add_slang_shaders TARGET SOURCE OUT)
     get_filename_component(OUT_ABS "${OUT}" ABSOLUTE)
 
     add_custom_command(OUTPUT ${OUT}
-        COMMAND ${SLANGC_COMPILER} ${SOURCE_ABS} -target spirv -profile spirv_1_4
+        COMMAND ${SLANGC_COMPILER} -std 2026 ${SOURCE_ABS} -target spirv -profile spirv_1_4
                 -emit-spirv-directly -fvk-use-entrypoint-name
                 -I ${CMAKE_CURRENT_SOURCE_DIR}/shaders/modules
                 -o ${OUT_ABS}
