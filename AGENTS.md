@@ -1,186 +1,246 @@
-# AGENTS.md — Vulkan 路径追踪渲染器 · 项目架构与模块指南
+# AGENTS.md — Vulkan 渲染器 · 架构与工作指南
 
-> 面向在本仓库工作的 AI 代理与新协作者。细节文档：`docs/architecture-refactor-plan.md`（重构计划 + RT 路线图）、`docs/architecture-current.md`（当前架构全量说明）、`docs/input-action-layer-plan.md`（输入语义动作层重构 · 已批准，§4 相关行按该目标态描述）、`docs/pipeline-descriptor-refactor-plan.md`（管线/描述符改造 · 光栅+计算 · 设计已定，实施未开始；§4 末尾的「目标态」块即出自它）、`docs/light-system-plan.md`（多光源 · 依赖上一份先落地）。
+> 本文件是仓库的活地图与硬性规则，供 AI 代理在动手前快速定位、避免踩坑。代码与本文冲突时以 `src/` 为准。
+>
+> 历史设计记录见 `docs/`：`pipeline-descriptor-refactor-plan.md`（描述符/管线重构，主体已落地）、
+> `light-system-plan.md`（多光源，未实施）、`future-architecture.md`（RT 模式 / shader 模块化 / 热重载，未实施）。
 
-## 1. 项目是什么
+## 1. 项目定位
 
-- 学习型 Vulkan PBR 渲染器，**最终目标是纯路径追踪的离线渲染器**（运行硬件为 NVIDIA GPU）。
-- 分层重构（Phase 0–5）已完成；重构全部结束后，光栅管线将按计划文档 §6 迁移到 Vulkan 光线追踪（`VK_KHR_acceleration_structure` / `VK_KHR_ray_tracing_pipeline`）。
-- 技术栈：**C++20**（遵循 C++ Core Guidelines）、Vulkan SDK 1.4.341.1、vulkan-hpp RAII、VMA、slang（编译到 SPIR-V）、GLFW、glm。
-- 编程风格硬性约定见 §6。
+- 学习型 Vulkan PBR 渲染器，路线终点是**纯路径追踪离线渲染器**（目标硬件 NVIDIA GPU）。
+- 当前形态：光栅 PBR（glTF 资产、MSAA、present timing 限帧）+ 一条**临时的**计算管线（粒子模拟，仅用于打通 compute 路径，后续会被替换）。
+- 技术栈：C++20（C++ Core Guidelines）、vulkan-hpp RAII、VMA、Slang → SPIR-V、GLFW、glm；第三方源码在 `src/extern/`，Slang 可复用模块在 `shaders/modules/`。
+- 构建形态：单可执行目标 `main`，源列表由 `GLOB_RECURSE` 生成；Phase 6 的静态库拆分**尚未开始**。
 
-## 2. 构建与运行
+## 2. 构建、运行、验证
 
 ```bash
-# 配置 + 构建（Ninja；两个构建树可并存）
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
-cmake --build build
-cmake -S . -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release
-cmake --build build-release
+# 配置 + 构建（Ninja；两个构建树并存，产物都是 bin/main.exe）
+cmake -S . -B cmake-build-Debug   -G Ninja -DCMAKE_BUILD_TYPE=Debug
+cmake --build cmake-build-Debug
+cmake -S . -B cmake-build-Release -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build cmake-build-Release
 
-# 运行：cwd 必须是 bin/（platform::PlatformUtils 按 cwd 解析资产根）
+# 运行：cwd 必须是 bin/（PlatformUtils 以 cwd 的父目录为 asset root）
 cd bin && ./main.exe
 ```
 
-- 验证层：Debug 开 / Release 关（`app::Config::enableValidationLayers`，由 `NDEBUG` 推导）。
-- shader：`shaders/raster/shader.slang` 由 CMake 自定义命令经 `slangc` 编译为 `shaders/raster/slang.spv`（按管线族分目录），随构建执行；路径与 `app::Config::shaderPath` 必须一致。
-- **bin/ 是自包含的**：CMake POST_BUILD 会把 ucrt64 工具链的 `libstdc++-6.dll / libgcc_s_seh-1.dll / libwinpthread-1.dll / glfw3.dll` 拷到 exe 旁边。背景：PATH 里 mingw64/bin 排在 ucrt64/bin 之前，若不落地本地 DLL，加载器可能解析到 MSVCRT 版运行库导致 `STATUS_ENTRYPOINT_NOT_FOUND (0xC0000139)` 启动即崩。
-- `bin/main.exe` 若有残留进程未退出，链接会失败——先结束进程再构建。
-- 修改 `src/` 下任何文件名/目录（新增、移动、删除）后**必须重新 cmake 配置**再构建：源列表来自 `GLOB_RECURSE`（Phase 6 计划换成显式列表）。
+- **改过 `src/` 下的文件名/目录后必须重新 configure**：`GLOB_RECURSE` 在 configure 时求值，不 reconfigure 会静默漏编新文件。
+- shader 编译由 CMake 自定义命令完成（`slangc ... -I shaders/modules`），随构建执行，不要手工产出 `.spv`。
+- **bin/ 自包含**：POST_BUILD 会把 ucrt64 的 `libstdc++-6.dll / libgcc_s_seh-1.dll / libwinpthread-1.dll / glfw3.dll` 拷到 exe 旁。PATH 里的 mingw64 版运行库会导致 `STATUS_ENTRYPOINT_NOT_FOUND (0xC0000139)`。
+- `bin/main.exe` 被占用时链接失败——先结束残留进程。
+- 从备份恢复文件会保留旧 mtime，ninja 可能跳过编译；恢复后 touch 一下目标文件。
 
-## 3. 架构总览
+**每次改动的验证协议**（缺一不可）：
 
-五层分层（依 Vulkan 官方教程 Engine Architecture），**依赖只允许向下**：
-
-```
-Layer 5  Application  — src/app/      组合根、主循环、输入映射、示例内容     (app::)
-Layer 4  Scene        — src/scene/    纯数据场景 + 相机数学（零 Vulkan/GLFW）(scene::)
-Layer 3  Rendering    — src/render/   帧编排、管线、录制、每帧资源           (render::)
-Layer 2  Resource     — src/resource/ 资产导入、GPU 资源注册表、上传队列     (resource::)
-Layer 0/1 RHI         — src/rhi/      设备/交换链/VMA/屏障/表面等 Vulkan 封装 (rhi::)
-Layer 1  Platform     — src/platform/ 窗口/输入/日志/路径（GLFW 唯一出入处）  (platform::)
+```powershell
+Set-Location bin
+$p = Start-Process -FilePath '.\main.exe' -PassThru -RedirectStandardOutput out.txt -RedirectStandardError err.txt
+Start-Sleep -Seconds 10
+$null = $p.CloseMainWindow()
+if (-not $p.WaitForExit(15000)) { $p.Kill(); 'DID-NOT-EXIT' } else { "CLEAN-EXIT code=$($p.ExitCode)" }
 ```
 
-- 构建系统当前是单可执行目标 + `GLOB_RECURSE`，分层暂靠纪律维持；Phase 6 将拆成 5 个静态库，用 `target_link_libraries` 把依赖方向变成编译期约束。
-- **层内目录 = 子系统边界，命名空间仍是层**：`rhi::`/`render::`/`resource::` 保持扁平，不加 `rhi::descriptor::` 这类子命名空间；include 一律从 `src/` 根写全路径（`#include "rhi/descriptor/descriptor_writer.hpp"`），不把子目录塞进 include 目录。
-- 层内布局（`app/`/`scene/`/`platform/` 保持扁平，未到分目录规模）：
+通过标准：`CLEAN-EXIT code=0`，stderr 无 validation / VMA 断言输出。**必须走 `CloseMainWindow`**（强杀不跑析构，测不出退出期资源错误）；沙箱里用 bash 直接拉起 exe 会静默 127，一律用 PowerShell。
 
-  | 层 | 子目录 |
-  |---|---|
-  | `src/rhi/` | `device/`（VulkanDevice、DebugMessenger、RhiFactory、`render_context.hpp`）· `present/`（Surface、Swapchain）· `descriptor/`（Binding/SetId/Write/Allocator/Writer）· `memory/`（VMA）· `command/`（CommandPool） |
-  | `src/resource/` | `import/`（OBJ/glTF/贴图导入器）· `data/`（MeshData/ImageData/Vertex）· `asset/`（AssetHandle/AssetLibrary/ResourceRegistry）· `gpu/`（UploadQueue/ShaderLibrary/Sampler） |
-  | `src/render/` | `gpu/`（渲染层自建的常驻 GPU 数据：`InstanceBuffer`；`StorageBuffer`/`StorageImage` 待加）· `pipeline/`（光栅管线族 + 两族共用件：`GraphicsPipeline`/Spec/`GraphicsPipelineLibrary`、`PipelineBase`、`PipelineLayoutLibrary`、`shader_stage.hpp`）· `compute/`（计算管线族：`ComputePipeline`/Spec/`ComputePipelineLibrary` + `ComputePass` + `ComputeResources`）· `descriptor/`（Budget/SetLayoutLibrary）· `frame/`（每帧轮转状态与跨层契约）· `pass/`（`Pass` 抽象 + `RasterPass` + `CommandRecorder`）· 根 `renderer.*` + `material.*`（层入口 + 场景↔渲染契约） |
+## 3. 目录与依赖规则
 
-- 根级残留已归位（Phase 6 清单相应项完成）：`command_manager.*` → `rhi/command/command_pool.*`，`render_context.hpp` → `rhi/device/render_context.hpp`。
+五层，依赖只允许向下；层间通信只能通过契约类型（`RenderItem` / `AssetHandle` / `FrameParams` / `RenderTarget` 等）。
 
-## 4. 模块地图
+```
+Layer 5  app/        组合根、主循环、输入语义映射、示例内容      (app::)
+Layer 4  scene/      纯数据场景 + 相机数学，零 Vulkan/GLFW       (scene::)
+Layer 3  render/     帧编排、pass 录制、管线、描述符、每帧状态    (render::)
+Layer 2  resource/   资产导入、GPU 资产注册表、上传队列、shader   (resource::)
+Layer 1  platform/   窗口/输入/日志/路径/CPU 等待（GLFW 唯一出入处）(platform::)
+Layer 0  rhi/        Vulkan 封装：设备/交换链/VMA/描述符/命令池    (rhi::)
+```
 
-### platform/（Layer 1）
-| 模块 | 职责 |
+| 层 | 子目录 |
 |---|---|
-| `platform::Window` | GLFW 唯一封装：resize 事件钩子 + 滚轮累积（`consumeScrollDelta`）、`requiredInstanceExtensions()`、`createSurface()`、运行时 `setTitle()`。鼠标/光标事件钩子已移除，输入全部改轮询（目标态，见 input-action-layer-plan.md） |
-| `platform::Input` | 轮询式输入门面：`Key/MouseButton` 枚举、`poll()`、电平查询 `isKeyDown/isMouseDown`、指针 delta 与滚轮增量（值流）；**无物理边沿 API**——边沿语义归 `app::ActionContext`。键位集按计划增 `Digit1..9/KP5/Delete`（目标态） |
-| `platform::Log` + `LogLocator` | 全项目唯一 Service Locator：`Log` 接口 + `ConsoleLog`/`NullLog`（Null Object） |
-| `platform::PlatformUtils` | `assetRoot()/assetPath()`：消灭 `../` 相对路径 |
+| `src/app/` | 扁平：`app` `config` `game_loop` `action_context` `camera_controller` `demo_scene` |
+| `src/scene/` | 扁平：`scene` `scene_object` `transform` `camera` `camera_manager` |
+| `src/render/` | 根：`renderer.*`（层入口）`material.*`（材质数据+Set1 写入）· `gpu/`（渲染层自建常驻 GPU 数据，现为 `InstanceBuffer`）· `frame/`（每帧轮转状态与跨层契约：`frame_resources` `frame_uniforms` `render_item` `render_settings` `render_target`）· `pass/`（`pass` 抽象、`raster_pass`、`command_recorder`）· `pipeline/`（光栅管线族 + 两族共用：`graphics_pipeline`+spec、`pipeline_base`、`graphics_pipeline_library`、`pipeline_layout_library`、`shader_stage`）· `compute/`（计算管线族：`compute_pipeline`+spec、`compute_pipeline_library`、`compute_pass`、`compute_resources`）· `descriptor/`（`descriptor_budget`、`descriptor_set_layout_library`） |
+| `src/resource/` | `import/`（`gltf_importer` `mesh_importer` `texture_importer`）· `data/`（`mesh_data` `image_data` `vertex`）· `asset/`（`asset_handle` `asset_library` `resource_registry`）· `gpu/`（`upload_queue` `shader_library` `sampler`） |
+| `src/rhi/` | `device/`（`vulkan_device` `debug_messenger` `rhi_factory` `render_context`）· `present/`（`surface` `swapchain`）· `descriptor/`（`descriptor_binding` `descriptor_set_id` `descriptor_write` `descriptor_set_allocator` `descriptor_writer`）· `memory/`（`vma_allocator`）· `command/`（`command_pool`） |
+| `src/platform/` | `window` `input` `log` `utils` `cpu` · `src/main/main.cpp` 只构造 `app::App` · `src/extern/` 为 vendored C 源码，不要改 |
 
-### rhi/（Vulkan 基础设施）
-| 模块 | 职责 |
+**命名与 include**：
+
+- 命名空间 = 层，**不加子命名空间**（目录只做物理分组）。
+- include 一律从 `src/` 根写全路径：`#include "rhi/descriptor/descriptor_writer.hpp"`；不把子目录塞进 include dirs。
+- 单模块目录允许存在（表达「将来会长大的子系统」），不要为凑数拆目录。
+
+**可 grep 验收的不变量**：
+
+| 不变量 | 验收 |
 |---|---|
-| `rhi::VulkanDevice` | Instance/PhysicalDevice/Device/队列/MSAA 探测；`CreateInfo` 注入扩展与验证层；`renderContext()` 打包上下文 |
-| `rhi::VmaContext/VmaBuffer/VmaImage` | VMA RAII（move-only、映射） |
-| `rhi::RhiFactory` | 非单例辅助：ImageView、sync2 屏障（`imageBarrier`）、上传路径 sync1 过渡、格式探测 |
-| `rhi::DebugMessenger` / `rhi::Surface` | 原 `Context` 拆分件；验证回调节耦 / 窗口表面 |
-| `rhi::Swapchain` | swapchain + MSAA color/depth；深度格式单一探测定点 `depthFormat()`；present mode 由 RenderSettings 决定 |
-| `rhi::CommandPool` | 命令池 + 队列 + 单次提交辅助（`rhi/command/`） |
+| scene 头文件零 Vulkan/GLFW | `Select-String -Path src/scene/*.hpp -Pattern 'vulkan\|glfw\|vk::\|VkBuffer'` 应只命中注释 |
+| rhi 不依赖上层 | `rhi/` 内不得 `#include "resource/…"` / `"render/…"`。**现存例外**：`present/swapchain` 为取 present mode / MSAA 直接依赖 `render::RenderSettings`（待解耦，见 §8） |
+| resource 不碰描述符类型 | `resource/` 内不得出现 `DescriptorBinding/DescriptorWriter/DescriptorSetAllocator` |
+| render 不读盘 | `render/` 内不得出现 `ifstream/ofstream/fstream`（SPIR-V 读取在 `resource/gpu/shader_library`） |
+| descriptor set 所有权单一 | `vk::raii::DescriptorSet` 只允许出现在 `rhi/descriptor/descriptor_set_allocator.*`；外部持 `rhi::DescriptorSetId` + 裸句柄 |
 
-### resource/（Layer 2）
-| 模块 | 职责 |
+## 4. 模块地图（按层）
+
+### platform/
+| 模块 | 职责 / 契约 |
 |---|---|
-| `MeshData/ImageData` + `MeshImporter/TextureImporter` | CPU 资产与解析（OBJ + glTF 2.0 via tinygltf3；stb 贴图）；`MeshData::postProcess()` 去重/法线/切线 |
-| `resource::UploadQueue` | 单次提交上传（staging→device）；mipmap 生成；**自持 VmaAllocator** |
-| `resource::ResourceRegistry` | GPU 资产唯一属主（id→MeshGPU/TextureGPU）+ 内建 1×1 默认纹理（Null Object 回落） |
-| `resource::AssetLibrary` + `AssetHandle` | 路径缓存 + 引用计数；空句柄 id=0 即 Null Object；`asset_handle.hpp` 为纯 CPU 头，跨层包含不牵连 GPU 声明 |
+| `platform::Window` | GLFW 唯一封装：resize 钩子、滚轮累积、`requiredInstanceExtensions()`、`createSurface()`、`setTitle()`。输入事件全部走轮询 |
+| `platform::Input` | 轮询门面：键/鼠标电平、指针 delta、滚轮增量；**无物理边沿 API** |
+| `platform::Log` + `LogLocator` | 全项目唯一 Service Locator：`ConsoleLog`/`FileLog`（线程缓冲批写）/`NullLog`；`App` 启动时 `provide(&fileLog)` |
+| `platform::PlatformUtils` | `assetRoot()`（cwd 的父目录）/`assetPath()`；消灭 `../` 相对路径 |
+| `platform::sleepUntil` / `relax` | 高精度定时（Windows 用 high-resolution waitable timer，余量自旋）；给 CPU pacer 用 |
 
-### render/（Layer 3）
-| 模块 | 职责 |
+### rhi/
+| 模块 | 职责 / 契约 |
 |---|---|
-| `render::Renderer` | **仅帧编排**：`beginFrame()→record(ctx, span<RenderItem>)→endFrame(ctx)`；swapchain 重建；`Dependencies` 聚合注入（含内容层下发的 `FrameParams`） |
-| `render::FrameResources` | per-frame 状态唯一属主：UBO、Set0、命令缓冲、binary+timeline 同步；`kMaxFramesInFlight=2` |
-| `render::CommandRecorder` | 无状态录制：3 次布局过渡 → dynamic rendering → Set0/逐项 Set1 + push flags + 实例绘制 |
-| `render::RenderItem` | **场景↔渲染契约**：扁平 POD {MeshGPU*, Material*, InstanceBuffer*, firstInstance, instanceCount}，无 Vulkan 类型 |
-| `render::InstanceBuffer` | 单对象 GPU 实例流（`render/gpu/`；vertex binding 1，每实例一个 mat4）；路径追踪时被 TLAS instance 取代。**边界**：`render/gpu/` = 按需创建、跨帧常驻的设备本地数据（实例流、SSBO、storage image）；`render/frame/` = 按 `kMaxFramesInFlight` 轮转的状态（UBO、Set0、同步、命令缓冲） |
-| `render::GraphicsPipelineSpec` + `GraphicsPipeline` | 光栅管线族：状态 POD + `createGraphicsPipeline()`；`GraphicsPipeline` 只借用 `PipelineLayout&` 与 `ShaderLibrary&`，不拥有 module/layout；顶点输入布局在 `graphics_pipeline.cpp` 内部定义 |
-| `render::ComputePipeline` + `ComputePipelineSpec` | 计算管线族（`src/render/compute/`）：单 compute stage + `createComputePipeline()`；与光栅族共用 `PipelineBase`（句柄/绑定点/push-constant stages）与 `PipelineLayoutLibrary` |
-| `render::GraphicsPipelineLibrary` / `ComputePipelineLibrary` | 按族缓存：graphics 以 `(path, layout, GraphicsPipelineSpec)` 为键、compute 以 `(path, layout, ComputePipelineSpec)` 为键；返回引用活到库析构 |
-| `render::RasterPass` / `render::ComputePass` | `Pass` 抽象的两个实现：光栅（dynamic rendering + 逐 item 绘制）在 `pass/`，计算（bind Set2 + `dispatch`）在 `compute/` |
-| `render::DescriptorSetLayoutLibrary` / `PipelineLayoutLibrary` / `DescriptorBudget` | **手工 Set0 + 反射 Set1+ 的单张 set 表**（`rhi::DescriptorBinding` = vk binding + 反射名字）/ 按 `(paths, pushConstants)` 缓存 `vk::PipelineLayout`（与已分配的 set 出自同一张表）/ `bindingTables × 用途个数 → 池预算`（取代原 `ShaderManager` / `DescriptorSetLayout` / `DescriptorPool`，均已删） |
-| `render::FrameUniforms` | `UniformBufferObject/Light/FrameParams` 唯一定义处（static_assert 192B 对齐 shader） |
-| `render::RenderSettings` | MSAA + present mode（Config 注入、按设备上限钳制） |
+| `rhi::VulkanDevice` | Instance/PhysicalDevice/Device/队列/MSAA 探测；`CreateInfo` 注入扩展与验证层；`renderContext()` 打包 `RenderContext` |
+| `rhi::VmaContext/VmaBuffer/VmaImage` | VMA RAII（move-only、map/unmap、`mappedData()` 仅限 MAPPED 分配） |
+| `rhi::RhiFactory` | ImageView、sync2 图像/缓冲区屏障（`imageBarrier`/`bufferBarrier`）、上传路径过渡、格式探测 |
+| `rhi::DebugMessenger` / `rhi::Surface` | 验证回调 / 窗口表面封装 |
+| `rhi::Swapchain` | swapchain + MSAA color/depth 附件的属主；`depthFormat()` 是深度格式唯一探测定点；present timing 能力查询 |
+| `rhi::CommandPool` | 命令池 + 队列 + 单次提交辅助（一次命令的 begin/end 封装） |
+| `rhi::DescriptorSetAllocator` | 描述符池分板 + set 属主；发 `DescriptorSetId`，`release(id)` 归还；**必须等引用该 set 的已提交命令执行完**才能释放 |
+| `rhi::DescriptorWriter` | 表驱动写入：按 layout 表逐 binding 用**名字**解析值；漏写、类型/数量不符直接抛 |
+| `rhi::DescriptorBinding` | `vk::DescriptorSetLayoutBinding` + 反射名字（单表，名字与 binding 同结构体） |
 
-### scene/（Layer 4，头文件零 Vulkan/GLFW —— grep 验收项）
-| 模块 | 职责 |
+### resource/
+| 模块 | 职责 / 契约 |
+|---|---|
+| `MeshData/ImageData` + `MeshImporter/TextureImporter` | CPU 资产与解析（OBJ、glTF 2.0 via tinygltf、stb 贴图）；`MeshData::postProcess()` 去重/法线/切线 |
+| `resource::UploadQueue` | 单次提交上传（staging→device）、mipmap 生成；自持 allocator；**目标 buffer 必须带 `eTransferDst`** |
+| `resource::ResourceRegistry` | GPU 资产唯一属主（id→MeshGPU/TextureGPU）+ 内建 1×1 默认纹理（Null Object） |
+| `resource::AssetLibrary` + `AssetHandle` | 路径缓存 + 引用计数；空句柄（id=0）即 Null Object；`asset_handle.hpp` 为纯 CPU 头 |
+| `resource::ShaderLibrary` | SPIR-V 唯一读取入口 + SPIRV-Reflect 反射（binding、push constant、入口点、stage） |
+| `resource::Sampler` | 采样器包装（albedo 重复寻址 / normal 各向异性） |
+
+### render/
+| 模块 | 职责 / 契约 |
+|---|---|
+| `render::Renderer` | **仅帧编排**：`beginFrame() → record(ctx, items) → endFrame(ctx)`；持 `Dependencies` 聚合；swapchain 重建；内嵌 `PresentTimingController` |
+| `render::FrameResources` | 每帧轮转状态属主：UBO×2、Set0、命令缓冲、binary+timeline 同步；`kMaxFramesInFlight = 2` |
+| `render::RenderItem` | 场景↔渲染契约：扁平 POD（MeshGPU\*、Material\*、InstanceBuffer\*、firstInstance、instanceCount），无 Vulkan 类型 |
+| `render::Material` | 材质数据 + Set1 的两个**数组值**（maps/samplers，按 `MaterialTextureSlot` 索引）+ push constant 块；不拥有 set（持 id + 裸句柄） |
+| `render::GraphicsPipeline` / `ComputePipeline` | 两族管线，共用 `PipelineBase`（句柄/绑定点/push-constant stages）；spec 是缓存键 |
+| `render::GraphicsPipelineLibrary` / `ComputePipelineLibrary` | 按 `(spirvPath, layout, spec)` 缓存，返回引用活到库析构 |
+| `render::GraphicsPipelineSpec` | 值类型：附件格式、固定功能状态、**`vertexLayout`**（数据化的顶点输入）、两个入口点名 |
+| `render::PipelineLayoutLibrary` | 按 `(spirvPaths, pushConstantRanges)` 缓存 `vk::PipelineLayout`，set layout 与描述符表同源 |
+| `render::DescriptorSetLayoutLibrary` | 手工 Set0 + 反射 Set1+ 的 `LayoutSet{bySetIndex, bindingTables}`，无洞 set 表 |
+| `render::PoolBudgetBuilder` | `bindingTables × 同时在用的 set 数` → `rhi::DescriptorPoolBudget` |
+| `render::Pass` / `RasterPass` / `ComputePass` | `PassContext{cmd, target, frameSet}`；光栅 pass 做 dynamic rendering（mesh + 临时粒子点），计算 pass 绑 Set2 + push constants + dispatch |
+| `render::CommandRecorder` | 帧级命令生命周期与图像布局转换（begin: Undefined→attachment；end: →PresentSrc） |
+| `render::FrameUniforms` | `Light`/`UniformBufferObject`（192B，static_assert 对齐 shader）/`FrameParams` 唯一定义处 |
+| `render::InstanceBuffer` | 单对象实例流（vertex binding 1，每实例一个 mat4）；`render/gpu/` |
+| `render::ComputeResources` | **临时的粒子模拟状态**：2 个 ping-pong buffer + 2 个描述符集（读/写方向），parity 每帧翻转；含 compute→compute 屏障 |
+
+### scene/
+| 模块 | 职责 / 契约 |
 |---|---|
 | `scene::Scene` | 对象列表属主；`collectRenderItems()` 直产 `std::span<const RenderItem>`（dirty 缓存，帧间零分配） |
-| `scene::SceneObject` | 纯数据可绘制体：mesh 句柄（保活）+ 材质 + `Transform` + 本地实例数组；`setInstances()` 合成 world = transform × instance 后经 UploadQueue 上传 |
-| `scene::Transform` | TRS + `toMatrix()`；`worldMatrix()` dirty-flag 惰性缓存 |
-| `scene::Camera` | 球坐标相机**纯数学**：`orbit/moveHorizontal/moveVertical/zoom/viewMatrix/position`；自带投影参数（`Projection`：透视 fov / 正交视高 + near/far）与 `projectionMatrix(aspect)`；无输入依赖。计划增 `pan(dx,dy,viewportHeight)` 视平面平移（Blender 式，目标态） |
-| `scene::CameraManager` | 相机列表属主（deque 条目含名称；add 不失效引用）+ 活动索引：`add(camera, name=""/自动自增 Camera N)/setActive/active/removeActive/name`；纯数据零 Vulkan/GLFW，Renderer 每帧读 `active()`。`cycle()` 已删（目标态） |
+| `scene::SceneObject` | 纯数据可绘制体：mesh 句柄（保活）+ `Material*` + `Transform` + 本地实例数组；`setInstances()` 合成 world 矩阵并经 UploadQueue 上传 |
+| `scene::Transform` | TRS + `toMatrix()`；`worldMatrix()` dirty 懒缓存 |
+| `scene::Camera` | 球坐标相机纯数学（orbit/move/zoom/view/projection），自带投影参数 |
+| `scene::CameraManager` | 相机列表属主（deque，add 不失效引用）+ 活动索引 + 命名 |
 
-### app/（Layer 5）
-| 模块 | 职责 |
+### app/
+| 模块 | 职责 / 契约 |
 |---|---|
-| `app::App` | **组合根**：`App()` 按层装配（window→rhi→resources→samplers→content→render）+ `initInputBindings()`（注册动作层键位表），`run()` 只做循环转发：update = `actions_.update(input_)` → `cameraController_.update(actions_, input_, dt)`；成员析构逆序（池先于 set 纪律） |
-| `app::GameLoop` | 帧节奏：pollEvents → input.poll → deltaTime → update/render 回调；固定步长骨架已预留 |
-| `app::ActionContext` | **语义动作层**（边沿语义唯一归属，L1 无边沿）：有序 `Binding{source(Key/MouseButton variant), mods, action, Trigger::Hold/Press, Mode::Default/Walk, param}` + `bind(...)`；每帧 `update(input)`：模态探测（walk>pan>orbit 独占）→ 门控电平求值（Walk 组仅在 walk 模态激活时）→ per-binding 沿计算；查询 `isActive/wasActivated/wasDeactivated/param`（目标态，见 input-action-layer-plan.md） |
-| `app::CameraController` | 语义动作→活动相机映射（状态机在 app，相机保持纯数学）：MMB 拖拽轨道、Shift+MMB 视平面平移、Shift+RMB+WASD 漫游、Shift+D 克隆、数字键 1-9 直选、KP5 透视⇄正交、Delete 删除（剩 1 忽略）、滚轮缩放；同步窗口标题 `活动相机名 [Persp\|Ortho]`。只消费 ActionContext 查询与 Input 值流，不读裸 Key（目标态） |
-| `app::DemoScene` | 示例内容：三个材质（空句柄回落默认纹理）、火星 + 1000 随机岩石；持有 `FrameParams`（灯光——原 renderer 字面量收编于此；投影参数已 per-camera 移入 `scene::Camera`） |
-| `app::Config` | 全部内容参数：窗口、验证层/设备扩展、MSAA、present mode、资产路径（构造时解析为绝对路径） |
+| `app::App` | 组合根：`initWindow → initRhi → initActionContext → initResources → initSamplers → initContent → initRender`；`run()` 只转发循环 |
+| `app::GameLoop` | pollEvents → input.poll → deltaTime → update/render 回调；skip 帧由回调返回值控制 |
+| `app::ActionContext` | 语义动作层（边沿语义唯一归属）：`Binding{source, mods, action, Trigger, Mode}`；模态门控（walk 组仅 Walk 模式激活） |
+| `app::CameraController` | 语义动作→相机状态机：MMB 轨道、Shift+MMB 平移、Shift+RMB 漫游（WASD/QE）、KP5 透视⇄正交；所有输入状态留在 app 层，`scene::Camera` 只做数学 |
+| `app::DemoScene` | 示例内容：加载 glTF（每个 primitive 一个 `SceneObject`，每个 glTF 材质一个 `Material`，`materials_[0]` 为无材质 primitive 的兜底）+ `FrameParams`（灯光由内容层下发） |
+| `app::Config` | 全部内容参数：窗口、验证层、设备扩展、MSAA、present mode、targetFPS、资产路径（构造时解析为绝对路径） |
 
-`main/main.cpp` 仅构造 `app::App` → `run()`，异常捕获。
+## 5. 关键子系统与不变量
 
-> **目标态（未落地）· 描述符子系统分层** —— 见 `docs/pipeline-descriptor-refactor-plan.md` D9–D11。
-> 上面各表按**当前** `src/` 描述；落地时按下表移动：
->
-> | 移动 | 内容 |
-> |---|---|
-> | `resource` ← `render` | `ShaderLibrary`（路径 → 模块 + 反射 + 入口点校验；取代 `render::ShaderManager`） |
-> | `render` ← `resource` | `Material`（收窄为**只描述数据**：`descriptorWrites()` 产出两条按 `MaterialTextureSlot` 索引的**数组值**（`maps`/`samplers`）+ 非拥有 `DescriptorSetId`/裸句柄，不再自己分配、写入或调用 writer） |
-> | `rhi` 新增 | `DescriptorSetAllocator`、`DescriptorWriter`（纯 Vulkan；**不得引用 `resource/`**，故 Writer 收 `rhi::DescriptorBinding`＝`vk::DescriptorSetLayoutBinding` **+ 反射名字**，而非 `ReflectBinding`）。名字与 binding **同处一个结构体**（单表，见计划 §9B）。Writer 的入口是**表驱动**的 `writeAll(values)`：遍历 layout 表逐 binding 解析，**漏写即抛**；值的元素数必须等于 `descriptorCount`（计划 §9C 靠这条检查抓「shader 改了、C++ 没改」）。分配器只收 `vk::raii::Device&`，固定带 `eFreeDescriptorSet`、**不暴露 `reset()`**、耗尽时按同一预算再建一块板；**自己持有 set**（对外发 `DescriptorSetId` + 裸句柄，`release(id)` 归还并记账递减）——实测依据见计划 §D5.1/§D5.1b/§D5.6.1 |
-> | `render` 内部 | **`Material` 不再是 GPU 属主**：持 `DescriptorSetId` + 裸句柄，析构时把释放排进延迟队列 |
-> | `render` 新增 | `DescriptorSetLayoutLibrary`（手工 Set0 + 反射 Set1+ + no-holes set 表）**已实现**；**Set0 反射校验延后**（计划 D4.2）；`PoolBudgetBuilder`（`bindingTables` × 用途个数 → 池预算）；`DeferredReleaseQueue`（计划 D5.6.3，**属「运行时增删模型」特性**） |
->
-> 三条 grep 不变量：`src/render` 无读盘、`src/resource` 无 descriptor 类型、`src/rhi` 无 `resource/` 引用。
-> 一条所有权不变量：**`vk::raii::DescriptorSet` 只允许出现在 `rhi/descriptor/descriptor_set_allocator.*` 内部**
-> （验收 `grep -rn "vk::raii::DescriptorSet\b" src/`）。外部一律持 `rhi::DescriptorSetId` + 裸句柄，
-> 释放走 `allocator.release(id)` —— 于是「池比 set 活得久」是**结构性**成立的，不再依赖成员声明顺序。
-> 释放的前置条件：`vkFreeDescriptorSets` 要求引用该 set 的已提交命令已执行完
-> （`VUID-vkFreeDescriptorSets-pDescriptorSets-00309`），而 `record()` 每帧都在绑材质 set ——
-> 所以删除必须经延迟释放队列推迟 `kMaxFramesInFlight` 帧，**不能**在删除点直接 `release`。
+### 5.1 描述符
+1. `DescriptorSetLayoutLibrary::layoutSetFor(paths)` 产出 `LayoutSet`：`bySetIndex[i]` 是 set i 的 layout，`bindingTables[i]` 是同序的 `rhi::DescriptorBinding` 表（名字来自 SPIR-V 反射；手工 Set0 的名字为空，只能按编号写）。
+2. 池预算 = `PoolBudgetBuilder`（每条表 × 同时在用数量）→ `DescriptorSetAllocator`。单个分板用尽时分配器会按同一预算追加分板；只有**单个 set 无法被满足**（类型不在预算里，或数量超过 `maxSets`）才抛异常。新增 set/binding 时必须同步预算与用途数量（`app.cpp::initRender`）。
+3. 写入一律 `DescriptorWriter::writeAll(values) + flush()`：值用 `bufferWrite(name, infos)` / `imageWrite(name, infos)` 按**反射名字**匹配，元素数必须等于 `descriptorCount`。
+4. `Material` 只持 `DescriptorSetId` + 裸句柄；释放必须推迟到引用它的帧执行完（`kMaxFramesInFlight`），不要在删除点直接 `release`。
 
-## 5. 关键数据流
+### 5.2 管线
+- `PipelineBase` 提供 `binding/layout/bindPoint/pushConstantStages`；`GraphicsPipeline` 与 `ComputePipeline` 只负责各自的创建逻辑。
+- 顶点输入是 **spec 的数据**（`VertexLayoutSpec{bindings, attributes}`），不再写死在 `graphics_pipeline.cpp`；空 layout = 不读顶点缓冲（点/全屏绘制）。
+- 管线布局由 `PipelineLayoutLibrary` 按（SPIR-V 路径集合, push constant 范围）缓存；图形管线布局**包含 compute shader 声明的 set**，因此光栅 pass 可以绑 Set2。
+- 同一 SPIR-V 可含多个入口点；spec 的 `vertEntry/fragEntry` 选择入口，缓存键因此不同。
+
+### 5.3 帧与同步
+- `FrameResources` 每个 slot 一套 UBO/Set0/命令缓冲/fence；`beginFrame` 先等该 slot 的 fence，再 acquire。
+- 提交：timeline semaphore（每帧递增）+ binary semaphore（present 等待）。
+- 跨帧 buffer 复用依赖 slot fence；**跨阶段（compute→graphics）依赖必须显式加 `bufferBarrier`**（`Renderer::record` 里有现成写法）。
+- 帧节奏：`paceBeforeSubmit()` 负责平均节奏（绝对 deadline，晚到则重锚定），`PresentTimingController::targetDuration()` 只负责对齐 vblank。FRR 下目标帧率应整除刷新率，否则会周期性多出一个刷新周期（见 README TODO）。
+- 已知设计问题：pacing 睡眠发生在 `acquire` 之后（会握着 swapchain 图像空等）。
+
+### 5.4 粒子（临时）
+- `ComputeResources`：2 个 storage buffer ping-pong + 2 个描述符集（`set[p]` 读 `buffers_[p]`、写 `buffers_[p^1]`），`parity_` 每帧翻转，`advance()` 一帧恰好一次。
+- 同步：`recordBarrier()`（compute→compute，覆盖跨帧 RAW/WAR）；dispatch 后 `bufferBarrier`（compute 写 → vertex/fragment 读）。
+- 光栅侧由 `RasterPass` 的 `ParticleDraw{pipeline, set, count}` 画出（点拓扑，顶点着色器用 `SV_VertexID` 索引 SSBO）。
+- 这套代码属于测试设施，替换粒子方案时连同 `compute/compute_resources.*`、`compute/compute_pass.*`、shader 里的粒子入口、`Renderer` 侧的粒子管线一并删除。
+
+## 6. 关键数据流
 
 ```
 装配（App 构造，自下而上）
-window → VulkanDevice → VMA → RhiFactory → DebugMessenger/Surface → CommandPools
+window → VulkanDevice → VMA → RhiFactory → DebugMessenger/Surface → CommandPools(graphics/compute/transient)
       → UploadQueue → ResourceRegistry → AssetLibrary → Samplers
+      → ShaderLibrary → DescriptorSetLayoutLibrary → PoolBudgetBuilder → DescriptorSetAllocator
       → DemoScene.build()（材质 + SceneObject + InstanceBuffer 上传）
-      → resource::ShaderLibrary（唯一实例；SPIR-V 读取 + 反射）
-      → DescriptorSetLayoutLibrary（手工 Set0 + 反射 Set1+ 的单张 set 表）
-      → PoolBudgetBuilder（bindingTables × 用途个数）→ rhi::DescriptorSetAllocator
-      → 每材质：allocate → descriptorWrites() → writeAll → flush → attachSet
-      → Renderer（DL 库移交 + PipelineLayoutLibrary + FrameResources：Set0/UBO/同步；依赖聚合）
+      → 每材质：allocate Set1 → descriptorWrites() → writeAll → attachSet
+      → Renderer(Dependencies)：PipelineLayoutLibrary + FrameResources(Set0/UBO/同步) + 管线库
 
 每帧（GameLoop）
-pollEvents → input.poll → update(dt)（ActionContext::update(input) → CameraController 语义消费 → scene::CameraManager.active()；键位表见 docs/input-action-layer-plan.md）
-  → beginFrame: waitFence → acquire(OUT_OF_DATE⇒重建并跳帧) → fillUBO(activeCamera+FrameParams) → writeSet0
-  → record: scene_.collectRenderItems()（缓存 span）→ CommandRecorder（过渡→Rendering→逐 item）
-  → endFrame: timeline+binary submit → present（resize/OOD ⇒ 重建）
+pollEvents → input.poll → actions_.update(input) → CameraController::update → renderer:
+  beginFrame: waitFence(slot) → acquire(OOD⇒重建并跳帧) → fillUniformBuffer → writeFrameSet → reset fence/cmd
+  record: CommandRecorder::begin(布局转换)
+          → [compute] recordBarrier → bind Set2 + push(dt,gravity) → dispatch → advance → bufferBarrier
+          → RasterPass: beginRendering → mesh items → 粒子点 → endRendering
+          → CommandRecorder::end(→PresentSrc)
+  endFrame: paceBeforeSubmit → submit(timeline+binary) → present(present timing) → OOR/suboptimal⇒重建
 
-资产：loadMesh/loadImage → Importer → MeshData/ImageData → Registry.create*GPU（UploadQueue 上传）→ AssetHandle
+资产：loadMesh/loadImage → Importer → MeshData/ImageData → ResourceRegistry.create*GPU（UploadQueue）→ AssetHandle
 ```
 
-## 6. 工程约定（代理必须遵守）
+## 7. 编码规范（强制）
 
-1. **C++20 + C++ Core Guidelines**：designated initializers、`std::span/string_view`、`[[nodiscard]]`、聚合代替多参构造、RAII move-only（`VmaBuffer` 等禁拷贝）。
-2. **固定宽度整型不加 `std::` 前缀**：写 `uint32_t`/`uint64_t`/`uint8_t`，不写 `std::uint32_t`。
-3. **依赖只向下**：`scene/` 头文件禁止 Vulkan/GLFW 类型（验收命令：`grep -rniE "vulkan|glfw|vk::|VkBuffer" src/scene/*.hpp` 应零命中，注释除外）；层间通信走契约类型（`RenderItem`/`AssetHandle`/`FrameContext`/`FrameParams`）。
-4. **无单例**：仅 `platform::LogLocator`（带 Null Object）；其余一律构造注入。
-5. **App 成员声明顺序 = 析构逆序纪律（曾出过真实事故）**：一切（传递性地）持有 GPU 资源的成员——VMA 分配（`scene_` → InstanceBuffer → VmaBuffer）、`vk::raii` 句柄（材质描述符集、Renderer 的 per-frame set）——必须声明在其依赖的 rhi/resource 成员（`vulkanDevice_`/`vmaContext_`/`descriptorPool_`）**之后**。声明反了 = 分配器/池先死，退出时 VMA 断言 `Some allocations were not freed before destruction of this memory block`。新增持有 GPU 资源的成员时先检查声明位置。
-6. **vulkan-hpp RAII 语义**：raii 对象本身传参（如 `vulkanDevice_.instance`），不要 `*` 解引用成 plain handle；raii 创建方法可 const 调用。
-7. **每阶段/每次重构的验证协议**：Debug + Release 双配置构建 → **优雅关闭冒烟**（强杀进程不跑析构函数，测不出退出期资源错误，必须走 `CloseMainWindow`）：
-   ```powershell
-   Set-Location bin; $p = Start-Process -FilePath '.\main.exe' -PassThru
-   Start-Sleep -Seconds 6; $null = $p.CloseMainWindow()
-   if (-not $p.WaitForExit(15000)) { $p.Kill(); 'DID-NOT-EXIT' } else { "CLEAN-EXIT code=$($p.ExitCode)" }
-   ```
-   通过标准：`CLEAN-EXIT code=0` 且无 validation/VMA 断言输出（沙箱里 bash 直接拉起 exe 会静默 127，一律用 PowerShell）。→ 用户做黄金帧目视对比。
-8. **Git**：全局 `commit.gpgsign=true`（SSH key 带 passphrase），非交互提交用 `git -c commit.gpgsign=false commit ...`；事后补签：`git rebase <base>~1 --exec "git commit --amend --no-edit -S"`。
+1. **C++20 + Core Guidelines**：designated initializers、`std::span/std::string_view`、`[[nodiscard]]`、聚合代替多参构造、RAII move-only（`VmaBuffer`/`VmaImage` 禁拷贝）。
+2. 固定宽度整型**不加 `std::` 前缀**：`uint32_t`/`uint64_t`/`uint8_t`。
+3. **无单例**：仅 `platform::LogLocator`（带 Null Object）；其余一律构造注入。
+4. **vulkan-hpp RAII 语义**：raii 对象本身传参（如 `vulkanDevice_.instance`），不要解引用成裸 handle；raii 的创建方法可 const 调用。
+5. **App 成员声明顺序 = 析构逆序纪律**：一切（传递地）持有 GPU 资源的成员必须声明在其依赖的 rhi/resource 成员之后（`vulkanDevice_`/`vmaContext_`/`descriptorSetAllocator_`）。反了会在退出时触发 VMA 断言 `Some allocations were not freed before destruction`。新增持有 GPU 资源的成员时先检查声明位置。
+6. **依赖只向下**：上层不得被下层 include；跨层只用契约类型。
+7. **Git**：全局 `commit.gpgsign=true`（SSH key 带 passphrase）；非交互提交用 `git -c commit.gpgsign=false commit ...`，事后补签 `git rebase <base>~1 --exec "git commit --amend --no-edit -S"`。
 
-## 7. 当前状态与下一步
+### 7.1 注释规范（强制）
 
-- ✅ Phase 0–5：平台层 / 资源层 / 渲染层拆分 / rhi 归位 / 场景层纯数据化 / 应用层成形。
-- ⏳ **Phase 6 · 工程纪律**（唯一剩余重构阶段）：CMake 拆 5 个静态库（编译期强制依赖方向）、显式源文件列表、`VULKAN_HPP_*` 宏收敛单一公共头、头文件卫生、可选 CI/测试。
-- ⏳ **输入语义动作层重构（计划已批准，实施未开始）**：目标态（键位表 / ActionContext / 相机命名与删除 / Window 鼠标钩子裁剪）见 `docs/input-action-layer-plan.md`；§4 相关行即按该目标态描述，**落地前以 `src/` 为准**——当前树处中间态：`CameraController` 仍引用已删的 `Input::wasKeyPressed`，暂不可编译。
-- ⏳ **管线/描述符改造（设计已定，实施未开始）**：`docs/pipeline-descriptor-refactor-plan.md`。**本轮只做光栅 + 计算两种管线族**，RT 归档在附录 A。里程碑 M0（修 6 个既存缺陷）→ M1（`resource::ShaderLibrary`）→ M2（`render::DescriptorSetLayoutLibrary` 接线，手工 Set0；**Set0 反射校验延后**）→ M3（描述符分配/写入下沉 `rhi` + `Material` 搬到 `render`）→ M4（记录层按管线族拆分 + 计算管线打通）。**多光源改造依赖它先落地**：灯数组的 Set0 binding 必须加进手工表 + 预算，且因校验延后需人工核对 shader 声明。
-- 🎯 **重构完成后**：按计划文档 §6 路线图迁移到 Vulkan 光线追踪（NVIDIA）：`rhi::AccelerationStructure`（BLAS 引用 `MeshGPU` 顶点/索引，TLAS instance 用 `SceneObject::worldMatrix()`）、`RayTracingPipelineSpec`+SBT、trace pass 接入现有 `beginFrame/record/endFrame` 编排、离线累积输出。最终形态 = 纯路径追踪离线渲染器。
-- 已知债务清单见 `docs/architecture-current.md` §6（Material 仍 GPU 侧过渡件、`setTransform` 后需重新 `setInstances`、random_device 种子不可复现等）。
+- **语言：英文。**
+- 只描述**当前**模块/函数的职责与依赖：它做什么、依赖谁、被谁拥有/调用。
+- 必要时用 1–2 句说明**当前设计为何如此**：生命周期、线程模型、Vulkan 前置条件、所有权、性能取舍——目的是让读者判断改动的边界。
+- **不写改动历史**：不出现「以前是 X」「改成 Y 是为了修 Z」「曾经的实现」这类叙述，也不复述代码本身能表达的逻辑。
+- 头文件注释写契约（所有权、生命周期、线程安全、未定义行为）；`.cpp` 注释写局部不变量与 Vulkan 前置条件（如 `VUID`、布局、访问掩码）。
+- 参考写法：`rhi/descriptor/descriptor_set_allocator.hpp` 的顶部说明、`render/pass/pass.hpp` 的类注释。
+
+## 8. 当前状态与待办
+
+- ✅ 分层、描述符子系统（手工 Set0 + 反射 Set1+ + 池预算 + 表驱动写入）、光栅/计算两族管线、present timing 限帧、输入语义动作层。
+- ⏳ **多光源**（`docs/light-system-plan.md`）：当前只有单个 `Light`（UBO 内联），灯数组需要新增 Set0 binding + 预算 + 反射校验流程。
+- ⏳ **计算队列拆分**（README TODO #1）：目前 compute 与 graphics 共用一个队列，compute 只是录进同一帧命令缓冲。
+- ⏳ **FRR 限帧改进**（README TODO #2）：目标帧率不整除刷新率时会有周期性顿挫；计划用 present-timing 的累计误差 + `vkGetPastPresentationTimingEXT` 回馈修正。
+- ⏳ **Phase 6 工程纪律**：CMake 拆 5 个静态库（把依赖方向变成编译期约束）、显式源文件列表、`VULKAN_HPP_*` 宏收敛到单一公共头。
+- ⏳ **粒子系统替换**：当前实现是测试设施（见 §5.4），不保证 API 稳定。
+- 🎯 长期路线：`docs/future-architecture.md`（RT opt-in 模式、shader 模块化、热重载），最终形态为纯路径追踪离线渲染器。
+- 已知债务：`rhi/present/swapchain` 直接依赖 `render::RenderSettings`（层次回边，应改为 rhi 自己的小型 settings 结构）；`Material` 仍直接持 GPU set（未来应只描述数据）；`SceneObject::setTransform()` 之后需重新 `setInstances()` 才会更新实例矩阵；粒子 dt 在 `ComputePass` 内用静态时钟计算（临时做法，应改由渲染循环传入）；随机种子目前可复现（`mt19937(1337)`），引入物理/路径追踪时保持固定种子。
+
+## 9. 排错速查
+
+| 现象 | 先查 |
+|---|---|
+| 新文件没被编译 | 重新 `cmake -S . -B cmake-build-Debug`（GLOB 未刷新） |
+| 链接失败、exe 被占用 | 结束残留 `main.exe` |
+| 启动即 `0xC0000139` | bin/ 下 DLL 被外来 PATH 抢先解析；确认 POST_BUILD 拷贝了 4 个 DLL |
+| 退出时 VMA 断言 | `App` 成员声明顺序（§7 第 5 条）或某处 GPU 资源比属主活得久 |
+| validation 报描述符错误 | set 表与 shader 反射是否一致（名字/类型/count），预算是否覆盖同时在用的 set 数 |
+| 画面撕裂/顿挫 | `targetFPS` 是否整除刷新率；present mode；pacing 与 acquire 的先后 |
+| 退出码非 0 且有 stderr | 捕获 `Start-Process -RedirectStandardError`（验证层输出走 stderr） |

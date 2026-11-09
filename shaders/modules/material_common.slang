@@ -1,3 +1,4 @@
+#language slang 2026
 module material_common;
 
 // --- Material texture slots -------------------------------------------------
@@ -19,15 +20,15 @@ public static const int kMaterialSlotCount = 5;
 
 // Push constant
 public struct PushConstants {
-    float4 baseColorFactor;
-    float4 emissiveFactor;
-    float metallicFactor;
-    float roughnessFactor;
-    float normalScale;
-    float occlusionStrength;
-    float alphaMaskCutoff; // Alpha cutoff threshold
-    float clearcoatFactor; // KHR_materials_clearcoat
-    float clearcoatRoughness;
-    uint flags; // Material properites
+    public float4 baseColorFactor;
+    public float4 emissiveFactor;
+    public float metallicFactor;
+    public float roughnessFactor;
+    public float normalScale;
+    public float occlusionStrength;
+    public float alphaMaskCutoff; // Alpha cutoff threshold
+    public float clearcoatFactor; // KHR_materials_clearcoat
+    public float clearcoatRoughness;
+    public uint flags; // Material properites
 };
 [[vk::push_constant]] public ConstantBuffer<PushConstants> material;
