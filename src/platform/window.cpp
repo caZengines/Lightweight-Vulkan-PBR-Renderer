@@ -21,9 +21,7 @@ Window::Window(const WindowConfig& config) {
     }
     title_ = config.title;
 
-    glfwSetWindowUserPointer(window_, this);
-    glfwSetFramebufferSizeCallback(window_, framebufferResizeCallback);
-    glfwSetScrollCallback(window_, scrollCallback);
+    registerCallBack(window_);
 }
 
 Window::~Window() {
@@ -32,6 +30,15 @@ Window::~Window() {
         window_ = nullptr;
     }
     glfwTerminate();
+}
+
+void Window::registerCallBack(GLFWwindow *window) {
+    glfwSetWindowUserPointer(window, this);
+    glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+    glfwSetScrollCallback(window, scrollCallback);
+    glfwSetKeyCallback(window, KeyCallback);
+    glfwSetMouseButtonCallback(window, mouseButtonCallback);
+    glfwSetWindowFocusCallback(window, windowFocusCallback);
 }
 
 void Window::pollEvents() {
@@ -51,6 +58,7 @@ void Window::setCursorMode(CursorMode mode) {
     switch (mode) {
         case CursorMode::Normal:  glfwMode = GLFW_CURSOR_NORMAL; break;
         case CursorMode::Disabled:glfwMode = GLFW_CURSOR_DISABLED; break;
+        default: break;
     }
     glfwSetInputMode(window_, GLFW_CURSOR, glfwMode);
 }
@@ -108,6 +116,24 @@ void Window::scrollCallback(GLFWwindow* window, double /*xOffset*/, double yOffs
     if (self) {
         self->scrollAccum_ += yOffset;
     }
+}
+
+void Window::KeyCallback(GLFWwindow* window, int key, int, int action, int) {
+    if(action != GLFW_PRESS) return;
+    auto* self = static_cast<Window*>(glfwGetWindowUserPointer(window));
+    if(self && self->onKeyPress) self->onKeyPress(key);
+}
+
+void Window::mouseButtonCallback(GLFWwindow* window, int button, int action, int) {
+    if(action != GLFW_PRESS) return;
+    auto* self = static_cast<Window*>(glfwGetWindowUserPointer(window));
+    if(self && self->onMouseButtonPress) self->onMouseButtonPress(button);
+}
+
+void Window::windowFocusCallback(GLFWwindow* window, int focused) {
+    if(focused) return;
+    auto* self = static_cast<Window*>(glfwGetWindowUserPointer(window));
+    if(self && self->onFocusLost) self->onFocusLost();
 }
 
 } // namespace platform

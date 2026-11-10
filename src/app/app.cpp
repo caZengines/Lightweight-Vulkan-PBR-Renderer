@@ -14,6 +14,7 @@
 #include "resource/asset/resource_registry.hpp"
 #include "resource/gpu/shader_library.hpp"
 #include "rhi/descriptor/descriptor_writer.hpp"
+#include "vulkan/vulkan.hpp"
 
 #include <array>
 #include <span>
@@ -66,6 +67,7 @@ App::~App() {
     if (renderer_) {
         renderer_->cleanup();
     }
+    input_.detach(*window_);
     window_.reset();   // destroys the GLFW window and terminates GLFW
     fileLog.flush();
 }
@@ -102,6 +104,7 @@ void App::initWindow() {
     window_->onFramebufferResize = [this](uint32_t /*width*/, uint32_t /*height*/) {
         if (renderer_) renderer_->framebufferResized = true;
     };
+    input_.attach(*window_);
 }
 
 void App::initRhi() {
@@ -126,7 +129,12 @@ void App::initRhi() {
 
     graphicsCommandPool_ = std::make_unique<rhi::CommandPool>(
         vulkanDevice_.device, vulkanDevice_.graphicsQueueIndex,
-        std::move(vulkanDevice_.graphicsQueue), vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
+        std::move(vulkanDevice_.graphicsQueue), vk::CommandPoolCreateFlagBits::eResetCommandBuffer
+    );
+    computeCommandPool_  = std::make_unique<rhi::CommandPool>(
+            vulkanDevice_.device, vulkanDevice_.graphicsQueueIndex,
+            std::move(vulkanDevice_.computeQueue), vk::CommandPoolCreateFlagBits::eResetCommandBuffer
+    );
 
     // Transient pool = one-shot uploads (UploadQueue). It must live on the
     // GRAPHICS queue family: mipmap generation records vkCmdBlitImage and
@@ -197,6 +205,7 @@ void App::initContent() {
 }
 
 void App::initRender() {
+    constexpr size_t kComputeSetCount = render::kMaxFramesInFlight;
     RenderContext rct = vulkanDevice_.renderContext();
 
     shaderLibrary_ = std::make_unique<resource::ShaderLibrary>(rct);
@@ -218,7 +227,7 @@ void App::initRender() {
     render::PoolBudgetBuilder budget;
     budget.add(layouts.bindingTables[0], render::kMaxFramesInFlight);
     budget.add(layouts.bindingTables[1], materialCount);
-    if(layouts.bindingTables.size() > 2) budget.add(layouts.bindingTables[2], 2);
+    if(layouts.bindingTables.size() > 2) budget.add(layouts.bindingTables[2], kComputeSetCount * 2);
     descriptorSetAllocator_ = std::make_unique<rhi::DescriptorSetAllocator>(
         vulkanDevice_.device, budget.build());
 
@@ -247,12 +256,13 @@ void App::initRender() {
         .descriptorSets   = *descriptorSetAllocator_,
         .shaders          = *shaderLibrary_,
         .graphicsPool     = *graphicsCommandPool_,
+        .queue            = *uploadQueue_,
         .cameras          = cameraManager_,
         .frameParams      = demoScene_.frameParams(),
         .surface          = surface_->handle(),
         .window           = *window_,
         .spirvPath        = config_.shaderPath,
-        .computeSpirvPath = config_.computeShaderPath,
+        .computeSpirvPath = "",//config_.computeShaderPath,
         .factory          = *rhiFactory_,
     };
     renderer_ = std::make_unique<render::Renderer>(std::move(deps), settings);

@@ -38,12 +38,18 @@ class Input {
 public:
     Input() = default;
 
+    void attach(Window& window);
+    void detach(Window& window);
+
     // Call once per frame after Window::pollEvents().
     void poll(const Window& window);
 
     bool isDown(Key key) const;
 
     bool isDown(MouseButton button) const;
+    //in frame Events
+    bool wasKeyPressed(Key key) const;
+    bool wasMouseButtonPressed(MouseButton button) const;
 
     // Cursor movement since the last poll (pixels, y-up screen space).
     double cursorDeltaX() const { return deltaX_; }
@@ -52,9 +58,19 @@ public:
     // Scroll wheel delta accumulated since the last poll.
     double scrollDelta() const { return scroll_; }
 
+    // glfwEvents Callback
+    void markKeyPressed(int glfwKey);
+    void markMousePressed(int glfwButton);
+    // when frame begin cleared
+    void clearFrameEvents();
+    // used for window lost focus
+    void releaseAll();
+
 private:
     std::array<uint32_t, static_cast<uint32_t>(Key::Count)> keys_{};
     std::array<uint32_t, 3> buttons_{};
+    std::array<bool, static_cast<uint32_t>(Key::Count)> pressedThisFrame_{};
+    std::array<bool, 3> pressedButtonsThisFrame_{};
     double   lastX_ = 0.0, lastY_ = 0.0;
     double   deltaX_ = 0.0, deltaY_ = 0.0;
     double   scroll_ = 0.0;

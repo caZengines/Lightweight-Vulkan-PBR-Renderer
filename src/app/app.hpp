@@ -58,9 +58,9 @@ private:
 
     // --- configuration, window & input (Layer 1) ---
     Config                            config_{};
+    platform::Input                   input_{};
     std::unique_ptr<platform::Window> window_;
     platform::FileLog                 fileLog{config_.logPath, /*truncate=*/true};
-    platform::Input                   input_{};
 
     // --- camera: scene-layer math + app-side input mapping ---
     scene::CameraManager                       cameraManager_{};
@@ -74,6 +74,7 @@ private:
     std::unique_ptr<rhi::Surface>               surface_;
     std::unique_ptr<rhi::RhiFactory>            rhiFactory_;
     std::unique_ptr<rhi::CommandPool>           graphicsCommandPool_;
+    std::unique_ptr<rhi::CommandPool>           computeCommandPool_;
     std::unique_ptr<rhi::CommandPool>           transientCommandPool_;
 
     // --- resource (Layer 2) ---

@@ -12,7 +12,6 @@
 #include <string>
 #include <vector>
 
-#include "platform/input.hpp"   // MouseButton / ButtonAction
 
 // Opaque forward declarations — the real definitions live only in window.cpp.
 typedef struct GLFWwindow GLFWwindow;
@@ -20,6 +19,8 @@ typedef struct VkInstance_T* VkInstance;
 typedef struct VkSurfaceKHR_T* VkSurfaceKHR;
 
 namespace platform {
+
+class Input;
 
 struct WindowConfig {
     uint32_t   width    = 1920;
@@ -63,6 +64,9 @@ public:
 
     // --- Event hooks ---
     std::function<void(uint32_t /*width*/, uint32_t /*height*/)>             onFramebufferResize;
+    std::function<void(int /*glfwKey*/)>                                     onKeyPress;
+    std::function<void(int /*glfwButton*/)>                                  onMouseButtonPress;
+    std::function<void()>                                                    onFocusLost;
 
     // Scroll wheel delta accumulated since the last call (consumed by Input).
     double consumeScrollDelta() const;
@@ -71,8 +75,12 @@ private:
     friend class Input;   // Input::poll needs the native handle
     GLFWwindow* nativeHandle() const { return window_; }
 
+    void registerCallBack(GLFWwindow* window);
     static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
     static void scrollCallback(GLFWwindow* window, double xOffset, double yOffset);
+    static void KeyCallback(GLFWwindow* window, int Key, int, int action, int);
+    static void mouseButtonCallback(GLFWwindow* window, int button, int action, int);
+    static void windowFocusCallback(GLFWwindow* window, int focused);
 
     GLFWwindow* window_      = nullptr;
     std::string title_;

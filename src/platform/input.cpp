@@ -39,7 +39,31 @@ constexpr std::array<int, static_cast<uint32_t>(MouseButton::Middle) + 1> kGlfwM
     GLFW_MOUSE_BUTTON_MIDDLE,
 };
 
+Key glfwKeyToKey(int glfwKey) {
+    for(uint32_t i = 0 ; i < static_cast<uint32_t>(Key::Count); ++i) {
+        if(kGlfwKeys[i] == glfwKey) return static_cast<Key>(i);
+    }
+    return Key::Count;
+}
+
+int glfwMouseToIndex(int glfwBtn) {
+    for (uint32_t i = 0; i < kGlfwMouseButtons.size(); ++i)
+        if (kGlfwMouseButtons[i] == glfwBtn) return static_cast<int>(i);
+    return -1;
+}
 } // namespace
+
+void Input::attach(Window &window) {
+  window.onKeyPress         = [this](int k) { markKeyPressed(k); };
+  window.onMouseButtonPress = [this](int b) { markMousePressed(b); };
+  window.onFocusLost        = [this]() { releaseAll(); };
+}
+
+void Input::detach(Window &window) {
+    window.onKeyPress         = nullptr;
+    window.onMouseButtonPress = nullptr;
+    window.onFocusLost        = nullptr;
+}
 
 void Input::poll(const Window& window) {
     GLFWwindow* native = window.nativeHandle();
@@ -74,6 +98,36 @@ bool Input::isDown(Key key) const {
 bool Input::isDown(MouseButton button) const {
     const uint32_t index = static_cast<uint32_t>(button);
     return index < 3 && buttons_[index] != 0;
+}
+
+bool Input::wasKeyPressed(Key key) const {
+    const auto i = static_cast<uint32_t>(key);
+    return i < static_cast<uint32_t>(Key::Count) && pressedThisFrame_[i];
+}
+bool Input::wasMouseButtonPressed(MouseButton b) const {
+    return static_cast<uint32_t>(b) < 3 && pressedButtonsThisFrame_[static_cast<uint32_t>(b)];
+}
+
+// glfwEvents
+void Input::markKeyPressed(int glfwKey) {
+    const Key k = glfwKeyToKey(glfwKey);
+    if (k != Key::Count) pressedThisFrame_[static_cast<uint32_t>(k)] = true;
+}
+void Input::markMousePressed(int glfwButton) {
+    const int i = glfwMouseToIndex(glfwButton);
+    if (i >= 0) pressedButtonsThisFrame_[i] = true;
+}
+
+void Input::clearFrameEvents() {
+    pressedThisFrame_.fill(false);
+    pressedButtonsThisFrame_.fill(false);
+}
+
+void Input::releaseAll() {
+    keys_.fill(0);
+    buttons_.fill(0);
+    pressedThisFrame_.fill(false);
+    pressedButtonsThisFrame_.fill(false);
 }
 
 } // namespace platform
