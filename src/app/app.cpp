@@ -3,7 +3,7 @@
 #include "app/action_context.hpp"
 #include "app/game_loop.hpp"
 #include "platform/input.hpp"
-#include "render/material.hpp"
+#include "render/material/material.hpp"
 #include "rhi/command/command_pool.hpp"
 #include "resource/gpu/sampler.hpp"
 #include "platform/log.hpp"
@@ -153,7 +153,7 @@ void App::initActionContext() {
     actions_.bind(MB::Right,  F::Shift, A::toggleCameraControlMode, T::Hold, M::Default);
     actions_.bind(MB::Middle, F::Shift, A::cameraPan, T::Hold, M::Default);
     actions_.bind(MB::Middle, A::OrbitalRotation, T::Hold, M::Default);
-    actions_.bind(K::KP5, A::toggleProjection, T::Press, M::Default);
+    actions_.bind(K::KP5, A::toggleProjection, T::OneShot, M::Default);
 
     // Roam movement — the action layer gates these to the walk gesture.
     actions_.bind(K::W, A::moveForward,  T::Hold, M::Walk);
@@ -201,7 +201,8 @@ void App::initSamplers() {
 
 void App::initContent() {
     demoScene_.build(*albedoSampler_, *normalSampler_,
-                     *assetLibrary_, *resourceRegistry_, *uploadQueue_);
+                     *assetLibrary_, *resourceRegistry_, *uploadQueue_,
+                     materialRegistry_);
 }
 
 void App::initRender() {
@@ -223,7 +224,7 @@ void App::initRender() {
         throw std::runtime_error("shader declares no set 1; material sets cannot be built");
     }
 
-    const size_t materialCount = demoScene_.materials().size();
+    const size_t materialCount = materialRegistry_.size();
     render::PoolBudgetBuilder budget;
     budget.add(layouts.bindingTables[0], render::kMaxFramesInFlight);
     budget.add(layouts.bindingTables[1], materialCount);
@@ -231,7 +232,7 @@ void App::initRender() {
     descriptorSetAllocator_ = std::make_unique<rhi::DescriptorSetAllocator>(
         vulkanDevice_.device, budget.build());
 
-    for (const auto& material : demoScene_.materials()) {
+    for (const auto& material : materialRegistry_.materials()) {
         const auto set = descriptorSetAllocator_->allocate(layouts.bySetIndex[1],
                                                           layouts.bindingTables[1]);
         const std::vector<rhi::DescriptorWrite> values = material->descriptorWrites();

@@ -15,6 +15,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 // =============================================================================
@@ -867,7 +868,7 @@ void visitNode(const tg3_model& model,
             primitiveOut.materialIndex =
                 mesh.primitives[p].material >= 0
                     ? static_cast<uint32_t>(mesh.primitives[p].material)
-                    : 0xFFFFFFFFu;
+                    : resource::kNoMaterialIndex;
             primitiveOut.name = meshName.empty()
                                     ? "mesh_" + std::to_string(node.mesh)
                                     : meshName;
@@ -946,12 +947,12 @@ GltfScene GltfSceneImporter::load(const std::string& modelPath) {
 
     // Primitive material references must point at a parsed material.
     for (resource::GltfPrimitive& prim : scene.primitives) {
-        if (prim.materialIndex != 0xFFFFFFFFu &&
+        if (prim.materialIndex != resource::kNoMaterialIndex &&
             prim.materialIndex >= scene.materials.size()) {
             log::get().write(platform::LogLevel::Warning,
                 "[glTF] warning: primitive material index out of range; "
                 "material reference dropped");
-            prim.materialIndex = 0xFFFFFFFFu;
+            prim.materialIndex = resource::kNoMaterialIndex;
         }
     }
 

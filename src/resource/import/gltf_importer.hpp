@@ -36,7 +36,6 @@ inline constexpr size_t kMaterialSlotCount = static_cast<size_t>(MaterialTexture
 struct TextureSlot {
     int32_t  texture  = -1;   // index into GltfScene::textures; -1 = none
     uint32_t texCoord = 0;    // UV set index (TEXCOORD_${texCoord})
-    float    scale    = 1.0f; // normal: scale; occlusion: strength; ignored elsewhere
 };
 
 // glTF material: factors plus per-slot texture references.
@@ -75,17 +74,21 @@ struct TextureSource {
     bool                 valid = false;    // false: unusable entry, treated as "no texture"
 };
 
+// GltfPrimitive::materialIndex sentinel: the primitive references no glTF
+// material and is rendered with whatever fallback the caller supplies.
+inline constexpr uint32_t kNoMaterialIndex = 0xFFFFFFFFu;
+
 // One drawable glTF primitive: its local-space geometry, the baked world
 // transform of the node chain that referenced it, and the glTF material index
-// it points at (0xFFFFFFFF when the primitive has no material).
+// it points at (kNoMaterialIndex when the primitive has no material).
 //
 // The world matrix rides OUTSIDE the mesh: vertices stay in mesh-local space
 // so the same geometry can be re-placed or instanced freely.
 struct GltfPrimitive {
     MeshData    mesh;
     glm::mat4   world         = glm::mat4(1.0f);
-    uint32_t    materialIndex = 0xFFFFFFFFu;  // glTF material index; ~0u = none
-    std::string name;                         // owning glTF mesh name (debugging)
+    uint32_t    materialIndex = kNoMaterialIndex;  // glTF material index
+    std::string name;                              // owning glTF mesh name (debugging)
 };
 
 // CPU-side result of a full glTF 2.0 scene import — pure data, no Vulkan.

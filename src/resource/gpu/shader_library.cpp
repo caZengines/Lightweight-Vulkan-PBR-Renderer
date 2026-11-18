@@ -7,6 +7,7 @@
 
 #include "extern/spirv_reflect.h"
 #include "rhi/device/render_context.hpp"
+#include "shader_library.hpp"
 
 namespace resource {
 namespace {
@@ -65,6 +66,7 @@ const ShaderLibrary::Module& ShaderLibrary::entry(std::string_view spirvPath) co
 
     std::vector<std::pair<std::string, vk::ShaderStageFlagBits>> entryPoints;
     std::vector<ReflectBinding>                                  bindings;
+    std::vector<ReflectSpecializationConstant>                   specConstants;
     std::optional<ReflectPushConstant>                           pushConstant;
 
     std::map<std::pair<uint32_t, uint32_t>, vk::ShaderStageFlags> stageMap;
@@ -112,7 +114,6 @@ const ShaderLibrary::Module& ShaderLibrary::entry(std::string_view spirvPath) co
     reflect.EnumerateDescriptorSets(&setCount, nullptr);
     std::vector<SpvReflectDescriptorSet*> sets(setCount);
     reflect.EnumerateDescriptorSets(&setCount, sets.data());
-
     for (const auto* set : sets) {
         for (uint32_t bi = 0; bi < set->binding_count; ++bi) {
             const auto* b = set->bindings[bi];
@@ -131,6 +132,20 @@ const ShaderLibrary::Module& ShaderLibrary::entry(std::string_view spirvPath) co
         }
     }
 
+    uint32_t specConstantCount = 0;
+    reflect.EnumerateSpecializationConstants(&specConstantCount, nullptr);
+    std::vector<SpvReflectSpecializationConstant*> specializationCostants(specConstantCount);
+    reflect.EnumerateSpecializationConstants(&specConstantCount, specializationCostants.data());
+    for (const auto* sc : specializationCostants) {
+        if(sc->default_value_size == 4) {
+            specConstants.emplace_back(ReflectSpecializationConstant{
+                .name = sc->name,
+                .id = sc->constant_id,
+                .defalutSize = sc->default_value_size
+            });
+        }
+    }
+
     vk::ShaderModuleCreateInfo ci{};
     ci.setCodeSize(code.size()).setPCode(reinterpret_cast<const uint32_t*>(code.data()));
 
@@ -138,6 +153,7 @@ const ShaderLibrary::Module& ShaderLibrary::entry(std::string_view spirvPath) co
         .module       = vk::raii::ShaderModule(rct_.device, ci),
         .entryPoints  = std::move(entryPoints),
         .bindings     = std::move(bindings),
+        .specializationConstants = std::move(specConstants),
         .pushConstant = std::move(pushConstant),
     };
     return entries_.emplace(key, std::move(newModule)).first->second;
@@ -164,6 +180,10 @@ vk::PipelineShaderStageCreateInfo ShaderLibrary::stage(
 
 std::span<const ReflectBinding> ShaderLibrary::bindings(std::string_view spirvPath) const {
     return entry(spirvPath).bindings;
+}
+
+[[nodiscard]] std::span<const ReflectSpecializationConstant> ShaderLibrary::specializationConstants(std::string_view spirvPath) const {
+    return entry(spirvPath).specializationConstants;
 }
 
 const std::optional<ReflectPushConstant>& ShaderLibrary::pushConstant(

@@ -38,6 +38,13 @@ struct RenderContext;
 
 namespace resource {
 
+struct ReflectSpecializationConstant {
+    std::string name{};
+    uint32_t    id  = 0;
+    uint32_t    defalutSize = 0;
+    uint32_t    defalutValue = 0;
+};
+
 class ShaderLibrary final {
 public:
     ShaderLibrary(const ShaderLibrary&) = delete;
@@ -53,6 +60,8 @@ public:
 
     [[nodiscard]] std::span<const ReflectBinding> bindings(std::string_view spirvPath) const;
 
+    [[nodiscard]] std::span<const ReflectSpecializationConstant> specializationConstants(std::string_view spirvPath) const;
+
     // The push constant after merging the entry points (size/offset must be consistent, stageFlags take union)
     [[nodiscard]] const std::optional<ReflectPushConstant>& pushConstant(
         std::string_view spirvPath) const;
@@ -63,6 +72,7 @@ private:
         vk::raii::ShaderModule                                       module;
         std::vector<std::pair<std::string, vk::ShaderStageFlagBits>> entryPoints;  // OpEntryPoint name → stage
         std::vector<ReflectBinding>                                  bindings;     // module level，include set 0
+        std::vector<ReflectSpecializationConstant>                   specializationConstants;
         std::optional<ReflectPushConstant>                           pushConstant;
     };
 

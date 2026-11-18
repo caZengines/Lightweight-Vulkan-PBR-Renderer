@@ -1,4 +1,5 @@
 #include "scene/scene.hpp"
+#include "scene/primitive_batching.hpp"
 
 namespace scene {
 
@@ -31,6 +32,7 @@ std::span<const render::RenderItem> Scene::collectRenderItems() const {
                 .instanceCount = object->instanceCount(),
             });
         }
+        batchRenderItems(cachedItems_);
         itemsDirty_ = false;
     }
     return cachedItems_;

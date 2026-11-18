@@ -7,6 +7,7 @@
 #include "platform/input.hpp"
 #include "platform/log.hpp"
 #include "platform/window.hpp"
+#include "render/material/material_registry.hpp"
 #include "render/renderer.hpp"
 #include "resource/asset/asset_library.hpp"
 #include "resource/asset/resource_registry.hpp"
@@ -86,9 +87,14 @@ private:
     std::unique_ptr<resource::ShaderLibrary>     shaderLibrary_;
     
     // The descriptor pool lives in rhi but is owned here: it must outlive both
-    // the material sets (held by scene_ → SceneObject) and the renderer's
-    // per-frame sets.  Declaration order below is what guarantees that.
+    // the material sets (referenced by Material) and the renderer's per-frame
+    // sets.  Declaration order below is what guarantees that.
     std::unique_ptr<rhi::DescriptorSetAllocator> descriptorSetAllocator_;
+
+    // Owns every Material and its stable id. Declared before scene_ so the
+    // materials outlive the SceneObjects that point at them, and after
+    // descriptorSetAllocator_ so the Set-1 handles they name stay valid.
+    render::MaterialRegistry                    materialRegistry_;
 
     // --- scene data (filled by DemoScene) ---
     scene::Scene                                 scene_{};

@@ -30,12 +30,16 @@ namespace scene {
 // and per-instance placements. Names no Vulkan types — the GPU-side instance
 // stream is a render::InstanceBuffer, created through the resource layer's
 // UploadQueue at setInstances() time.
+//
+// The material pointer is non-owning: render::MaterialRegistry owns the material
+// and must outlive this object.
 class SceneObject {
 public:
     // mesh: asset handle (must be valid; resolved to MeshGPU here and kept
-    // alive by the handle for the object's lifetime).
+    // alive by the handle for the object's lifetime). material: registry-owned,
+    // non-owning here.
     SceneObject(const resource::AssetHandle& mesh,
-                std::shared_ptr<render::Material> material,
+                render::Material* material,
                 const resource::ResourceRegistry& registry);
 
     // Uploads the instance matrices (staging + single submit). The object
@@ -60,7 +64,7 @@ public:
 private:
     resource::AssetHandle                   meshHandle_;         // keeps the GPU mesh loaded
     const resource::MeshGPU*                meshGPU_ = nullptr;  // registry-owned
-    std::shared_ptr<render::Material>     material_;
+    render::Material*                     material_ = nullptr;  // registry-owned
     Transform                               transform_{};
     std::vector<resource::InstanceData>          instances_;          // object-local placements
     std::shared_ptr<render::InstanceBuffer> instanceBuffer_;

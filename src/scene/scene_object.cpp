@@ -2,7 +2,7 @@
 
 #include <stdexcept>
 
-#include "render/material.hpp"
+#include "render/material/material.hpp"
 #include "render/gpu/instance_buffer.hpp"
 #include "resource/asset/resource_registry.hpp"
 #include "resource/gpu/upload_queue.hpp"
@@ -10,12 +10,15 @@
 namespace scene {
 
 SceneObject::SceneObject(const resource::AssetHandle& mesh,
-                         std::shared_ptr<render::Material> material,
+                         render::Material* material,
                          const resource::ResourceRegistry& registry)
-    : meshHandle_(mesh), material_(std::move(material))
+    : meshHandle_(mesh), material_(material)
 {
     if (!mesh.valid()) {
         throw std::runtime_error("SceneObject: null mesh handle (asset not loaded)");
+    }
+    if (!material_) {
+        throw std::runtime_error("SceneObject: null material (must be registry-owned)");
     }
     meshGPU_ = &registry.mesh(mesh);
 }

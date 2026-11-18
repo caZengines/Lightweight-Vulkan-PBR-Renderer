@@ -1,10 +1,14 @@
 #include "render/pipeline/graphics_pipeline.hpp"
 
+#include "render/pipeline/graphics_pipeline_spec.hpp"
 #include "render/pipeline/pipeline_layout_library.hpp"
 #include "render/pipeline/shader_stage.hpp"
 #include "resource/gpu/shader_library.hpp"
 #include "resource/data/vertex.hpp"
+#define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
+#include "vulkan/vulkan.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <stdexcept>
@@ -14,50 +18,45 @@
 
 namespace {
 
-// Vertex layout consumed by the raster pipeline: binding 0 = mesh vertices,
-// binding 1 = per-instance model matrices.
-vk::VertexInputBindingDescription meshVertexBinding() {
-    vk::VertexInputBindingDescription description;
-    description.setBinding(0)
-               .setStride(sizeof(resource::Vertex))
-               .setInputRate(vk::VertexInputRate::eVertex);
-    return description;
-}
-
-std::array<vk::VertexInputAttributeDescription, 4> meshVertexAttributes() {
-    vk::VertexInputAttributeDescription posAttribute;
-    posAttribute.setBinding(0).setLocation(0).setFormat(vk::Format::eR32G32B32Sfloat)
-                .setOffset(offsetof(resource::Vertex, pos));
-    vk::VertexInputAttributeDescription uvAttribute;
-    uvAttribute.setBinding(0).setLocation(1).setFormat(vk::Format::eR32G32Sfloat)
-               .setOffset(offsetof(resource::Vertex, texCoord0));
-    vk::VertexInputAttributeDescription norAttribute;
-    norAttribute.setBinding(0).setLocation(2).setFormat(vk::Format::eR8G8B8A8Snorm)
-                .setOffset(offsetof(resource::Vertex, normal));
-    vk::VertexInputAttributeDescription tanAttribute;
-    tanAttribute.setBinding(0).setLocation(3).setFormat(vk::Format::eR8G8B8A8Snorm)
-                .setOffset(offsetof(resource::Vertex, tangent));
-
-    return {posAttribute, uvAttribute, norAttribute, tanAttribute};
-}
-
-vk::VertexInputBindingDescription instanceBinding() {
-    vk::VertexInputBindingDescription description;
-    description.setBinding(1)
-               .setStride(sizeof(resource::InstanceData))
-               .setInputRate(vk::VertexInputRate::eInstance);
-    return description;
-}
-
-std::array<vk::VertexInputAttributeDescription, 4> instanceAttributes() {
-    std::array<vk::VertexInputAttributeDescription, 4> attribute;
-    for (uint32_t i = 0; i < 4; ++i) {
-        attribute[i].setBinding(1)
-                    .setLocation(4 + i)
-                    .setFormat(vk::Format::eR32G32B32A32Sfloat)
-                    .setOffset(sizeof(glm::vec4) * i);
+// Turns the value-type vertex layout into the vk descriptions, rejecting
+// attributes that point at a binding the layout never declares.
+vk::PipelineVertexInputStateCreateInfo buildVertexInput(const render::VertexLayoutSpec& layout,
+                                                        std::vector<vk::VertexInputBindingDescription>& bindings,
+                                                        std::vector<vk::VertexInputAttributeDescription>& attributes) {
+    bindings.reserve(layout.bindings.size());
+    for (const render::VertexBindingSpec& binding : layout.bindings) {
+        vk::VertexInputBindingDescription description;
+        description.setBinding(binding.binding)
+                   .setStride(binding.stride)
+                   .setInputRate(binding.rate);
+        bindings.push_back(description);
     }
-    return attribute;
+
+    attributes.reserve(layout.attributes.size());
+    for (const render::VertexAttributeSpec& attribute : layout.attributes) {
+        const bool known = std::ranges::any_of(
+            layout.bindings,
+            [&](const render::VertexBindingSpec& binding) {
+                return binding.binding == attribute.binding;
+            });
+        if (!known) {
+            throw std::invalid_argument("vertex attribute location " +
+                                        std::to_string(attribute.location) +
+                                        " references undeclared binding " +
+                                        std::to_string(attribute.binding));
+        }
+        vk::VertexInputAttributeDescription description;
+        description.setLocation(attribute.location)
+                   .setBinding(attribute.binding)
+                   .setFormat(attribute.format)
+                   .setOffset(attribute.offset);
+        attributes.push_back(description);
+    }
+
+    vk::PipelineVertexInputStateCreateInfo vertexInput;
+    vertexInput.setVertexBindingDescriptions(bindings)
+               .setVertexAttributeDescriptions(attributes);
+    return vertexInput;
 }
 
 }  // namespace
@@ -69,6 +68,34 @@ GraphicsPipeline::GraphicsPipeline(vk::raii::Pipeline&& pipeline,
                                    vk::ShaderStageFlags pushConstantStages)
     : PipelineBase(std::move(pipeline), layout,
                    vk::PipelineBindPoint::eGraphics, pushConstantStages) {}
+
+VertexLayoutSpec meshVertexLayout() {
+    VertexLayoutSpec layout;
+    layout.bindings = {
+        VertexBindingSpec{0, static_cast<uint32_t>(sizeof(resource::Vertex)),
+                          vk::VertexInputRate::eVertex},
+        VertexBindingSpec{1, static_cast<uint32_t>(sizeof(resource::InstanceData)),
+                          vk::VertexInputRate::eInstance},
+    };
+    layout.attributes = {
+        VertexAttributeSpec{0, 0, vk::Format::eR32G32B32Sfloat,
+                            static_cast<uint32_t>(offsetof(resource::Vertex, pos))},
+        VertexAttributeSpec{1, 0, vk::Format::eR32G32Sfloat,
+                            static_cast<uint32_t>(offsetof(resource::Vertex, texCoord0))},
+        VertexAttributeSpec{2, 0, vk::Format::eR32G32Sfloat,
+                            static_cast<uint32_t>(offsetof(resource::Vertex, texCoord1))},
+        VertexAttributeSpec{3, 0, vk::Format::eR8G8B8A8Snorm,
+                            static_cast<uint32_t>(offsetof(resource::Vertex, normal))},
+        VertexAttributeSpec{4, 0, vk::Format::eR8G8B8A8Snorm,
+                            static_cast<uint32_t>(offsetof(resource::Vertex, tangent))},
+    };
+    for (uint32_t i = 0; i < 4; ++i) {
+        layout.attributes.emplace_back(
+            VertexAttributeSpec{5 + i, 1, vk::Format::eR32G32B32A32Sfloat,
+                                static_cast<uint32_t>(sizeof(glm::vec4) * i)});
+    }
+    return layout;
+}
 
 GraphicsPipeline createGraphicsPipeline(vk::raii::Device& device,
                                        const PipelineLayout& layout,
@@ -84,12 +111,35 @@ GraphicsPipeline createGraphicsPipeline(vk::raii::Device& device,
     }
 
     const auto vertStageInfo = shaders.stage(spirvPath, spec.vertEntry);
-    const auto fragStageInfo = shaders.stage(spirvPath, spec.fragEntry);
+    auto fragStageInfo = shaders.stage(spirvPath, spec.fragEntry);
     detail::requireStage(vertStageInfo, vk::ShaderStageFlagBits::eVertex, spec.vertEntry, spirvPath);
     detail::requireStage(fragStageInfo, vk::ShaderStageFlagBits::eFragment, spec.fragEntry, spirvPath);
 
+    // specialization constants
+    std::vector<vk::SpecializationMapEntry> specEntries;
+    std::vector<uint32_t>                   specValues;
+    vk::SpecializationInfo                  fragSpecInfo{};
+    if(!spec.SpecializationConstants.empty()) {
+        specEntries.reserve(spec.SpecializationConstants.size());
+        specValues.reserve(spec.SpecializationConstants.size());
+        for (uint32_t i = 0; i < spec.SpecializationConstants.size(); ++i) {
+            const auto& c = spec.SpecializationConstants[i];
+            vk::SpecializationMapEntry e;
+            e.setConstantID(c.id)
+             .setOffset(i * sizeof(uint32_t))
+             .setSize(sizeof(uint32_t));
+            specEntries.emplace_back(e);
+            specValues.emplace_back(c.value);
+        }
+        fragSpecInfo.setMapEntries(specEntries)
+                    .setDataSize(specValues.size() * sizeof(uint32_t))
+                    .setPData(specValues.data());
+        fragStageInfo.setPSpecializationInfo(&fragSpecInfo);
+    }
+
     const std::array<vk::PipelineShaderStageCreateInfo, 2> stages{vertStageInfo, fragStageInfo};
 
+    // dynamic state
     vk::PipelineViewportStateCreateInfo viewportState{};
     viewportState.setViewportCount(1).setScissorCount(1);
     std::array<vk::DynamicState, 2> dynamicStates{
@@ -97,24 +147,15 @@ GraphicsPipeline createGraphicsPipeline(vk::raii::Device& device,
     vk::PipelineDynamicStateCreateInfo dynamicState{};
     dynamicState.setDynamicStates(dynamicStates);
 
-    const auto vertexBindingDesc   = meshVertexBinding();
-    const auto vertexAttribDesc    = meshVertexAttributes();
-    const auto instanceBindingDesc = instanceBinding();
-    const auto instanceAttribDesc  = instanceAttributes();
-    std::vector<vk::VertexInputBindingDescription> bindingDescriptions{
-        vertexBindingDesc, instanceBindingDesc};
-    std::vector<vk::VertexInputAttributeDescription> attributeDescriptions(
-        vertexAttribDesc.begin(), vertexAttribDesc.end());
-    attributeDescriptions.insert(attributeDescriptions.end(),
-                                 instanceAttribDesc.begin(), instanceAttribDesc.end());
-    vk::PipelineVertexInputStateCreateInfo vertexInput{};
-    vertexInput.setVertexBindingDescriptions(bindingDescriptions)
-               .setVertexAttributeDescriptions(attributeDescriptions);
+    std::vector<vk::VertexInputBindingDescription>   bindingDescriptions;
+    std::vector<vk::VertexInputAttributeDescription> attributeDescriptions;
+    const vk::PipelineVertexInputStateCreateInfo vertexInput =
+        buildVertexInput(spec.vertexLayout, bindingDescriptions, attributeDescriptions);
 
     vk::PipelineInputAssemblyStateCreateInfo inputAssembly{};
     inputAssembly.setTopology(spec.topology)
                  .setPrimitiveRestartEnable(vk::False);
-
+    
     vk::PipelineRasterizationStateCreateInfo rasterizer{};
     rasterizer.setDepthClampEnable(vk::False)
               .setRasterizerDiscardEnable(vk::False)

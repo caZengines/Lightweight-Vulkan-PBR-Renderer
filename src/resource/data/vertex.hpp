@@ -15,13 +15,9 @@ namespace resource {
 struct Vertex {
     glm::vec3 pos;
     glm::vec2 texCoord0;
+    glm::vec2 texCoord1;
     int8_t normal[4];
     int8_t tangent[4];
-    // Second UV set (glTF TEXCOORD_1). Loaded since the glTF scene importer;
-    // NOT yet exposed to the shader — when the material work wires it up,
-    // add the vertex input at location 4 and shift the instance matrix
-    // attributes to locations 5-8 in render/pipeline/graphics_pipeline.cpp.
-    glm::vec2 texCoord1;
 
     void setNormal(const glm::vec3& n);
     void setTangent(const glm::vec3& tangent_, const float& handedness_);

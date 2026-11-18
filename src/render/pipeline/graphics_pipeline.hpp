@@ -17,6 +17,10 @@ namespace render {
 class PipelineLayout;
 class GraphicsPipeline;
 
+// Vertex input of the mesh pipeline: binding 0 = resource::Vertex,
+// binding 1 = resource::InstanceData (locations 0-3 and 4-7).
+[[nodiscard]] VertexLayoutSpec meshVertexLayout();
+
 [[nodiscard]] GraphicsPipeline createGraphicsPipeline(
     vk::raii::Device& device,
     const PipelineLayout& layout,
