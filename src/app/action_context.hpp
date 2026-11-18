@@ -23,7 +23,12 @@ enum class Action : uint32_t {
     focusObject,
     count
 };
-enum class Trigger : uint8_t { Hold, Press };
+enum class Trigger : uint8_t { 
+    // OneShot triggers once per physical press and does not maintain level_
+    OneShot, 
+    // Hold maintenance level and gate edge
+    Hold 
+};
 // Binding grouping tag used by the gating stage: Walk bindings are evaluated
 // only while the walk gesture is active, Default bindings only when no
 // gesture is active (modal exclusivity / key swallowing).
@@ -74,7 +79,7 @@ class ActionContext {
         struct Binding {
             std::variant<platform::Key, platform::MouseButton> source;
             ModMask mods    = 0;
-            Action  action; Trigger trigger = Trigger::Press; Mode mode    = Mode::Default;
+            Action  action; Trigger trigger = Trigger::OneShot; Mode mode = Mode::Default;
             int     param   = 0;
         };
 

@@ -37,11 +37,14 @@ void ActionContext::bind(platform::MouseButton mbutton, Action action,
 // ---------- check key down ----------
 bool ActionContext::areModifiersDown(ModMask required, const platform::Input& input) const {
     if((required & static_cast<ModMask>(ModifierFlag::Shift)) &&
-        !input.isDown(platform::Key::LeftShift)) return false;
+        !input.isDown(platform::Key::LeftShift)
+    ) return false;
     if((required & static_cast<ModMask>(ModifierFlag::Ctrl)) &&
-        !input.isDown(platform::Key::LeftCtrl)) return false;
+        !input.isDown(platform::Key::LeftCtrl)
+    ) return false;
     if((required & static_cast<ModMask>(ModifierFlag::Alt)) &&
-        !input.isDown(platform::Key::LeftAlt)) return false;
+        !input.isDown(platform::Key::LeftAlt)
+    ) return false;
     
     return true;
 }
@@ -114,19 +117,40 @@ void ActionContext::update(const platform::Input& input) {
         const Binding& b = bindings_[i];
         if (std::holds_alternative<platform::MouseButton>(b.source)) continue;
 
-        bool gated = rawMatch_[i];
-        gated = (b.mode == Mode::Walk) ? (gated && level_[static_cast<size_t>(Action::toggleCameraControlMode)])
-                                       : (gated && !gestureActive);
+        const bool modeAllows =
+            b.mode == Mode::Walk
+                ? level_[static_cast<size_t>(Action::toggleCameraControlMode)]
+                : !gestureActive;
+        const bool gated = rawMatch_[i] && modeAllows;
 
-        auto idx = static_cast<size_t>(b.action);
-        if (gated && !prevMatch_[i]) {                   
-            activated_[idx] = true;
-            param_[idx]     = b.param;   
+        const auto idx = static_cast<size_t>(b.action);
+        if (b.trigger == Trigger::OneShot) {
+            // One press fires once. The event edge covers taps that start and
+            // end between two updates (the level is already back up), so it
+            // must not require prevMatch_ to be false; the level path still
+            // catches presses whose event was missed.
+            const platform::Key key = std::get<platform::Key>(b.source);
+            const bool eventPress = input.wasKeyPressed(key) &&
+                                    areModifiersDown(b.mods, input) && modeAllows;
+            if (eventPress || (gated && !prevMatch_[i])) {
+                activated_[idx] = true;
+                param_[idx] = b.param;
+            }
+            // Track the physical key
+            prevMatch_[i] = rawMatch_[i];
         }
-        if (!gated && prevMatch_[i]) deactivated_[idx] = true;
-        if (b.trigger == Trigger::Hold) level_[idx] = gated;
-        prevMatch_[i] = gated;                         
+        else if (b.trigger == Trigger::Hold) {
+            if (gated && !prevMatch_[i]) {
+                activated_[idx] = true;
+                param_[idx]     = b.param;
+            }
+            if (!gated && prevMatch_[i]) deactivated_[idx] = true;
+            level_[idx] = gated;
+            // Hold edges are gate transitions, so the previous state is the
+            // gated one (key release and mode enter/leave are both edges).
+            prevMatch_[i] = gated;
+        }
     }
 }
 
-}
+} // namespace app

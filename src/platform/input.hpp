@@ -58,10 +58,10 @@ public:
     // Scroll wheel delta accumulated since the last poll.
     double scrollDelta() const { return scroll_; }
 
-    // glfwEvents Callback
+    // used for glfwEvents Callback function, bind with window
     void markKeyPressed(int glfwKey);
     void markMousePressed(int glfwButton);
-    // when frame begin cleared
+
     void clearFrameEvents();
     // used for window lost focus
     void releaseAll();

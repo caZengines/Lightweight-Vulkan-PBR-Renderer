@@ -41,14 +41,14 @@ struct Config {
     vk::PresentModeKHR preferredPresentMode   = vk::PresentModeKHR::eFifo;
     // Frame-pacing target for VK_EXT_present_timing (ignored if the surface does
     // not support present-at-relative-time). 0 disables the request.
-    double             targetFPS              = 144.0;
+    double             targetFPS              = 150.0;
 
     // Absolute asset root (project root).
     std::string assetRoot;
 
     // Asset paths — stored relative, resolved to absolute in the constructor.
     std::string logPath           = "logs/engine.log";
-    std::string modelPath         = "assets/models/tiny_isometric_room/scene.gltf";
+    std::string modelPath         = "assets/models/free_1975_porsche_911_930_turbo.glb";
     std::string rockPath          = "assets/models/rock.obj";
     std::string planetPath        = "assets/models/planet.obj";
     std::string texturePath       = "assets/textures/container.png";
