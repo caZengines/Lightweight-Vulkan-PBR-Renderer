@@ -2,10 +2,12 @@
 import common;
 import brdf;
 import material_common;
+import material_uv;
 
 struct VertexInput {
     float3 inPosition;
-    float2 inTexCoord : TEXCOORD0;
+    float2 inTexCoord0 : TEXCOORD0;
+    float2 inTexCoord1 : TEXCOORD1; 
     float3 inNormal;
     float4 inTangent;
 };
@@ -13,7 +15,8 @@ struct VertexInput {
 struct VertexOutput {
     float4 pos : SV_POSITION;
 
-    float2 UV : TEXCOORD0;
+    float2 UV0 : TEXCOORD0;
+    float2 UV1 : TEXCOORD1;
     float3 fragTangentLightDir;
     float3 fragTangentViewDir;
     float3 worldPos;
@@ -48,7 +51,8 @@ VertexOutput vertMain(VertexInput Input, InstanceData instance) {
     float4 worldPosition = mul(instanceModel, float4(Input.inPosition, 1.0));
 
     Output.pos = mul(ubo.proj, mul(ubo.view, worldPosition));
-    Output.UV = Input.inTexCoord;
+    Output.UV0 = Input.inTexCoord0;
+    Output.UV1 = Input.inTexCoord1;
     Output.worldPos = worldPosition.xyz;
 
     //create TBN Matrix
@@ -79,21 +83,23 @@ float4 fragMain(VertexOutput inVert) : SV_Target {
     // === MATERIAL PROPERTY SAMPLING ===
     // Sample base color texture and apply material color factor
     float4 baseColor;
-    baseColor = maps[kBaseColorSlot].Sample(samplers[kBaseColorSlot], inVert.UV) * material.baseColorFactor;
+    float2 baseColorUv = selectUv(kBaseColorUvSet, inVert.UV0, inVert.UV1);
+    baseColor = maps[kBaseColorSlot].Sample(samplers[kBaseColorSlot], baseColorUv) * material.baseColorFactor;
 
     // Sample metallic-roughness texture (metallic=B channel, roughness=G channel)
-    float2 metallicRoughness = maps[kMetallicRoughnessSlot].Sample(samplers[kMetallicRoughnessSlot], inVert.UV).bg;
+    float2 metallicRoughness = maps[kMetallicRoughnessSlot].Sample(samplers[kMetallicRoughnessSlot], inVert.UV0).bg;
     float metallic = metallicRoughness.x * material.metallicFactor;
     float roughness = metallicRoughness.y * material.roughnessFactor;
 
     // Sample ambient occlusion (typically stored in red channel)
-    float ao = maps[kOcclusionSlot].Sample(samplers[kOcclusionSlot], inVert.UV).r;
+    float ao = maps[kOcclusionSlot].Sample(samplers[kOcclusionSlot], inVert.UV0).r;
     ao = lerp(1.0, ao, material.occlusionStrength);
     // Sample emissive texture for self-illuminating materials
-    float3 emissive = maps[kEmissiveSlot].Sample(samplers[kEmissiveSlot], inVert.UV).rgb;
+    float3 emissive = maps[kEmissiveSlot].Sample(samplers[kEmissiveSlot], inVert.UV0).rgb;
 
     float3 N;
-    float3 tn = maps[kNormalSlot].Sample(samplers[kNormalSlot], inVert.UV).rgb;
+    float2 normalUv = selectUv(kNormalUvSet, inVert.UV0, inVert.UV1);
+    float3 tn = maps[kNormalSlot].Sample(samplers[kNormalSlot], normalUv).rgb;
     tn.xyz = tn.xyz * 2 - 1.0;
     tn.xy = tn.xy * material.normalScale;
     tn.z = sqrt(max(0.0, 1.0 - dot(tn.xy, tn.xy)));

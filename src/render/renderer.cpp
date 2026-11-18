@@ -1,6 +1,7 @@
 #include "render/renderer.hpp"
 #include "platform/log.hpp"
 #include "platform/cpu.h"
+#include "rhi/device/rhi_factory.hpp"
 
 
 #include <array>
@@ -10,6 +11,7 @@
 #include <cstring>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 
 #define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
@@ -18,16 +20,21 @@
 
 #include "rhi/command/command_pool.hpp"
 #include "rhi/present/swapchain.hpp"
+#include "render/material/material.hpp"
+#include "render/material/material_pipeline_key.hpp"
 #include "render/pass/command_recorder.hpp"
 #include "render/descriptor/descriptor_set_layout_library.hpp"
 #include "render/frame/frame_resources.hpp"
 #include "render/frame/frame_uniforms.hpp"
+#include "render/frame/render_target.hpp"
 #include "render/pass/pass.hpp"
 #include "render/pass/raster_pass.hpp"
 #include "render/compute/compute_pass.hpp"
+#include "render/compute/compute_resources.hpp"
 #include "render/compute/compute_pipeline_library.hpp"
 #include "render/compute/compute_pipeline_spec.hpp"
 #include "render/pipeline/graphics_pipeline_library.hpp"
+#include "render/pipeline/graphics_pipeline.hpp"
 #include "render/pipeline/graphics_pipeline_spec.hpp"
 #include "render/pipeline/pipeline_layout_library.hpp"
 #include "resource/gpu/shader_library.hpp"
@@ -239,6 +246,7 @@ Renderer::Renderer(Dependencies deps, const RenderSettings& settings)
       cameras_(deps.cameras),
       frameParams_(deps.frameParams),
       graphicsPool_(deps.graphicsPool),
+      queue_(deps.queue),
       rhiFactory_(deps.factory),
       settings_(settings),
       spirvPath_(deps.spirvPath),
@@ -263,15 +271,15 @@ Renderer::Renderer(Dependencies deps, const RenderSettings& settings)
     const std::array<std::string_view, 2> pathStorage{spirvPath_, computeSpirvPath_};
     const std::span<const std::string_view> layoutPaths{
         pathStorage.data(), computeSpirvPath_.empty() ? 1u : 2u};
-    const LayoutSet& layouts = setLayoutLibrary_->layoutSetFor(layoutPaths);
+    layouts_ = &setLayoutLibrary_->layoutSetFor(layoutPaths);
 
     frames_ = std::make_unique<FrameResources>();
-    frames_->init(rct_,
+    frames_->init(rct_.device,
                   graphicsPool_,
                   deps.alloc,
                   descriptorSets_,
-                  layouts.bySetIndex[0],
-                  layouts.bindingTables[0],
+                  layouts_->bySetIndex[0],
+                  layouts_->bindingTables[0],
                   static_cast<uint32_t>(swapchain_->Image_.images.size()));
     createPipelines();
 }
@@ -297,6 +305,13 @@ void Renderer::createPipelines() {
             computePushConstants.emplace_back(
                 PushConstantRangeSpec{pc->stageFlags, pc->offset, pc->size});
         }
+        computeResources_ = std::make_unique<ComputeResources>();
+        computeResources_->init(rct_.device, 
+                                descriptorSets_, 
+                                queue_, 
+                                layouts_->bySetIndex[2], 
+                                layouts_->bindingTables[2], 
+                                kMaxFramesInFlight);
     }
 
     const PipelineLayout& graphicsLayout =
@@ -316,31 +331,96 @@ void Renderer::createPipelines() {
             "[renderer] compute pipeline created: " + std::string(computeSpirvPath_));
     }
 
-    GraphicsPipelineSpec initialSpec;
-    initialSpec.colorFormat = swapchain_->getSurfaceFormat().format;
-    initialSpec.depthFormat = swapchain_->depthFormat();
-    initialSpec.msaaSamples = settings_.msaaSamples;
-    rasterPipeline_ = &graphicsPipelines_->get(graphicsLayout, spirvPath_, initialSpec);
-    platform::LogLocator::get().write(
-        platform::LogLevel::Info,
-        "[renderer] raster pipeline created: " + std::string(spirvPath_));
+    {
+        const auto constants = shaders_.specializationConstants(spirvPath_);
+        for(const auto& info : kActiveMaterialUvSlots) {
+            const resource::ReflectSpecializationConstant* found = nullptr;
+            for(const auto& c : constants) { 
+                if(c.id == static_cast<uint32_t>(info.first)) { found = &c; break; }
+             }
+            if (!found) {
+                std::string available;
+                for (const auto& c : constants) {
+                    if (!available.empty()) available += ", ";
+                    available += c.name;
+                }
+                throw std::runtime_error(
+                    "missing specialization constant in " + std::string(spirvPath_) +
+                    "; available: [" + available + "]");
+            }
+            platform::LogLocator::get().write(
+                platform::LogLevel::Info,
+                "[renderer] specialization constant id=" + 
+                std::to_string(static_cast<uint32_t>(info.first)) + " OK");
+        }
+    }
+    // just for test particle render, it should be cleared at a after time
+    if(computePipeline_) {    
+        GraphicsPipelineSpec particleSpec;
+        particleSpec.colorFormat = swapchain_->getSurfaceFormat().format;  
+        particleSpec.depthFormat = swapchain_->depthFormat();
+        particleSpec.msaaSamples = settings_.msaaSamples;
+        particleSpec.topology    = vk::PrimitiveTopology::ePointList;
+        particleSpec.cullMode    = {};
+        particleSpec.depthTest   = true;
+        particleSpec.depthWrite  = false;
+        particleSpec.blendEnable = false;        
+        particleSpec.vertEntry   = "particleVertMain";
+        particleSpec.fragEntry   = "particleFragMain";
+        particleSpec.vertexLayout = {};
+        particlePipeline_ = &graphicsPipelines_->get(graphicsLayout, spirvPath_, particleSpec);
+    }
 
     recorder_ = std::make_unique<CommandRecorder>(rhiFactory_);
 }
 
-void Renderer::ensureRasterPipeline(const RenderTarget& target) {
+void Renderer::ensureRasterPipelines(const RenderTarget& target) {
+    if (rasterVariants_.colorFormat == target.colorFormat &&
+        rasterVariants_.depthFormat == target.depthFormat &&
+        rasterVariants_.samples     == target.samples) {
+        return;
+    }
+    rasterVariants_.pipelines.fill(nullptr);
+    rasterVariants_.colorFormat = target.colorFormat;
+    rasterVariants_.depthFormat = target.depthFormat;
+    rasterVariants_.samples     = target.samples;
+    platform::LogLocator::get().write(
+        platform::LogLevel::Info,
+        "[renderer] raster variant cache reset: color=" +
+            std::to_string(static_cast<int>(target.colorFormat)) +
+            " depth=" + std::to_string(static_cast<int>(target.depthFormat)) +
+            " samples=" + std::to_string(static_cast<int>(target.samples)));
+}
+
+const GraphicsPipeline* Renderer::rasterPipelineFor(
+        MaterialPipelineKey key, const RenderTarget& target) {
+    const uint32_t index = key & (kMaterialPipelineVariantCount - 1u);
+    const GraphicsPipeline*& slot = rasterVariants_.pipelines[index];
+    if(slot) return slot;
+
     GraphicsPipelineSpec spec;
     spec.colorFormat = target.colorFormat;
     spec.depthFormat = target.depthFormat;
     spec.msaaSamples = target.samples;
+    spec.vertexLayout = meshVertexLayout();
 
-    const GraphicsPipeline* next = &graphicsPipelines_->get(*graphicsLayout_, spirvPath_, spec);
-    if (next != rasterPipeline_) {
-        rasterPipeline_ = next;
-        platform::LogLocator::get().write(
-            platform::LogLevel::Info,
-            "[renderer] raster pipeline changed: " + std::string(spirvPath_));
+    spec.SpecializationConstants.reserve(kActiveMaterialUvSlots.size());
+    std::string detail;
+    for(size_t i = 0 ; i < kActiveMaterialUvSlots.size() ; ++i) {
+        const auto& info = kActiveMaterialUvSlots[i];
+        const uint32_t value = uvSetFromKey(key, info.first);
+        spec.SpecializationConstants.emplace_back(
+            SpecializationConstantValue{static_cast<uint32_t>(info.first), value});
+        if (!detail.empty()) detail += ", ";
+        detail += std::to_string(static_cast<uint32_t>(info.first)) + "=" + (value ? "1" : "0");
     }
+
+    slot = &graphicsPipelines_->get(*graphicsLayout_, spirvPath_, spec);
+    platform::LogLocator::get().write(
+        platform::LogLevel::Info,
+        "[renderer] raster pipeline variant created: key=" + std::to_string(key) +
+        " (" + detail + ")");
+    return slot;
 }
 
 void Renderer::cleanup() {
@@ -357,6 +437,8 @@ std::optional<Renderer::FrameContext> Renderer::beginFrame() {
     if (fenceResult != vk::Result::eSuccess) {
         throw std::runtime_error("failed to wait for fence!");
     }
+
+    paceBeforeSubmit();
 
     auto [result, imageIndex] =
         swapchain_->swapChain().acquireNextImage(UINT64_MAX,
@@ -394,7 +476,7 @@ std::optional<Renderer::FrameContext> Renderer::beginFrame() {
 }
 
 void Renderer::record(FrameContext& ctx, std::span<const RenderItem> items) {
-    ensureRasterPipeline(ctx.target);
+    ensureRasterPipelines(ctx.target);
 
     vk::raii::CommandBuffer& cmd = frames_->commandBuffer(ctx.frameIndex);
     const vk::DescriptorSet frameSet =
@@ -404,14 +486,41 @@ void Renderer::record(FrameContext& ctx, std::span<const RenderItem> items) {
     recorder_->begin(cmd, ctx.target);
 
     if (computePipeline_) {
+        computeResources_->recordBarrier(cmd);
         ComputePass computePass{*computePipeline_,
-                                ComputeBindings{2, nullptr},
-                                vk::Extent3D{1, 1, 1}};
+                                ComputeBindings{2, computeResources_->currentSet(ctx.frameIndex)},
+                                computeResources_->dispatchSize()};
         computePass.record(passCtx);
+        computeResources_->advance();
+
+        rhiFactory_.bufferBarrier(cmd, 
+                                  computeResources_->currentReadBuffer(), 
+                                  vk::AccessFlagBits2::eShaderWrite, 
+                                  vk::AccessFlagBits2::eShaderRead, 
+                                  vk::PipelineStageFlagBits2::eComputeShader, 
+                                  vk::PipelineStageFlagBits2::eVertexShader | vk::PipelineStageFlagBits2::eFragmentShader);
     }
 
-    const RasterBucket bucket{rasterPipeline_, items};
-    RasterPass rasterPass{std::span<const RasterBucket>{&bucket, 1}};
+    rasterBuckets_.clear();
+    size_t begin = 0;
+    while (begin < items.size()) {
+        const MaterialPipelineKey key = items[begin].material->pipelineKey();
+        size_t end = begin + 1;
+        while (end < items.size() && items[end].material->pipelineKey() == key) {
+            ++end;
+        }
+        rasterBuckets_.emplace_back(RasterBucket{
+            rasterPipelineFor(key, ctx.target),
+            items.subspan(begin, end - begin)});
+        begin = end;
+    }
+    const ParticleDraw particles =
+        particlePipeline_
+            ? ParticleDraw{particlePipeline_,
+                        computeResources_->currentSet(ctx.frameIndex),
+                        computeResources_->particleCount()}
+            : ParticleDraw{};
+    RasterPass rasterPass{std::span<const RasterBucket>{rasterBuckets_}, particles};
     rasterPass.record(passCtx);
 
     recorder_->end(cmd, ctx.target);
@@ -484,7 +593,6 @@ void Renderer::endFrame(const FrameContext& ctx) {
         return info;
     }();
 
-    paceBeforeSubmit();
     graphicsPool_.queue().submit(submitInfo, *frames_->inFlightFence(ctx.frameIndex));
 
     vk::PresentInfoKHR presentInfoKHR{};

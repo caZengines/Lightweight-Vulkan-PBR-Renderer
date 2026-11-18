@@ -36,6 +36,8 @@ file(GLOB_RECURSE SRC_LIST
 add_executable(
     main
     ${SRC_LIST}
+    src/scene/primitive_batching.cpp
+    src/scene/primitive_batching.hpp
 )
 # KTX::ktx propagates -D_DEBUG in Debug builds, which triggers spirv_reflect.c's
 # _CRTDBG_MAP_ALLOC mapping (calloc -> _calloc_dbg). MinGW's UCRT has no such

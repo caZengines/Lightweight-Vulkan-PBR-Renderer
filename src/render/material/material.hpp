@@ -1,18 +1,34 @@
 #pragma once
+
+#include "render/material/material_pipeline_key.hpp"
+#include "resource/asset/asset_handle.hpp"
+#include "resource/gpu/sampler.hpp"
+#include "resource/import/gltf_importer.hpp"
 #include "rhi/descriptor/descriptor_set_id.hpp"
 #include "rhi/descriptor/descriptor_write.hpp"
-#include "resource/asset/asset_handle.hpp"
-#include "resource/import/gltf_importer.hpp"   // MaterialData + MaterialTextureSlot (shared vocabulary)
-#include "resource/gpu/sampler.hpp"
-#include "resource/asset/resource_registry.hpp"
+
 #include <array>
+#include <cstdint>
 #include <glm/glm.hpp>
 #include <vector>
 
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
 
+namespace resource {
+
+class ResourceRegistry;
+
+} // namespace resource
+
 namespace render {
+
+// Stable handle to a registry-owned material. Ids are dense and follow creation
+// order, so a MaterialId doubles as a deterministic draw-list sorting key.
+using MaterialId = uint32_t;
+inline constexpr MaterialId kInvalidMaterialId = 0xFFFFFFFFu;
+
+class MaterialRegistry;
 
 struct PushConstantBlock {
     glm::vec4 baseColorFactor;            // RGB base color and alpha
@@ -29,21 +45,17 @@ struct PushConstantBlock {
 static_assert(sizeof(PushConstantBlock) == 64);
 static_assert(offsetof(PushConstantBlock, emissiveFactor) == 16);
 
-//It should be noticed that class::Material should not and cannot be copied
-class Material{
+// Owned by MaterialRegistry: copying is not allowed and the registry-assigned
+// id names the material in the draw list. Pointers and references stay stable
+// for the registry's lifetime.
+class Material {
     public:
         // One asset handle per glTF texture slot, indexed by MaterialTextureSlot.
         using SlotHandles = std::array<resource::AssetHandle, resource::kMaterialSlotCount>;
 
-        // `handles` are asset-library handles (empty = fall back to the registry's
-        // built-in default textures, Null Object semantics).  `data` supplies the
-        // scalar factors that ride in the push constant block.
-        Material(SlotHandles handles,
-                 const resource::MaterialData& data,
-                 const Sampler& texSampler, const Sampler& norSampler,
-                 const resource::ResourceRegistry& registry);
+        // kInvalidMaterialId until MaterialRegistry assigns the dense id.
+        [[nodiscard]] MaterialId id() const noexcept { return id_; }
 
-        //ban copy
         Material(const Material&) = delete;
         Material& operator=(const Material&) = delete;
         Material(Material&&) = default;
@@ -61,10 +73,22 @@ class Material{
         [[nodiscard]] vk::DescriptorSet          getDescriptorSet()   const { return descriptorSet_; }
         [[nodiscard]] rhi::DescriptorSetId       descriptorSetId()    const { return descriptorSetId_; }
         [[nodiscard]] bool                       hasDescriptorSet()   const { return descriptorSet_ != nullptr; }
+        [[nodiscard]] MaterialPipelineKey        pipelineKey()        const { return pipelineKey_; } 
 
 
     private:
+        friend class MaterialRegistry;
+
+        // MaterialRegistry is the only creator, so every id matches its
+        // creation-order index.
+        Material(MaterialId id, SlotHandles handles,
+                 const resource::MaterialData& data,
+                 const Sampler& texSampler, const Sampler& norSampler,
+                 const resource::ResourceRegistry& registry);
+
+        MaterialId                             id_ = kInvalidMaterialId;
         PushConstantBlock                      pcBlock_{};
+        MaterialPipelineKey                    pipelineKey_;
 
         // Kept so the textures stay loaded (AssetLibrary reference counting).
         SlotHandles                            handles_{};
@@ -80,4 +104,4 @@ class Material{
         vk::DescriptorSet                      descriptorSet_   = nullptr;
 };
 
-} // namespace resource
+} // namespace render

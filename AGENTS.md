@@ -60,7 +60,7 @@ Layer 0  rhi/        Vulkan 封装：设备/交换链/VMA/描述符/命令池   
 |---|---|
 | `src/app/` | 扁平：`app` `config` `game_loop` `action_context` `camera_controller` `demo_scene` |
 | `src/scene/` | 扁平：`scene` `scene_object` `transform` `camera` `camera_manager` |
-| `src/render/` | 根：`renderer.*`（层入口）`material.*`（材质数据+Set1 写入）· `gpu/`（渲染层自建常驻 GPU 数据，现为 `InstanceBuffer`）· `frame/`（每帧轮转状态与跨层契约：`frame_resources` `frame_uniforms` `render_item` `render_settings` `render_target`）· `pass/`（`pass` 抽象、`raster_pass`、`command_recorder`）· `pipeline/`（光栅管线族 + 两族共用：`graphics_pipeline`+spec、`pipeline_base`、`graphics_pipeline_library`、`pipeline_layout_library`、`shader_stage`）· `compute/`（计算管线族：`compute_pipeline`+spec、`compute_pipeline_library`、`compute_pass`、`compute_resources`）· `descriptor/`（`descriptor_budget`、`descriptor_set_layout_library`） |
+| `src/render/` | 根：`renderer.*`（层入口）· `material/`（材质子系统：`material`（材质数据+Set1 写入）、`material_registry`（材质唯一属主+稳定 id）、`material_pipeline_key`（header-only：UV 特化变体键））· `gpu/`（渲染层自建常驻 GPU 数据，现为 `InstanceBuffer`）· `frame/`（每帧轮转状态与跨层契约：`frame_resources` `frame_uniforms` `render_item` `render_settings` `render_target`）· `pass/`（`pass` 抽象、`raster_pass`、`command_recorder`）· `pipeline/`（光栅管线族 + 两族共用：`graphics_pipeline`+spec、`pipeline_base`、`graphics_pipeline_library`、`pipeline_layout_library`、`shader_stage`）· `compute/`（计算管线族：`compute_pipeline`+spec、`compute_pipeline_library`、`compute_pass`、`compute_resources`）· `descriptor/`（`descriptor_budget`、`descriptor_set_layout_library`） |
 | `src/resource/` | `import/`（`gltf_importer` `mesh_importer` `texture_importer`）· `data/`（`mesh_data` `image_data` `vertex`）· `asset/`（`asset_handle` `asset_library` `resource_registry`）· `gpu/`（`upload_queue` `shader_library` `sampler`） |
 | `src/rhi/` | `device/`（`vulkan_device` `debug_messenger` `rhi_factory` `render_context`）· `present/`（`surface` `swapchain`）· `descriptor/`（`descriptor_binding` `descriptor_set_id` `descriptor_write` `descriptor_set_allocator` `descriptor_writer`）· `memory/`（`vma_allocator`）· `command/`（`command_pool`） |
 | `src/platform/` | `window` `input` `log` `utils` `cpu` · `src/main/main.cpp` 只构造 `app::App` · `src/extern/` 为 vendored C 源码，不要改 |
@@ -121,7 +121,9 @@ Layer 0  rhi/        Vulkan 封装：设备/交换链/VMA/描述符/命令池   
 | `render::Renderer` | **仅帧编排**：`beginFrame() → record(ctx, items) → endFrame(ctx)`；持 `Dependencies` 聚合；swapchain 重建；内嵌 `PresentTimingController` |
 | `render::FrameResources` | 每帧轮转状态属主：UBO×2、Set0、命令缓冲、binary+timeline 同步；`kMaxFramesInFlight = 2` |
 | `render::RenderItem` | 场景↔渲染契约：扁平 POD（MeshGPU\*、Material\*、InstanceBuffer\*、firstInstance、instanceCount），无 Vulkan 类型 |
-| `render::Material` | 材质数据 + Set1 的两个**数组值**（maps/samplers，按 `MaterialTextureSlot` 索引）+ push constant 块；不拥有 set（持 id + 裸句柄） |
+| `render::Material` | 材质数据 + Set1 的两个**数组值**（maps/samplers，按 `MaterialTextureSlot` 索引）+ push constant 块；不拥有 set（持 id + 裸句柄）；只能由 `MaterialRegistry` 创建 |
+| `render::MaterialRegistry` | 材质唯一属主：按创建序分配稠密 `MaterialId`（从 0 递增），材质指针终身稳定；不持有 Set1（组合根分配后经 `attachSet` 挂上） |
+| `render::MaterialPipelineKey` | 材质 UV 变体键：`MaterialUvSlot` 位掩码 + `makeMaterialPipelineKey()`（`Material` 构造时计算）+ `uvSetFromKey()`；与 `GraphicsPipelineSpec` 的特化常量共同选择光栅管线变体 |
 | `render::GraphicsPipeline` / `ComputePipeline` | 两族管线，共用 `PipelineBase`（句柄/绑定点/push-constant stages）；spec 是缓存键 |
 | `render::GraphicsPipelineLibrary` / `ComputePipelineLibrary` | 按 `(spirvPath, layout, spec)` 缓存，返回引用活到库析构 |
 | `render::GraphicsPipelineSpec` | 值类型：附件格式、固定功能状态、**`vertexLayout`**（数据化的顶点输入）、两个入口点名 |
@@ -150,7 +152,7 @@ Layer 0  rhi/        Vulkan 封装：设备/交换链/VMA/描述符/命令池   
 | `app::GameLoop` | pollEvents → input.poll → deltaTime → update/render 回调；skip 帧由回调返回值控制 |
 | `app::ActionContext` | 语义动作层（边沿语义唯一归属）：`Binding{source, mods, action, Trigger, Mode}`；模态门控（walk 组仅 Walk 模式激活） |
 | `app::CameraController` | 语义动作→相机状态机：MMB 轨道、Shift+MMB 平移、Shift+RMB 漫游（WASD/QE）、KP5 透视⇄正交；所有输入状态留在 app 层，`scene::Camera` 只做数学 |
-| `app::DemoScene` | 示例内容：加载 glTF（每个 primitive 一个 `SceneObject`，每个 glTF 材质一个 `Material`，`materials_[0]` 为无材质 primitive 的兜底）+ `FrameParams`（灯光由内容层下发） |
+| `app::DemoScene` | 示例内容：加载 glTF（每个 primitive 一个 `SceneObject`，每个 glTF 材质经 `MaterialRegistry` 注册，首个注册材质为无材质 primitive 的兜底）+ `FrameParams`（灯光由内容层下发）；不拥有材质 |
 | `app::Config` | 全部内容参数：窗口、验证层、设备扩展、MSAA、present mode、targetFPS、资产路径（构造时解析为绝对路径） |
 
 ## 5. 关键子系统与不变量
@@ -187,8 +189,8 @@ Layer 0  rhi/        Vulkan 封装：设备/交换链/VMA/描述符/命令池   
 window → VulkanDevice → VMA → RhiFactory → DebugMessenger/Surface → CommandPools(graphics/compute/transient)
       → UploadQueue → ResourceRegistry → AssetLibrary → Samplers
       → ShaderLibrary → DescriptorSetLayoutLibrary → PoolBudgetBuilder → DescriptorSetAllocator
-      → DemoScene.build()（材质 + SceneObject + InstanceBuffer 上传）
-      → 每材质：allocate Set1 → descriptorWrites() → writeAll → attachSet
+      → MaterialRegistry + DemoScene.build()（材质注册 + SceneObject + InstanceBuffer 上传）
+      → 每材质（按 registry 顺序）：allocate Set1 → descriptorWrites() → writeAll → attachSet
       → Renderer(Dependencies)：PipelineLayoutLibrary + FrameResources(Set0/UBO/同步) + 管线库
 
 每帧（GameLoop）

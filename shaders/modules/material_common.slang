@@ -15,8 +15,8 @@ public static const int kOcclusionSlot = 3;
 public static const int kEmissiveSlot = 4;
 public static const int kMaterialSlotCount = 5;
 
-[[vk::binding(0, 1)]] public Texture2D maps[kMaterialSlotCount];
-[[vk::binding(1, 1)]] public SamplerState samplers[kMaterialSlotCount];
+public [[vk::binding(0, 1)]]  Texture2D maps[kMaterialSlotCount];
+public [[vk::binding(1, 1)]]  SamplerState samplers[kMaterialSlotCount];
 
 // Push constant
 public struct PushConstants {
