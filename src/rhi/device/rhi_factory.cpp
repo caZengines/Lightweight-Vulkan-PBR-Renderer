@@ -1,4 +1,5 @@
 #include "rhi/device/rhi_factory.hpp"
+#include "vulkan/vulkan.hpp"
 
 #include <cassert>
 #include <stdexcept>
@@ -48,8 +49,8 @@ void RhiFactory::imageBarrier(vk::raii::CommandBuffer& cmd,
                               vk::PipelineStageFlags2 srcStage,
                               vk::PipelineStageFlags2 dstStage,
                               vk::ImageAspectFlags aspect) const {
-    vk::ImageMemoryBarrier2 barrier;
-    vk::ImageSubresourceRange range;
+    vk::ImageMemoryBarrier2 barrier{};
+    vk::ImageSubresourceRange range{};
     range.setAspectMask(aspect)
          .setBaseMipLevel(0)
          .setLevelCount(1)
@@ -66,10 +67,34 @@ void RhiFactory::imageBarrier(vk::raii::CommandBuffer& cmd,
            .setImage(image)
            .setSubresourceRange(range);
 
-    vk::DependencyInfo dependency;
+    vk::DependencyInfo dependency{};
     dependency.setDependencyFlags({})
               .setImageMemoryBarriers(barrier);
     cmd.pipelineBarrier2(dependency);
+}
+
+void RhiFactory::bufferBarrier(vk::raii::CommandBuffer& cmd,
+                               vk::Buffer buffer,
+                               vk::AccessFlags2 srcAccess,
+                               vk::AccessFlags2 dstAccess,
+                               vk::PipelineStageFlags2 srcStage,
+                               vk::PipelineStageFlags2 dstStage) const {
+    vk::BufferMemoryBarrier2 barrier{};
+    barrier.setSrcStageMask(srcStage)
+           .setSrcAccessMask(srcAccess)
+           .setDstStageMask(dstStage)
+           .setDstAccessMask(dstAccess)
+           .setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+           .setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+           .setBuffer(buffer)
+           .setOffset(0)
+           .setSize(VK_WHOLE_SIZE);
+    
+    vk::DependencyInfo dependency{};
+    dependency.setDependencyFlags({})
+              .setBufferMemoryBarriers(barrier);
+    cmd.pipelineBarrier2(dependency);
+
 }
 
 void RhiFactory::transitionImageLayout(vk::raii::CommandBuffer& cmd,

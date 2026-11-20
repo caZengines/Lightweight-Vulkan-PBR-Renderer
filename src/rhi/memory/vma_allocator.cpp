@@ -1,9 +1,10 @@
 #define VMA_IMPLEMENTATION
+#include <vulkan/vulkan.hpp>
 #include "rhi/memory/vma_allocator.hpp"
 
 namespace rhi {
 
-VmaContext::VmaContext(vk::PhysicalDevice pd, vk::Device device, vk::Instance instance) {
+VmaContext::VmaContext(const vk::PhysicalDevice& pd, const vk::Device& device, const vk::Instance& instance) {
     VmaAllocatorCreateInfo allocInfo{};
     allocInfo.physicalDevice = pd;
     allocInfo.device         = device;

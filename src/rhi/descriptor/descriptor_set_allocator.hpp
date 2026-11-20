@@ -24,8 +24,7 @@
 // Not thread-safe.  Intended to be called from the single-threaded render path.
 // ============================================================================
 
-#define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
-#define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
+
 #include <vulkan/vulkan_raii.hpp>
 
 #include <cstdint>

@@ -5,7 +5,7 @@
 #include "render/pipeline/shader_stage.hpp"
 #include "resource/gpu/shader_library.hpp"
 #include "resource/data/vertex.hpp"
-#define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
+
 #include "vulkan/vulkan.hpp"
 
 #include <algorithm>

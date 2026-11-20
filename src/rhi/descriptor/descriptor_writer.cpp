@@ -1,4 +1,5 @@
 #include "rhi/descriptor/descriptor_writer.hpp"
+#include "vulkan/vulkan.hpp"
 
 #include <stdexcept>
 #include <string>

@@ -3,8 +3,7 @@
 #include "rhi/device/render_context.hpp"
 #include <cstdint>
 #include <vector>
-#define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
-#define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
+
 #include <vulkan/vulkan_raii.hpp>
 
 namespace rhi {
@@ -31,6 +30,7 @@ class VulkanDevice {
         uint32_t                    transferQueueIndex = ~0;
 
         vk::raii::Queue             graphicsQueue  = nullptr;
+        vk::raii::Queue             computeQueue   = nullptr;
         vk::raii::Queue             transferQueue  = nullptr;
         vk::SampleCountFlagBits     msaaSamples    = vk::SampleCountFlagBits::e1;
 

@@ -179,7 +179,7 @@ std::vector<DescriptorSetAllocator::AllocatedSet> DescriptorSetAllocator::alloca
                 slot.slabIndex = static_cast<uint32_t>(i);
                 slot.descDemand = unit;
                 slot.set       = std::move(set);
-                out.push_back(AllocatedSet{id, *slot.set});
+                out.emplace_back(AllocatedSet{id, *slot.set});
             }
 
             slab.setsUsed += count;

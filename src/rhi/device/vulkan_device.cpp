@@ -142,7 +142,8 @@ void VulkanDevice::createLogicalDevice(){
     // find the index of the first queue family that supports graphics queue
     std::vector<vk::QueueFamilyProperties> queueFamilyProperties = physicalDevice.getQueueFamilyProperties();
     auto graphicsQueueFamilyProperty = std::ranges::find_if(queueFamilyProperties, [](const auto &qfp)
-                                                            { return (qfp.queueFlags & vk::QueueFlagBits::eGraphics) != static_cast<vk::QueueFlags>(0); });
+                                                            { return (qfp.queueFlags & vk::QueueFlagBits::eGraphics) &&
+                                                                     (qfp.queueFlags & vk::QueueFlagBits::eCompute); });
     if(graphicsQueueFamilyProperty != queueFamilyProperties.end()){
         auto graphicIndex = static_cast<uint32_t>(std::distance(queueFamilyProperties.begin(), graphicsQueueFamilyProperty));
         graphicsQueueIndex = graphicIndex;
@@ -166,7 +167,7 @@ void VulkanDevice::createLogicalDevice(){
     graphicQueueCreateInfo.setQueueFamilyIndex(graphicsQueueIndex)
                          .setQueueCount(1)
                          .setPQueuePriorities(&queuePriority);
-        queueCreateInfos.emplace_back(graphicQueueCreateInfo);
+    queueCreateInfos.emplace_back(graphicQueueCreateInfo);
     vk::DeviceQueueCreateInfo transferQueueCreateInfo{};
     transferQueueCreateInfo.setQueueFamilyIndex(transferQueueIndex)
                            .setQueueCount(1)
@@ -183,6 +184,7 @@ void VulkanDevice::createLogicalDevice(){
     deviceFeatures2.features.setFillModeNonSolid(vk::True);
     deviceFeatures2.features.setGeometryShader(vk::False);
     deviceFeatures2.features.setSamplerAnisotropy(vk::True);
+    deviceFeatures2.features.setLargePoints(vk::True); // just for test particle
 
     featureChain.get<vk::PhysicalDeviceVulkan13Features>().setDynamicRendering(vk::True);
     featureChain.get<vk::PhysicalDeviceVulkan13Features>().setSynchronization2(vk::True);
@@ -200,6 +202,8 @@ void VulkanDevice::createLogicalDevice(){
     device = vk::raii::Device(physicalDevice, deviceCreateInfo);
 
     graphicsQueue = vk::raii::Queue(device, graphicsQueueIndex, 0);
+
+    computeQueue  = vk::raii::Queue(device, graphicsQueueIndex, 0);
 
     transferQueue = vk::raii::Queue(device, transferQueueIndex, 0);
 }

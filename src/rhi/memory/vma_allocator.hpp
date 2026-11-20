@@ -3,11 +3,18 @@
 #include "extern/vk_mem_alloc.h"
 #include "vulkan/vulkan.hpp"
 
+namespace vk {
+class PhysicalDevice;
+class Device;
+class Instance;
+
+} // namespace vk
+
 namespace rhi {
 
 class VmaContext {
     public:
-        VmaContext(vk::PhysicalDevice pd, vk::Device device, vk::Instance instance);
+        VmaContext(const vk::PhysicalDevice& pd, const vk::Device& device, const vk::Instance& instance);
         ~VmaContext();
 
         // Ban copy and move

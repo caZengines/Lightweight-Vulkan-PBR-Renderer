@@ -3,9 +3,8 @@
 #include <cstdint>
 #include <span>
 
-#define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
-#include <vulkan/vulkan_raii.hpp>
 
+#include <vulkan/vulkan_raii.hpp>
 #include "rhi/memory/vma_allocator.hpp"
 
 namespace rhi {
@@ -44,6 +43,13 @@ public:
                       vk::PipelineStageFlags2 srcStage,
                       vk::PipelineStageFlags2 dstStage,
                       vk::ImageAspectFlags aspect) const;
+
+    void bufferBarrier(vk::raii::CommandBuffer& cmd,
+                       vk::Buffer buffer,
+                       vk::AccessFlags2 srcAccess,
+                       vk::AccessFlags2 dstAccess,
+                       vk::PipelineStageFlags2 srcStage,
+                       vk::PipelineStageFlags2 dstStage) const;
 
     // sync1 barrier path for one-shot uploads (Undefined→TransferDst,
     // TransferDst→ShaderReadOnly).

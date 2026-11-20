@@ -2,7 +2,7 @@
 
 #include <string_view>
 
-#define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
+
 #include <vulkan/vulkan_raii.hpp>
 
 #include "render/pipeline/graphics_pipeline_spec.hpp"
