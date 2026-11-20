@@ -2,7 +2,6 @@
 
 #include "render/frame/frame_uniforms.hpp"
 #include "rhi/command/command_pool.hpp"
-#include "rhi/device/render_context.hpp"
 
 namespace render {
 
@@ -15,14 +14,14 @@ FrameResources::~FrameResources() {
     perFrameSetHandles_.clear();
 }
 
-void FrameResources::init(RenderContext& rct,
+void FrameResources::init(vk::raii::Device& device,
                           rhi::CommandPool& graphicsPool,
                           VmaAllocator alloc,
                           rhi::DescriptorSetAllocator& descriptorSets,
                           const vk::DescriptorSetLayout& set0Layout,
                           std::span<const rhi::DescriptorBinding> set0Bindings,
                           uint32_t imageCount) {
-    device_          = &rct.device;
+    device_          = &device;
     descriptorSets_  = &descriptorSets;
     createUniformBuffers(alloc);
     createPerFrameSets(descriptorSets, set0Layout, set0Bindings);

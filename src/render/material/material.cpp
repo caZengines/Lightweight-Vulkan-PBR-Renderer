@@ -73,6 +73,7 @@ Material::Material(MaterialId id, SlotHandles handles,
     pcBlock_.occlusionStrength = data.occlusionStrength;
     pcBlock_.alphaMaskCutoff = data.alphaCutoff;
     pcBlock_.flags          |= data.alphaMode == resource::AlphaMode::Mask ? 1u : 0u;
+    alphaMode_               = data.alphaMode;
 
     pipelineKey_ = makeMaterialPipelineKey(data);
 }

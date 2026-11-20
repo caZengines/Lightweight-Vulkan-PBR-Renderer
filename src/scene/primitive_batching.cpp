@@ -64,26 +64,31 @@ namespace scene {
 void batchRenderItems(std::span<render::RenderItem> items) {
     if(items.size() < 2) return;
 
+    auto mid = std::ranges::stable_partition(items, [](const render::RenderItem& it) {
+        return !it.material->isBlend();
+    });
+    auto opaqueSpan = std::span<render::RenderItem>{items.begin(), mid.begin()};
+
     std::vector<render::RenderItem>            scratch;
     std::vector<uint32_t>                      order;
     std::vector<std::pair<uint32_t, uint32_t>> runs;
-    scratch.reserve(items.size());
-    order.reserve(items.size());
+    scratch.reserve(opaqueSpan.size());
+    order.reserve(opaqueSpan.size());
 
-    batchByKey(items, 
+    batchByKey(opaqueSpan, 
         [](const render::RenderItem& a, const render::RenderItem& b) {
             return a.material->pipelineKey() < b.material->pipelineKey();
         }, 
         scratch, order, runs);
 
     size_t i = 0;
-    while(i < items.size()) {
+    while(i < opaqueSpan.size()) {
         size_t j = i + 1;
-        while(j < items.size() && 
-                (items[j].material->pipelineKey() == items[i].material->pipelineKey())) {
+        while(j < opaqueSpan.size() && 
+                (opaqueSpan[j].material->pipelineKey() == opaqueSpan[i].material->pipelineKey())) {
             ++j;
         }
-        batchByKey(items.subspan(i, j-i), 
+        batchByKey(opaqueSpan.subspan(i, j-i), 
             [](const render::RenderItem& a, const render::RenderItem& b) {
                 return a.material->id() < b.material->id();
         }, 

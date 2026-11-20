@@ -12,7 +12,7 @@
 #include <glm/glm.hpp>
 #include <vector>
 
-#define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
+
 #include <vulkan/vulkan_raii.hpp>
 
 namespace resource {
@@ -70,10 +70,14 @@ class Material {
 
         [[nodiscard]] const PushConstantBlock& getPushConstantBlock() const { return pcBlock_; }
 
-        [[nodiscard]] vk::DescriptorSet          getDescriptorSet()   const { return descriptorSet_; }
-        [[nodiscard]] rhi::DescriptorSetId       descriptorSetId()    const { return descriptorSetId_; }
+        [[nodiscard]] vk::DescriptorSet          getDescriptorSet()   const noexcept { return descriptorSet_; }
+        [[nodiscard]] rhi::DescriptorSetId       descriptorSetId()    const noexcept { return descriptorSetId_; }
+        [[nodiscard]] resource::AlphaMode        alphaMode()          const noexcept { return alphaMode_; }
+        [[nodiscard]] bool                       isBlend() const noexcept {
+            return alphaMode_ == resource::AlphaMode::Blend;
+        }
         [[nodiscard]] bool                       hasDescriptorSet()   const { return descriptorSet_ != nullptr; }
-        [[nodiscard]] MaterialPipelineKey        pipelineKey()        const { return pipelineKey_; } 
+        [[nodiscard]] MaterialPipelineKey        pipelineKey()        const noexcept { return pipelineKey_; } 
 
 
     private:
@@ -87,6 +91,7 @@ class Material {
                  const resource::ResourceRegistry& registry);
 
         MaterialId                             id_ = kInvalidMaterialId;
+        resource::AlphaMode                    alphaMode_ = resource::AlphaMode::Opaque;
         PushConstantBlock                      pcBlock_{};
         MaterialPipelineKey                    pipelineKey_;
 

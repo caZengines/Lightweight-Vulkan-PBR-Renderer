@@ -96,6 +96,22 @@ uint64_t accessorElementSize(const tg3_accessor& accessor) {
     return static_cast<uint64_t>(componentSize) * static_cast<uint64_t>(componentCount);
 }
 
+bool getCenterPosistion(const tg3_accessor& accessor, glm::vec3& center) {
+    const double* minPos = accessor.min_values;
+    const double* maxPos = accessor.max_values;
+    if (!minPos || !maxPos) return false;
+
+    glm::vec3 min = glm::vec3(static_cast<float>(minPos[0]),
+                              static_cast<float>(minPos[1]), 
+                              static_cast<float>(minPos[2]));
+    glm::vec3 max = glm::vec3(static_cast<float>(maxPos[0]),
+                              static_cast<float>(maxPos[1]),
+                              static_cast<float>(maxPos[2]));
+
+    center = (min + max) * 0.5f;
+    return true;
+}
+
 // Describes how to read one accessor. The base data (when present) is
 // validated once, so per-element reads are just pointer arithmetic. Sparse
 // substitutions are stored separately and resolved during sequential reads.
@@ -528,6 +544,7 @@ void appendPrimitiveIndices(const AccessorData* indexData,
 // mode); `tangentsFromFile` reports whether trusted TANGENT data was read.
 bool loadPrimitive(const tg3_model& model,
                    const tg3_primitive& primitive,
+                   glm::vec3& outCenter,
                    std::vector<resource::Vertex>& outVertices,
                    std::vector<uint32_t>& outIndices,
                    bool& tangentsFromFile) {
@@ -547,8 +564,16 @@ bool loadPrimitive(const tg3_model& model,
             "[glTF] warning: unsupported POSITION accessor, primitive skipped");
         return false;
     }
+    const double *min = positionAccessor.min_values;
     const AccessorData positionData = prepareAccessor(model, positionIndex);
     const uint64_t vertexCount = positionData.count();
+
+    // --- Primitive geometric center ---
+    if(!getCenterPosistion(positionAccessor, outCenter)) {
+        log::get().write(platform::LogLevel::Warning,
+            std::string("[glTF] warning: failed to compute primitive AABB center "
+            "(remains at (0, 0, 0)); this may lead to incorrect rendering results"));
+    }
 
     // --- Optional attribute loader: validates and prepares, or warns + clears.
     // `requiredComponentCount` guards the vec size; 0 disables the check for
@@ -855,8 +880,9 @@ void visitNode(const tg3_model& model,
         for (uint32_t p = 0; p < mesh.primitives_count; ++p) {
             std::vector<resource::Vertex> vertices;
             std::vector<uint32_t>    indices;
+            glm::vec3                center{0.0f};
             bool tangentsFromFile = false;
-            if (!loadPrimitive(model, mesh.primitives[p], vertices, indices,
+            if (!loadPrimitive(model, mesh.primitives[p], center, vertices, indices, 
                                tangentsFromFile)) {
                 continue;
             }
@@ -865,6 +891,7 @@ void visitNode(const tg3_model& model,
                                                    tangentsFromFile);
             primitiveOut.mesh.postProcess();
             primitiveOut.world = world;
+            primitiveOut.aabbCenter = center;
             primitiveOut.materialIndex =
                 mesh.primitives[p].material >= 0
                     ? static_cast<uint32_t>(mesh.primitives[p].material)

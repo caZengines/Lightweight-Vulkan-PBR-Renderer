@@ -1,15 +1,11 @@
 #pragma once
 
-#include <memory>
-#include <vector>
-
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 
 #include "render/frame/frame_uniforms.hpp"
 #include "resource/asset/asset_handle.hpp"
 #include "resource/import/gltf_importer.hpp"
-
 
 class Sampler;
 
@@ -24,37 +20,37 @@ class UploadQueue;
 }  // namespace resource
 
 namespace render {
-class Material;
-} // namespace render
+class MaterialRegistry;
+}  // namespace render
 
 namespace app {
 
 struct Config;
 
-// Demo content: it owns the materials and the per-frame light parameters.
-// The composition root allocates one Set-1 descriptor set per material after
-// build().
+// Demo content: creates the scene objects and the material data. Materials are
+// owned by render::MaterialRegistry (the render layer's single material owner),
+// so this class keeps no material list of its own.
 class DemoScene {
 public:
     DemoScene(const Config& config, scene::Scene& scene);
 
-    // Loads assets, creates the materials and the scene objects. The resource
-    // services and samplers are composition-root pieces shared by all content.
+    // Loads assets, registers one material per glTF material plus a fallback,
+    // and creates one SceneObject per primitive. The resource services and
+    // samplers are composition-root pieces shared by all content.
     void build(const Sampler& albedoSampler, const Sampler& normalSampler,
                resource::AssetLibrary& assets, resource::ResourceRegistry& registry,
-               resource::UploadQueue& queue);
+               resource::UploadQueue& queue, render::MaterialRegistry& materials);
 
-    [[nodiscard]] const std::vector<std::shared_ptr<render::Material>>& materials() const { return materials_; }
     [[nodiscard]] const render::FrameParams& frameParams() const { return frameParams_; }
 
 private:
     // glTF scene content: one SceneObject per primitive, one Material per
-    // glTF material (materials_[0] is the fallback for primitives without
-    // one). Textures resolve through the asset library, so shared textures
-    // upload once.
+    // glTF material. The first registered material is the fallback for
+    // primitives without one. Textures resolve through the asset library, so
+    // shared textures upload once.
     void buildglTFdemo(const Sampler& albedoSampler, const Sampler& normalSampler,
-                  resource::AssetLibrary& assets, resource::ResourceRegistry& registry,
-                  resource::UploadQueue& queue);
+                       resource::AssetLibrary& assets, resource::ResourceRegistry& registry,
+                       resource::UploadQueue& queue, render::MaterialRegistry& materials);
 
     // Resolves one material texture slot to an asset handle; empty handle
     // when the slot has no usable texture (Material falls back to the
@@ -68,7 +64,6 @@ private:
     const Config& config_;
     scene::Scene& scene_;
 
-    std::vector<std::shared_ptr<render::Material>> materials_;
     render::FrameParams frameParams_{};
 };
 

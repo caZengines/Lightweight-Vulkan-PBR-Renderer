@@ -4,6 +4,7 @@
 #include "rhi/device/rhi_factory.hpp"
 
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <chrono>
@@ -13,8 +14,9 @@
 #include <string>
 #include <string_view>
 
-#define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
-#define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
+#include <glm/glm.hpp>
+
+
 #include <vulkan/vulkan_raii.hpp>
 #include "vulkan/vulkan.hpp"
 
@@ -380,7 +382,7 @@ void Renderer::ensureRasterPipelines(const RenderTarget& target) {
         rasterVariants_.samples     == target.samples) {
         return;
     }
-    rasterVariants_.pipelines.fill(nullptr);
+    for (auto& row : rasterVariants_.pipelines) row.fill(nullptr);
     rasterVariants_.colorFormat = target.colorFormat;
     rasterVariants_.depthFormat = target.depthFormat;
     rasterVariants_.samples     = target.samples;
@@ -393,9 +395,9 @@ void Renderer::ensureRasterPipelines(const RenderTarget& target) {
 }
 
 const GraphicsPipeline* Renderer::rasterPipelineFor(
-        MaterialPipelineKey key, const RenderTarget& target) {
+MaterialPipelineKey key, bool blend, const RenderTarget& target) {
     const uint32_t index = key & (kMaterialPipelineVariantCount - 1u);
-    const GraphicsPipeline*& slot = rasterVariants_.pipelines[index];
+    const GraphicsPipeline*& slot = rasterVariants_.pipelines[blend ? 1u : 0u][index];
     if(slot) return slot;
 
     GraphicsPipelineSpec spec;
@@ -403,6 +405,8 @@ const GraphicsPipeline* Renderer::rasterPipelineFor(
     spec.depthFormat = target.depthFormat;
     spec.msaaSamples = target.samples;
     spec.vertexLayout = meshVertexLayout();
+    spec.depthWrite  = !blend;
+    spec.blendEnable = blend;
 
     spec.SpecializationConstants.reserve(kActiveMaterialUvSlots.size());
     std::string detail;
@@ -419,7 +423,7 @@ const GraphicsPipeline* Renderer::rasterPipelineFor(
     platform::LogLocator::get().write(
         platform::LogLevel::Info,
         "[renderer] raster pipeline variant created: key=" + std::to_string(key) +
-        " (" + detail + ")");
+        " (" + detail + ") " + (blend ? " blend" : " opaque"));
     return slot;
 }
 
@@ -429,6 +433,7 @@ void Renderer::cleanup() {
     cleaned_ = true;
     // FrameResources members release their own Vulkan handles via RAII after
     // the idle wait above.
+    platform::LogLocator::get().write(platform::LogLevel::Info, "[renderer] renderer cleaned");
 }
 
 std::optional<Renderer::FrameContext> Renderer::beginFrame() {
@@ -501,18 +506,52 @@ void Renderer::record(FrameContext& ctx, std::span<const RenderItem> items) {
                                   vk::PipelineStageFlagBits2::eVertexShader | vk::PipelineStageFlagBits2::eFragmentShader);
     }
 
+    // The scene emits opaque items first (one per object, possibly several
+    // instances) and blend items last (one per instance). Opaque items keep
+    // their material-batched order; blend items are re-sorted every frame so
+    // the farthest instance is drawn first.
     rasterBuckets_.clear();
-    size_t begin = 0;
-    while (begin < items.size()) {
-        const MaterialPipelineKey key = items[begin].material->pipelineKey();
-        size_t end = begin + 1;
-        while (end < items.size() && items[end].material->pipelineKey() == key) {
-            ++end;
+
+    auto addBuckets = [&](std::span<const RenderItem> range, bool blend) {
+        size_t begin = 0;
+        while (begin < range.size()) {
+            const MaterialPipelineKey key = range[begin].material->pipelineKey();
+            size_t end = begin + 1;
+            while (end < range.size() && range[end].material->pipelineKey() == key) {
+                ++end;
+            }
+            rasterBuckets_.emplace_back(RasterBucket{
+                rasterPipelineFor(key, blend, ctx.target),
+                range.subspan(begin, end - begin)});
+            begin = end;
         }
-        rasterBuckets_.emplace_back(RasterBucket{
-            rasterPipelineFor(key, ctx.target),
-            items.subspan(begin, end - begin)});
-        begin = end;
+    };
+
+    const auto blendBeginIt = std::ranges::find_if(
+        items, [](const RenderItem& item) { return item.material->isBlend(); });
+    const size_t blendBegin = static_cast<size_t>(blendBeginIt - items.begin());
+
+    addBuckets(items.subspan(0, blendBegin), /*blend=*/false);
+
+    if (blendBegin < items.size()) {
+        blendDrawItems_.assign(blendBeginIt, items.end());
+
+        const glm::mat4 view = cameras_.active().viewMatrix();
+        auto depth = [&](const RenderItem& item) {
+            return -(view * glm::vec4(item.worldCenter, 1.0f)).z;
+        };
+        std::ranges::sort(
+            blendDrawItems_, [&](const RenderItem& a, const RenderItem& b) {
+                const float depthA = depth(a);
+                const float depthB = depth(b);
+                if (depthA != depthB) return depthA > depthB;  // far -> near
+                if (a.material->id() != b.material->id()) {
+                    return a.material->id() < b.material->id();
+                }
+                return a.firstInstance < b.firstInstance;
+            });
+
+        addBuckets(std::span<const RenderItem>{blendDrawItems_}, /*blend=*/true);
     }
     const ParticleDraw particles =
         particlePipeline_
@@ -619,6 +658,7 @@ void Renderer::endFrame(const FrameContext& ctx) {
         framebufferResized) {
         framebufferResized = false;
         recreateAfterResize();
+        return;
     }
     else assert(result == vk::Result::eSuccess);
 

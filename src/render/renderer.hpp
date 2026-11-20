@@ -1,5 +1,7 @@
 #pragma once
 
+#include "render/pass/raster_pass.hpp"
+#include <array>
 #include <chrono>
 #include <cstdint>
 #include <memory>
@@ -8,15 +10,15 @@
 #include <span>
 #include <string_view>
 
-#define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
-#define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
+
 #include <vulkan/vulkan_raii.hpp>
-#include "vulkan/vulkan.hpp"
 
 #include "render/frame/frame_uniforms.hpp"
 #include "render/frame/render_item.hpp"
 #include "render/frame/render_settings.hpp"
 #include "render/frame/render_target.hpp"
+#include "render/compute/compute_resources.hpp"
+#include "render/material/material_pipeline_key.hpp"
 #include "rhi/device/render_context.hpp"
 #include "rhi/descriptor/descriptor_set_allocator.hpp"
 #include "rhi/memory/vma_allocator.hpp"
@@ -27,6 +29,7 @@ class Window;
 
 namespace resource {
 class ShaderLibrary;
+class UploadQueue;
 }  // namespace resource
 
 namespace rhi {
@@ -50,6 +53,7 @@ class GraphicsPipeline;
 class GraphicsPipelineLibrary;
 class ComputePipeline;
 class ComputePipelineLibrary;
+class LayoutSet;
 
 // Present-timing support as reported by
 // vkGetPhysicalDeviceSurfaceCapabilities2KHR for the window's surface. Device
@@ -83,6 +87,7 @@ public:
         rhi::DescriptorSetAllocator&                descriptorSets;  // app-owned, must outlive us
         const resource::ShaderLibrary&              shaders;         // app-owned
         rhi::CommandPool&                           graphicsPool;
+        resource::UploadQueue&                      queue;
         scene::CameraManager&                       cameras;         // active() is read each frame
         FrameParams                                 frameParams;     // light from the content layer
         const vk::raii::SurfaceKHR&                 surface;
@@ -108,7 +113,9 @@ public:
 
 private:
     void createPipelines();
-    void ensureRasterPipeline(const RenderTarget& target);
+    void ensureRasterPipelines(const RenderTarget& target);
+    [[nodiscard]] const GraphicsPipeline* rasterPipelineFor(
+        MaterialPipelineKey key, bool blend, const RenderTarget& target);
     void fillUniformBuffer(uint32_t frame);
     void writeFrameSet(uint32_t frame);
     void recreateAfterResize();
@@ -119,6 +126,7 @@ private:
     scene::CameraManager&         cameras_;
     FrameParams                   frameParams_;
     rhi::CommandPool&             graphicsPool_;
+    resource::UploadQueue&        queue_;
     const rhi::RhiFactory&        rhiFactory_;
     RenderSettings                settings_;
     std::string_view              spirvPath_;
@@ -132,10 +140,24 @@ private:
     std::unique_ptr<ComputePipelineLibrary>     computePipelines_;
     std::unique_ptr<rhi::Swapchain>             swapchain_;
     std::unique_ptr<FrameResources>             frames_;
+    std::unique_ptr<ComputeResources>           computeResources_;
     std::unique_ptr<CommandRecorder>            recorder_;
 
+    struct RasterVariants {
+        std::array<std::array<const GraphicsPipeline*, kMaterialPipelineVariantCount>, 2> pipelines{};
+        vk::Format colorFormat = vk::Format::eUndefined;
+        vk::Format depthFormat = vk::Format::eUndefined;
+        vk::SampleCountFlagBits samples = vk::SampleCountFlagBits::e1;
+    };
+
+    const LayoutSet*          layouts_         = nullptr;
     const PipelineLayout*     graphicsLayout_  = nullptr;
-    const GraphicsPipeline*   rasterPipeline_  = nullptr;
+    RasterVariants            rasterVariants_{};
+    std::vector<RasterBucket> rasterBuckets_;
+    // Blend items copied out of the scene's immutable draw list so they can be
+    // depth-sorted per frame; rasterBuckets_ views into this storage.
+    std::vector<RenderItem>   blendDrawItems_;
+    const GraphicsPipeline*   particlePipeline_ = nullptr;
     const ComputePipeline*    computePipeline_ = nullptr;
 
     uint32_t                frameCursor_     = 0;  // frame-in-flight slot for this frame

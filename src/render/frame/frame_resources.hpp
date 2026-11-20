@@ -3,8 +3,7 @@
 #include <cstdint>
 #include <vector>
 
-#define VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS
-#define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
+
 #include <vulkan/vulkan_raii.hpp>
 
 #include "rhi/descriptor/descriptor_set_allocator.hpp"
@@ -14,7 +13,6 @@ namespace rhi {
 class CommandPool;
 } //namespace rhi
 
-struct RenderContext;
 
 namespace render {
 
@@ -33,7 +31,7 @@ public:
     // per-image).  set0Layout/set0Bindings describe the hand-made set 0; the sets
     // themselves come from the app-owned allocator, which must outlive this
     // object (the destructor returns the ids to it).
-    void init(RenderContext& rct,
+    void init(vk::raii::Device& device,
               rhi::CommandPool& graphicsPool,
               VmaAllocator alloc,
               rhi::DescriptorSetAllocator& descriptorSets,

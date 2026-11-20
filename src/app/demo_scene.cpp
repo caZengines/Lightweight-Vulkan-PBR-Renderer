@@ -3,7 +3,8 @@
 #include "app/config.hpp"
 #include "platform/log.hpp"
 #include "resource/import/gltf_importer.hpp"
-#include "render/material.hpp"
+#include "render/material/material.hpp"
+#include "render/material/material_registry.hpp"
 #include "resource/gpu/sampler.hpp"
 #include "resource/data/vertex.hpp"
 #include "resource/asset/asset_library.hpp"
@@ -12,7 +13,9 @@
 #include "resource/gpu/upload_queue.hpp"
 #include "scene/scene.hpp"
 
-#include <limits>
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace app {
 
@@ -25,31 +28,33 @@ DemoScene::DemoScene(const Config& config, scene::Scene& scene)
         .light{
             .pos       = glm::vec4(2.0f, 6.0f, 0.0f, 1.0f),
             .color     = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
-            .intensity = 200.0f,
+            .intensity = 100.0f,
         },
     };
 }
 
 void DemoScene::build(const Sampler& albedoSampler, const Sampler& normalSampler,
                       resource::AssetLibrary& assets, resource::ResourceRegistry& registry,
-                      resource::UploadQueue& queue) {
+                      resource::UploadQueue& queue, render::MaterialRegistry& materials) {
 
-    buildglTFdemo(albedoSampler, normalSampler, assets, registry, queue);
+    buildglTFdemo(albedoSampler, normalSampler, assets, registry, queue, materials);
 }
 
 void DemoScene::buildglTFdemo(const Sampler& albedoSampler, const Sampler& normalSampler,
                          resource::AssetLibrary& assets, resource::ResourceRegistry& registry,
-                         resource::UploadQueue& queue) {
+                         resource::UploadQueue& queue, render::MaterialRegistry& materials) {
     // --- glTF scene: one SceneObject per primitive, one Material per glTF
     // material. Geometry is imported in local space with the node hierarchy
     // collapsed into GltfPrimitive::world; that matrix rides in the (single)
     // instance placement, leaving the object transform at identity.
     const resource::GltfScene imported = resource::GltfSceneImporter::load(config_.modelPath);
 
-    // materials_[0] is the fallback for primitives without a material;
-    // glTF material i lives at materials_[i + 1].
-    materials_.reserve(imported.materials.size() + 1);
-    materials_.emplace_back(std::make_shared<render::Material>(
+    // The registry owns every material: the first entry is the fallback for
+    // primitives without a material, glTF material i is registered at index
+    // i + 1 (ids follow creation order).
+    std::vector<render::Material*> materialsByIndex;
+    materialsByIndex.reserve(imported.materials.size() + 1);
+    materialsByIndex.emplace_back(&materials.create(
         render::Material::SlotHandles{},
         resource::MaterialData{},
         albedoSampler, normalSampler, registry));
@@ -62,51 +67,40 @@ void DemoScene::buildglTFdemo(const Sampler& albedoSampler, const Sampler& norma
                                                static_cast<resource::MaterialTextureSlot>(slot),
                                                assets);
         }
-        materials_.emplace_back(std::make_shared<render::Material>(
+        materialsByIndex.emplace_back(&materials.create(
             std::move(handles), data, albedoSampler, normalSampler, registry));
     }
 
-    glm::mat4 placement = glm::scale(glm::mat4(1.0f), glm::vec3(1.f, 1.f, 1.f));
+    glm::mat4 placement = glm::scale(glm::mat4(1.0f), glm::vec3(.1f, .1f, .1f));
 
-    glm::vec3 aabbMin(std::numeric_limits<float>::max());
-    glm::vec3 aabbMax(std::numeric_limits<float>::lowest());
     size_t totalVertices = 0;
     for (size_t i = 0; i < imported.primitives.size(); ++i) {
         const resource::GltfPrimitive& prim = imported.primitives[i];
         const glm::mat4 modelMatrix = placement * prim.world;
 
-        // World-space bounds (logged so the orbit camera can be aimed by hand).
-        for (const resource::Vertex& v : prim.mesh.vertices()) {
-            const glm::vec3 wp = glm::vec3(modelMatrix * glm::vec4(v.pos, 1.0f));
-            aabbMin = glm::min(aabbMin, wp);
-            aabbMax = glm::max(aabbMax, wp);
-        }
         totalVertices += prim.mesh.vertices().size();
 
         const std::string key = config_.modelPath + "#prim" + std::to_string(i);
         auto meshHandle = assets.loadMeshData(key, prim.mesh);
 
-        const std::shared_ptr<render::Material>& material =
+        render::Material* material =
             prim.materialIndex < imported.materials.size()
-                ? materials_[prim.materialIndex + 1]
-                : materials_[0];
-        auto object = std::make_shared<scene::SceneObject>(meshHandle, material, registry);
+                ? materialsByIndex[prim.materialIndex + 1]
+                : materialsByIndex[0];
+        // aabbCenter is mesh-local; SceneObject derives one world center per
+        // instance from the instance matrices at setInstances() time.
+        auto object = std::make_shared<scene::SceneObject>(meshHandle, prim.aabbCenter, material, registry);
         std::vector<resource::InstanceData> instances(1);
         instances[0].model = modelMatrix;
         object->setInstances(queue, std::move(instances));
         scene_.addObject(std::move(object));
     }
 
-    const glm::vec3 center = (aabbMin + aabbMax) * 0.5f;
     platform::LogLocator::get().write(platform::LogLevel::Info,
         "DemoScene: '" + config_.modelPath + "': " +
         std::to_string(imported.primitives.size()) + " primitives, " +
         std::to_string(imported.materials.size()) + " materials, " +
-        std::to_string(totalVertices) + " vertices, AABB min(" +
-        std::to_string(aabbMin.x) + ", " + std::to_string(aabbMin.y) + ", " + std::to_string(aabbMin.z) +
-        ") max(" + std::to_string(aabbMax.x) + ", " + std::to_string(aabbMax.y) + ", " +
-        std::to_string(aabbMax.z) + ") center(" +
-        std::to_string(center.x) + ", " + std::to_string(center.y) + ", " + std::to_string(center.z) + ")");
+        std::to_string(totalVertices) + " vertices");
 }
 
 resource::AssetHandle DemoScene::resolveSlotTexture(

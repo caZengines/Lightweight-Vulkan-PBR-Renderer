@@ -1,5 +1,7 @@
 #include "scene/scene.hpp"
+#include "platform/log.hpp"
 #include "scene/primitive_batching.hpp"
+#include "render/material/material.hpp"
 
 namespace scene {
 
@@ -13,24 +15,49 @@ bool Scene::isValid() {
 }
 
 void Scene::clear() {
-    if(!objects_.empty()) objects_.clear();;
-    if(!cachedItems_.empty()) cachedItems_.clear();
+    objects_.clear();
+    cachedItems_.clear();
+    itemsDirty_ = true;
+    platform::LogLocator::get().write(platform::LogLevel::Info, "[scene] scene cleaned");
 }
 
 std::span<const render::RenderItem> Scene::collectRenderItems() const {
     if (itemsDirty_) {
         cachedItems_.clear();
-        cachedItems_.reserve(objects_.size());
+        size_t itemCount = 0;
         for (const auto& object : objects_) {
-            if (object->instanceCount() == 0) continue;
+            itemCount += object->instanceCount();
+        }
+        cachedItems_.reserve(itemCount);
 
-            cachedItems_.emplace_back(render::RenderItem{
-                .mesh          = &object->mesh(),
-                .material      = &object->material(),
-                .instances     = &object->instanceBuffer(),
-                .firstInstance = 0,
-                .instanceCount = object->instanceCount(),
-            });
+        for (const auto& object : objects_) {
+            const uint32_t instanceCount = object->instanceCount();
+            if (instanceCount == 0) continue;
+
+            if (object->material().isBlend()) {
+                // Blend draws are one instance each: the renderer reorders them
+                // every frame by their world centers, which is only possible if
+                // each instance is its own RenderItem.
+                for (uint32_t i = 0; i < instanceCount; ++i) {
+                    cachedItems_.emplace_back(render::RenderItem{
+                        .mesh          = &object->mesh(),
+                        .material      = &object->material(),
+                        .instances     = &object->instanceBuffer(),
+                        .firstInstance = i,
+                        .instanceCount = 1,
+                        .worldCenter   = object->instanceWorldCenter(i),
+                    });
+                }
+            } else {
+                cachedItems_.emplace_back(render::RenderItem{
+                    .mesh          = &object->mesh(),
+                    .material      = &object->material(),
+                    .instances     = &object->instanceBuffer(),
+                    .firstInstance = 0,
+                    .instanceCount = instanceCount,
+                    .worldCenter   = object->averageWorldCenter(),
+                });
+            }
         }
         batchRenderItems(cachedItems_);
         itemsDirty_ = false;

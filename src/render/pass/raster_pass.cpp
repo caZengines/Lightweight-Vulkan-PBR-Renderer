@@ -51,11 +51,13 @@ void RasterPass::record(const PassContext& ctx) const {
     ctx.cmd.setViewport(0, vk::Viewport(0.0f, 0.0f, width, height, 0.0f, 1.0f));
     ctx.cmd.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), ctx.target.extent));
 
-    for (const RasterBucket& bucket : buckets_) {
-        if (!bucket.pipeline) continue;
-        const Material* boundMaterial = nullptr;
+    BindCache binder{};
+    const Material* boundMaterial = nullptr;
 
-        bindPipelineAndFrameSet(ctx, *bucket.pipeline);
+    for (const RasterBucket& bucket : buckets_) {
+        if (!bucket.pipeline || bucket.items.empty()) continue;
+
+        binder.bind(ctx, *bucket.pipeline);
 
         const vk::ShaderStageFlags pushConstantStages = bucket.pipeline->pushConstantStages();
 
@@ -90,8 +92,7 @@ void RasterPass::record(const PassContext& ctx) const {
         }
     }
     if(particles_.pipeline && particles_.vertexCount > 0) {
-        bindPipelineAndFrameSet(ctx, *particles_.pipeline);
-
+        binder.bind(ctx, *particles_.pipeline);
         ctx.cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
                                    particles_.pipeline->layout(),
                                    2,

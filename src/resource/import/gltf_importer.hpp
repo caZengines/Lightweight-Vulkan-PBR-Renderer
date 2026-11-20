@@ -87,6 +87,7 @@ inline constexpr uint32_t kNoMaterialIndex = 0xFFFFFFFFu;
 struct GltfPrimitive {
     MeshData    mesh;
     glm::mat4   world         = glm::mat4(1.0f);
+    glm::vec3   aabbCenter   = glm::vec3(0.0f);  // mesh-local AABB center
     uint32_t    materialIndex = kNoMaterialIndex;  // glTF material index
     std::string name;                              // owning glTF mesh name (debugging)
 };
