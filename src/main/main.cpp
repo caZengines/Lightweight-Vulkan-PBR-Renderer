@@ -1,6 +1,9 @@
 #include "app/app.hpp"
+#include "platform/utils.hpp"
 #include <iostream>
+#include <fstream>
 #include <cstdlib>
+#include <string>
 
 #if defined(_WIN32)
     #include <windows.h>
@@ -11,9 +14,14 @@ int runApp() {
         app::App app{};
         app.run();
     } catch (const std::exception& e) {
-        std::cerr << e.what() << std::endl;
+        const std::string message = e.what();
+        std::cerr << message << std::endl;
+
+        std::ofstream log{platform::PlatformUtils::assetPath("logs/engine.log"),
+                          std::ios::app};
+        if (log) log << "[ERROR] " << message << std::endl;
 #if defined(_WIN32)
-        MessageBoxA(nullptr, e.what(), "Error", MB_OK | MB_ICONERROR);
+        MessageBoxA(nullptr, message.c_str(), "Error", MB_OK | MB_ICONERROR);
 #endif
         return EXIT_FAILURE;
     }

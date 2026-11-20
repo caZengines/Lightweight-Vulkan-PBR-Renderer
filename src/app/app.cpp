@@ -43,13 +43,13 @@ vk::SampleCountFlagBits pickMsaaCount(const vk::raii::PhysicalDevice& physicalDe
 namespace app {
 
 App::App() {
-    if (!fileLog.isOpen()) {
-        platform::LogLocator::initialize(); 
-        platform::LogLocator::get().write(
-            platform::LogLevel::Error, "failed to open logs/engine.log");
-    } else {
-        platform::LogLocator::provide(&fileLog);
-    }
+     if (!fileLog.isOpen()) {
+         platform::LogLocator::initialize();
+         platform::LogLocator::get().write(
+             platform::LogLevel::Error, "failed to open logs/engine.log");
+     } else {
+         platform::LogLocator::provide(&fileLog);
+     }
     platform::LogLocator::get().write(platform::LogLevel::Info, "started");
     initWindow();
     initRhi();
@@ -61,15 +61,25 @@ App::App() {
 }
 
 App::~App() {
-    if (scene_.isValid()) {
-        scene_.clear();
-    }
+    platform::LogLocator::get().write(platform::LogLevel::Info, "[App] start clean");
+    // Stop rendering and wait for the device before the scene releases its GPU
+    // buffers: command buffers submitted by the last frame may still reference
+    // them, so destroying the scene first is a validation error even though the
+    // renderer is about to be destroyed.
     if (renderer_) {
+        platform::LogLocator::get().write(platform::LogLevel::Info, "[App] renderer start clean");
         renderer_->cleanup();
+    }
+    if (scene_.isValid()) {
+        platform::LogLocator::get().write(platform::LogLevel::Info, "[App] scene start clean");
+        scene_.clear();
     }
     input_.detach(*window_);
     window_.reset();   // destroys the GLFW window and terminates GLFW
     fileLog.flush();
+    // The file log is a member of App; the exception handler in main runs after
+    // ~App has returned, so detach the locator before it becomes dangling.
+    platform::LogLocator::provide(nullptr);
 }
 
 void App::run() {
